@@ -18,6 +18,7 @@ export async function browserApiRequest<T>(path: string, init: RequestInit = {})
       ...init.headers,
     },
   });
+  if (response.status === 204) return undefined as T;
   const payload = (await response.json().catch(() => ({}))) as
     | { data?: T }
     | ApiErrorPayload;

@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from "../lib/supabase.js";
+import { formatIsoDateForChile } from "../lib/date-format.js";
 import type { OrderKind } from "../types/database.js";
 
 interface QueueMorningSummariesInput {
@@ -66,7 +67,7 @@ export async function queueMorningSummaries(
     if (profileError) throw new Error(`No fue posible consultar administradoras: ${profileError.message}`);
 
     const counts = summarizeOrders(orders ?? []);
-    const title = `Resumen de colaciones del ${serviceDate}`;
+    const title = `Resumen de colaciones del ${formatIsoDateForChile(serviceDate)}`;
     const body = buildMorningSummaryMessage(counts);
 
     for (const profile of profiles ?? []) {

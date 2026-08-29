@@ -80,7 +80,10 @@ Authorization: Bearer <supabase-access-token>
 | POST | `/api/v1/company/extras` | Administradora Securitas |
 | POST | `/api/v1/company/exceptions` | Administradora Securitas |
 | GET | `/api/v1/company/reports` | Administradora Securitas |
-| PUT | `/api/v1/provider/menu-weeks/:startsOn` | Proveedora |
+| POST | `/api/v1/provider/menu-weeks` | Proveedora |
+| POST | `/api/v1/provider/menu-weeks/copy` | Proveedora |
+| PUT | `/api/v1/provider/menu-weeks/:weekId` | Proveedora |
+| DELETE | `/api/v1/provider/menu-weeks/:weekId` | Proveedora |
 | POST | `/api/v1/provider/menu-weeks/:weekId/publish` | Proveedora |
 | GET/POST | `/api/v1/provider/calendar-blocks` | Proveedora |
 | DELETE | `/api/v1/provider/calendar-blocks/:blockId` | Proveedora |
@@ -167,6 +170,20 @@ Para un trabajador se exige vincular una persona ya existente en la nómina:
 npm run provision:user -w backend -- --email correo@dominio.cl --name "Nombre Apellido" --role worker --worker-name "Nombre Apellido"
 ```
 
+Para una cuenta temporal de prueba que no pertenece a la nómina, se debe marcar
+la creación del comensal. El registro quedará identificado con un código `TEST-*`:
+
+```powershell
+$env:PROVISION_USER_PASSWORD = "una-clave-temporal-segura"
+npm run provision:user -w backend -- --email correo+prueba@dominio.cl --name "Usuario Trabajador" --role worker --worker-name "Usuario Trabajador" --create-worker --apply
+Remove-Item Env:PROVISION_USER_PASSWORD
+```
+
+`PROVISION_USER_PASSWORD` es opcional, debe tener entre 12 y 72 caracteres y
+nunca se imprime ni se guarda en el repositorio. Si la cuenta ya existe, el
+comando actualiza su contraseña solamente cuando se ejecuta con `--apply`.
+
 Roles válidos: `worker`, `company_admin` y `provider_admin`. Revisar la vista
 previa y recién entonces repetir el comando con `--apply`. El aprovisionamiento
-no envía correos: la persona solicita su enlace de acceso desde `/login`.
+no envía correos. La persona puede usar su contraseña o solicitar un enlace
+desde `/login`.

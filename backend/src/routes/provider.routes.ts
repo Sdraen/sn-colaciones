@@ -7,10 +7,13 @@ import {
   patchExceptionalRequest,
   patchMenuOptionAvailability,
   patchOrderFulfillment,
+  postCopyMenuWeek,
+  postMenuWeek,
   postPublishMenuWeek,
   postCalendarBlock,
   removeCalendarBlock,
-  putMenuWeekDraft,
+  removeMenuWeek,
+  putMenuWeek,
 } from "../controllers/provider.controller.js";
 import { requireRole } from "../middleware/require-role.js";
 import { validateRequest } from "../middleware/validate-request.js";
@@ -24,8 +27,11 @@ import {
   weeklyReportRequestSchema,
 } from "../schemas/provider.schema.js";
 import {
+  copyMenuWeekRequestSchema,
+  createMenuWeekRequestSchema,
+  deleteMenuWeekRequestSchema,
   publishMenuWeekRequestSchema,
-  saveMenuWeekDraftRequestSchema,
+  updateMenuWeekRequestSchema,
 } from "../schemas/menu.schema.js";
 import { reportRequestSchema } from "../schemas/report.schema.js";
 
@@ -62,10 +68,25 @@ providerRouter.delete(
   validateRequest(deleteCalendarBlockRequestSchema),
   removeCalendarBlock,
 );
+providerRouter.post(
+  "/menu-weeks",
+  validateRequest(createMenuWeekRequestSchema),
+  postMenuWeek,
+);
+providerRouter.post(
+  "/menu-weeks/copy",
+  validateRequest(copyMenuWeekRequestSchema),
+  postCopyMenuWeek,
+);
 providerRouter.put(
-  "/menu-weeks/:startsOn",
-  validateRequest(saveMenuWeekDraftRequestSchema),
-  putMenuWeekDraft,
+  "/menu-weeks/:weekId",
+  validateRequest(updateMenuWeekRequestSchema),
+  putMenuWeek,
+);
+providerRouter.delete(
+  "/menu-weeks/:weekId",
+  validateRequest(deleteMenuWeekRequestSchema),
+  removeMenuWeek,
 );
 providerRouter.post(
   "/menu-weeks/:weekId/publish",

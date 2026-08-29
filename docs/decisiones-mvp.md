@@ -17,6 +17,9 @@
 - Ambas administradoras reciben entre las 07:00 y las 08:00 un resumen de las colaciones registradas.
 - Las notificaciones se entregan dentro del sistema y por correo. Resend es el proveedor inicial.
 - Ambas administradoras disponen de reportes diarios, semanales y mensuales. El mensual comprende desde el día 1 hasta la fecha seleccionada.
+- Toda fecha visible usa el formato chileno `dd/mm/aaaa`; las horas se calculan
+  y presentan con la zona `America/Santiago`. La API y PostgreSQL conservan ISO
+  `aaaa-mm-dd` para intercambio y cálculos.
 - Los reportes incluyen cantidades solicitadas, confirmadas, canceladas, entregadas, tipo de pedido, menú, acompañamiento, pan y té.
 - El sistema no administra precios, pagos ni cobranzas.
 

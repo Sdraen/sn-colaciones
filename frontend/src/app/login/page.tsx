@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </span>
           <h1 className="mt-5 text-3xl font-black tracking-[-0.04em]">Ingresar a SN Colaciones</h1>
           <p className="mt-2 max-w-md text-sm leading-6 text-white/85">
-            Recibirás un enlace de un solo uso. No necesitas recordar una contraseña.
+            Usa tu contraseña o solicita un enlace de acceso de un solo uso.
           </p>
         </div>
         <div className="px-7 py-8 sm:px-9">

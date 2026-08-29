@@ -20,10 +20,19 @@ import {
   setMenuOptionAvailability,
 } from "../services/provider.service.js";
 import type {
+  CopyMenuWeekRequest,
+  CreateMenuWeekRequest,
+  DeleteMenuWeekRequest,
   PublishMenuWeekRequest,
-  SaveMenuWeekDraftRequest,
+  UpdateMenuWeekRequest,
 } from "../schemas/menu.schema.js";
-import { publishMenuWeek, saveMenuWeekDraft } from "../services/menu.service.js";
+import {
+  copyPreviousMenuWeek,
+  createMenuWeekDraft,
+  deleteMenuWeekDraft,
+  publishMenuWeek,
+  updateMenuWeekDraft,
+} from "../services/menu.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
 import { getOrdersReport } from "../services/report.service.js";
 
@@ -80,14 +89,39 @@ export const patchExceptionalRequest: RequestHandler = async (request, response)
   response.status(200).json({ data: exception });
 };
 
-export const putMenuWeekDraft: RequestHandler = async (request, response) => {
+export const postMenuWeek: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
-  const { params, body } = getValidatedRequest<SaveMenuWeekDraftRequest>(request);
-  const menu = await saveMenuWeekDraft(supabase, {
-    startsOn: params.startsOn,
+  const { body } = getValidatedRequest<CreateMenuWeekRequest>(request);
+  const menu = await createMenuWeekDraft(supabase, {
+    startsOn: body.startsOn,
+    days: body.days,
+  });
+  response.status(201).json({ data: menu });
+};
+
+export const putMenuWeek: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateMenuWeekRequest>(request);
+  const menu = await updateMenuWeekDraft(supabase, {
+    menuWeekId: params.weekId,
+    startsOn: body.startsOn,
     days: body.days,
   });
   response.status(200).json({ data: menu });
+};
+
+export const removeMenuWeek: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params } = getValidatedRequest<DeleteMenuWeekRequest>(request);
+  await deleteMenuWeekDraft(supabase, params.weekId);
+  response.status(204).send();
+};
+
+export const postCopyMenuWeek: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CopyMenuWeekRequest>(request);
+  const menu = await copyPreviousMenuWeek(supabase, body.targetStartsOn);
+  response.status(201).json({ data: menu });
 };
 
 export const postPublishMenuWeek: RequestHandler = async (request, response) => {

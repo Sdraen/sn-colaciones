@@ -214,16 +214,53 @@ paths:
           description: Notificación actualizada
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
-  /api/v1/provider/menu-weeks/{startsOn}:
+  /api/v1/provider/menu-weeks:
+    post:
+      tags: [Proveedora]
+      summary: Crea un borrador semanal
+      description: La fecha inicial debe ser un lunes y el cuerpo debe contener sus siete días consecutivos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MenuWeekDraftInput" }
+      responses:
+        "201": { description: Borrador semanal creado }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/provider/menu-weeks/copy:
+    post:
+      tags: [Proveedora]
+      summary: Copia el menú de la semana anterior como un borrador nuevo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetStartsOn]
+              additionalProperties: false
+              properties:
+                targetStartsOn: { type: string, format: date }
+      responses:
+        "201": { description: Semana anterior copiada }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/provider/menu-weeks/{weekId}:
     put:
       tags: [Proveedora]
-      summary: Crea o reemplaza atómicamente un borrador semanal
-      description: El parámetro startsOn debe ser el lunes de la semana siguiente y el cuerpo debe contener sus siete días.
+      summary: Reemplaza atómicamente un borrador semanal
+      description: Una semana publicada no se puede modificar.
       parameters:
-        - name: startsOn
+        - name: weekId
           in: path
           required: true
-          schema: { type: string, format: date }
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -235,6 +272,22 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Proveedora]
+      summary: Elimina un borrador semanal y sus días y alternativas
+      description: Una semana publicada no se puede eliminar.
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Borrador eliminado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/provider/menu-weeks/{weekId}/publish:
     post:
@@ -594,9 +647,10 @@ components:
           items: { $ref: "#/components/schemas/MenuOptionDraftInput" }
     MenuWeekDraftInput:
       type: object
-      required: [days]
+      required: [startsOn, days]
       additionalProperties: false
       properties:
+        startsOn: { type: string, format: date }
         days:
           type: array
           minItems: 7

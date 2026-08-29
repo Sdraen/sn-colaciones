@@ -10,6 +10,8 @@ const inputSchema = z
     role: z.enum(["worker", "company_admin", "provider_admin"]),
     organization: z.string().trim().min(2).max(120).default("Securitas Concepción"),
     workerName: z.string().trim().min(3).max(120).optional(),
+    createWorker: z.boolean().default(false),
+    password: z.string().min(12).max(72).optional(),
     apply: z.boolean().default(false),
   })
   .superRefine((input, context) => {
@@ -27,9 +29,19 @@ const inputSchema = z
         message: "--worker-name sólo corresponde al rol worker",
       });
     }
+    if (input.role !== "worker" && input.createWorker) {
+      context.addIssue({
+        code: "custom",
+        path: ["createWorker"],
+        message: "--create-worker sólo corresponde al rol worker",
+      });
+    }
   });
 
-const input = inputSchema.parse(parseArguments(process.argv.slice(2)));
+const input = inputSchema.parse({
+  ...parseArguments(process.argv.slice(2)),
+  password: process.env.PROVISION_USER_PASSWORD || undefined,
+});
 const supabase = createAdminSupabaseClient();
 
 const { data: organization, error: organizationError } = await supabase
@@ -44,7 +56,10 @@ if (!organization) {
 
 const authUser = await findAuthUserByEmail(input.email);
 const existingProfile = authUser ? await findProfile(authUser.id) : null;
-const worker = input.role === "worker" ? await findWorker(organization.id, input.workerName!) : null;
+const worker =
+  input.role === "worker"
+    ? await findWorker(organization.id, input.workerName!, input.createWorker)
+    : null;
 
 validateExistingState({
   authUserId: authUser?.id,
@@ -61,6 +76,10 @@ console.log(`Rol: ${input.role}`);
 console.log(`Cuenta Auth: ${authUser ? "existente" : "por crear"}`);
 console.log(`Perfil: ${existingProfile ? "existente y compatible" : "por crear"}`);
 if (worker) console.log(`Trabajador vinculado: ${worker.full_name}`);
+else if (input.role === "worker") console.log(`Trabajador temporal: ${input.workerName} (por crear)`);
+console.log(
+  `Contraseña solicitada en esta ejecución: ${input.password ? "sí" : "no"}`,
+);
 
 if (!input.apply) {
   console.log("Vista previa terminada. No se modificó Supabase.");
@@ -73,17 +92,24 @@ async function applyProvisioning() {
   let userId = authUser?.id;
   let createdAuthUser = false;
   let createdProfile = false;
+  let createdDinerId: string | null = null;
 
   try {
     if (!userId) {
       const { data, error } = await supabase.auth.admin.createUser({
         email: input.email,
+        ...(input.password ? { password: input.password } : {}),
         email_confirm: true,
         user_metadata: { full_name: input.fullName },
       });
       if (error) throw error;
       userId = data.user.id;
       createdAuthUser = true;
+    } else if (input.password) {
+      const { error } = await supabase.auth.admin.updateUserById(userId, {
+        password: input.password,
+      });
+      if (error) throw error;
     }
 
     if (!existingProfile) {
@@ -98,17 +124,43 @@ async function applyProvisioning() {
       createdProfile = true;
     }
 
-    if (worker && worker.auth_user_id !== userId) {
+    let workerToLink = worker;
+    if (input.role === "worker" && !workerToLink) {
+      const { data, error } = await supabase
+        .from("diners")
+        .insert({
+          organization_id: organization.id,
+          auth_user_id: userId,
+          full_name: input.workerName!,
+          type: "worker",
+          employee_code: temporaryWorkerCode(input.workerName!),
+          active: true,
+        })
+        .select("id, full_name, auth_user_id")
+        .single();
+      if (error) throw error;
+      workerToLink = data;
+      createdDinerId = data.id;
+    }
+
+    if (workerToLink && workerToLink.auth_user_id !== userId) {
       const { error } = await supabase
         .from("diners")
         .update({ auth_user_id: userId })
-        .eq("id", worker.id);
+        .eq("id", workerToLink.id);
       if (error) throw error;
     }
 
     console.log(`Cuenta provisionada correctamente: ${userId}`);
-    console.log("No se envió correo. La persona puede solicitar su enlace desde /login.");
+    console.log(
+      input.password
+        ? "No se envió correo. La persona puede ingresar con su contraseña desde /login."
+        : "No se envió correo. La persona puede solicitar su enlace desde /login.",
+    );
   } catch (error) {
+    if (createdDinerId) {
+      await supabase.from("diners").delete().eq("id", createdDinerId);
+    }
     if (createdAuthUser && userId) {
       await supabase.auth.admin.deleteUser(userId);
     } else if (createdProfile && userId) {
@@ -141,7 +193,7 @@ async function findProfile(userId: string) {
   return data;
 }
 
-async function findWorker(organizationId: string, workerName: string) {
+async function findWorker(organizationId: string, workerName: string, allowMissing: boolean) {
   const { data, error } = await supabase
     .from("diners")
     .select("id, full_name, auth_user_id")
@@ -153,6 +205,7 @@ async function findWorker(organizationId: string, workerName: string) {
   const key = comparableName(workerName);
   const matches = (data ?? []).filter((candidate) => comparableName(candidate.full_name) === key);
   if (matches.length === 0) {
+    if (allowMissing) return null;
     throw new AppError(
       "El trabajador no aparece en la nómina importada",
       404,
@@ -167,6 +220,11 @@ async function findWorker(organizationId: string, workerName: string) {
     );
   }
   return matches[0];
+}
+
+function temporaryWorkerCode(workerName: string) {
+  const slug = comparableName(workerName).replace(/\s+/g, "-");
+  return `TEST-${slug}`.slice(0, 80);
 }
 
 function validateExistingState({
@@ -214,11 +272,15 @@ function comparableName(value: string) {
 }
 
 function parseArguments(argumentsList: string[]) {
-  const parsed: Record<string, string | boolean> = { apply: false };
+  const parsed: Record<string, string | boolean> = { apply: false, createWorker: false };
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
     if (argument === "--apply") {
       parsed.apply = true;
+      continue;
+    }
+    if (argument === "--create-worker") {
+      parsed.createWorker = true;
       continue;
     }
     const value = argumentsList[index + 1];

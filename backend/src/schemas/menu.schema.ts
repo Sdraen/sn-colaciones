@@ -13,7 +13,7 @@ const menuCategorySchema = z.enum([
 const menuOptionDraftSchema = z.object({
   category: menuCategorySchema,
   label: z.string().trim().min(2).max(80),
-  description: z.string().trim().min(3).max(300),
+  description: z.string().trim().max(300),
   capacity: z.number().int().min(0).max(10_000).nullable().default(null),
   trainingMenu: z.boolean().default(false),
   visible: z.boolean().default(true),
@@ -26,26 +26,75 @@ const menuDayDraftSchema = z.object({
   options: z.array(menuOptionDraftSchema).max(20),
 });
 
+const menuWeekDraftBodySchema = z.object({
+  startsOn: isoDateSchema,
+  days: z.array(menuDayDraftSchema).length(7),
+});
+
 export const getMenuWeekRequestSchema = z.object({
   body: z.unknown(),
   params: z.object({}),
-  query: z.object({
-    startsOn: isoDateSchema.optional(),
-  }),
+  query: z.object({ startsOn: isoDateSchema.optional() }),
 });
 
-export const saveMenuWeekDraftRequestSchema = z
-  .object({
-    body: z.object({ days: z.array(menuDayDraftSchema).length(7) }),
-    params: z.object({ startsOn: isoDateSchema }),
+export const createMenuWeekRequestSchema = validateMenuWeekDraft(
+  z.object({
+    body: menuWeekDraftBodySchema,
+    params: z.object({}),
     query: z.object({}),
-  })
-  .superRefine((request, context) => {
-    const start = parseUtcDate(request.params.startsOn);
+  }),
+);
+
+export const updateMenuWeekRequestSchema = validateMenuWeekDraft(
+  z.object({
+    body: menuWeekDraftBodySchema,
+    params: z.object({ weekId: uuidSchema }),
+    query: z.object({}),
+  }),
+);
+
+export const deleteMenuWeekRequestSchema = z.object({
+  body: z.unknown(),
+  params: z.object({ weekId: uuidSchema }),
+  query: z.object({}),
+});
+
+export const copyMenuWeekRequestSchema = z.object({
+  body: z.object({ targetStartsOn: isoDateSchema }).superRefine((body, context) => {
+    if (parseUtcDate(body.targetStartsOn).getUTCDay() !== 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetStartsOn"],
+        message: "La semana debe comenzar un lunes",
+      });
+    }
+  }),
+  params: z.object({}),
+  query: z.object({}),
+});
+
+export const publishMenuWeekRequestSchema = z.object({
+  body: z.unknown(),
+  params: z.object({ weekId: uuidSchema }),
+  query: z.object({}),
+});
+
+export type GetMenuWeekRequest = z.infer<typeof getMenuWeekRequestSchema>;
+export type CreateMenuWeekRequest = z.infer<typeof createMenuWeekRequestSchema>;
+export type UpdateMenuWeekRequest = z.infer<typeof updateMenuWeekRequestSchema>;
+export type DeleteMenuWeekRequest = z.infer<typeof deleteMenuWeekRequestSchema>;
+export type CopyMenuWeekRequest = z.infer<typeof copyMenuWeekRequestSchema>;
+export type PublishMenuWeekRequest = z.infer<typeof publishMenuWeekRequestSchema>;
+
+function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
+  return schema.superRefine((request, context) => {
+    const body = (request as { body: z.infer<typeof menuWeekDraftBodySchema> }).body;
+    const startsOn = body.startsOn;
+    const start = parseUtcDate(startsOn);
     if (start.getUTCDay() !== 1) {
       context.addIssue({
         code: "custom",
-        path: ["params", "startsOn"],
+        path: ["body", "startsOn"],
         message: "La semana debe comenzar un lunes",
       });
     }
@@ -57,7 +106,8 @@ export const saveMenuWeekDraftRequestSchema = z
         return date.toISOString().slice(0, 10);
       }),
     );
-    const providedDates = new Set(request.body.days.map((day) => day.serviceDate));
+    const days = body.days;
+    const providedDates = new Set(days.map((day) => day.serviceDate));
     if (
       providedDates.size !== 7 ||
       [...providedDates].some((date) => !allowedDates.has(date))
@@ -69,7 +119,7 @@ export const saveMenuWeekDraftRequestSchema = z
       });
     }
 
-    request.body.days.forEach((day, index) => {
+    days.forEach((day, index) => {
       if (!day.disabled && day.options.length === 0) {
         context.addIssue({
           code: "custom",
@@ -81,21 +131,12 @@ export const saveMenuWeekDraftRequestSchema = z
         context.addIssue({
           code: "custom",
           path: ["body", "days", index, "options"],
-          message: "Sólo puede existir un menú de capacitación por día",
+          message: "Solo puede existir un menú de capacitación por día",
         });
       }
     });
   });
-
-export const publishMenuWeekRequestSchema = z.object({
-  body: z.unknown(),
-  params: z.object({ weekId: uuidSchema }),
-  query: z.object({}),
-});
-
-export type GetMenuWeekRequest = z.infer<typeof getMenuWeekRequestSchema>;
-export type SaveMenuWeekDraftRequest = z.infer<typeof saveMenuWeekDraftRequestSchema>;
-export type PublishMenuWeekRequest = z.infer<typeof publishMenuWeekRequestSchema>;
+}
 
 function parseUtcDate(isoDate: string) {
   return new Date(`${isoDate}T00:00:00.000Z`);

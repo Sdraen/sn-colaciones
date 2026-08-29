@@ -41,8 +41,11 @@ Resend puede enviar los correos de la aplicación y también puede configurarse 
   el perfil y el rol; el navegador no decide permisos por sí solo.
 - La navegación muestra únicamente el área autorizada para el rol autenticado.
 - El registro público permanece cerrado mediante `shouldCreateUser: false`.
+- `/login` permite contraseña para cuentas aprovisionadas y conserva el enlace
+  mágico como mecanismo alternativo.
 - `npm run provision:user -w backend` permite revisar y crear cuentas de forma
-  controlada; nunca ejecuta cambios sin `--apply`.
+  controlada; nunca ejecuta cambios sin `--apply`. Las contraseñas temporales se
+  reciben mediante `PROVISION_USER_PASSWORD` y no se guardan en archivos.
 
-Antes de probar el recorrido completo faltan los correos reales de las dos
-administradoras y, de manera opcional, el correo de un trabajador piloto.
+Las cuentas de prueba deben usar correos individuales, rotar sus contraseñas o
+eliminarse antes de habilitar el sistema en producción.

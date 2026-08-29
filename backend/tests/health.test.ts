@@ -20,4 +20,12 @@ describe("GET /api/health", () => {
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("NOT_FOUND");
   });
+
+  it("protege las rutas versionadas", async () => {
+    const response = await request(createApp()).get("/api/v1/auth/me");
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("AUTH_REQUIRED");
+    expect(response.body.error.requestId).toBeTruthy();
+  });
 });

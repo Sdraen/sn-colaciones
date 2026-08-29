@@ -1,93 +1,107 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  ChefHat,
-  ClipboardCheck,
-  GraduationCap,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Building2, ChefHat, ClipboardCheck, ShieldCheck, Sparkles } from "lucide-react";
+import { getCurrentApiUser } from "@/lib/api/server";
+import type { AppRole } from "@/lib/api/types";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const currentUser = await getCurrentApiUser();
+
   return (
     <main className="page-shell">
-      <section className="home-hero relative overflow-hidden rounded-[32px] px-6 py-12 text-white sm:px-10 lg:px-14 lg:py-16">
-        <div className="absolute -bottom-28 -right-16 size-72 rounded-full bg-[var(--herb)]/25 blur-3xl" />
+      <section className="home-hero relative overflow-hidden rounded-[32px] px-6 py-10 text-white sm:px-10 lg:px-12">
+        <div className="absolute -right-16 -bottom-28 size-72 rounded-full bg-[var(--herb)]/25 blur-3xl" />
         <div className="relative max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold text-white">
-            <Sparkles size={14} /> Primera versión para validar el flujo
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold text-white">
+            <Sparkles size={14} aria-hidden="true" />
+            Sistema operativo
           </div>
-          <h1 className="text-balance text-4xl font-black leading-[1.05] tracking-[-0.045em] sm:text-5xl lg:text-6xl">
-            Cada colación, confirmada y a tiempo.
+          <h1 className="text-balance text-4xl leading-[1.05] font-black tracking-[-0.045em] sm:text-5xl">
+            Gestión de colaciones
           </h1>
-          <p className="mt-6 max-w-2xl text-pretty text-base leading-7 text-white/85 sm:text-lg">
-            Una vista simple para que los trabajadores elijan su menú y dos
-            paneles coordinados para Securitas y la proveedora.
+          <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-white/85 sm:text-lg">
+            Pedidos, producción y reportes en un solo lugar.
           </p>
         </div>
       </section>
 
       <section className="mt-10">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-5">
           <div>
-            <p className="eyebrow">Accesos de demostración</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.035em] sm:text-3xl">
-              Elige una experiencia
+            <p className="eyebrow">Acceso personalizado</p>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.035em] sm:text-3xl">
+              {currentUser
+                ? `Hola, ${currentUser.fullName}`
+                : "Ingresa con tu correo autorizado"}
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-6 text-[var(--muted)]">
-            En esta etapa puedes cambiar de rol libremente para revisar todo el
-            recorrido.
-          </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <RoleCard
-            href="/pedidos"
-            icon={ClipboardCheck}
-            title="Trabajador"
-            description="Revisa el menú semanal, elige una colación y modifica tu reserva antes del cierre."
-            action="Probar pedido"
-            tone="tomato"
-          />
-          <RoleCard
-            href="/admin/empresa"
-            icon={Building2}
-            title="Administradora Securitas"
-            description="Gestiona capacitaciones, personal externo, extras y solicitudes excepcionales."
-            action="Abrir panel empresa"
-            tone="sun"
-          />
-          <RoleCard
-            href="/admin/proveedor"
-            icon={ChefHat}
-            title="Administradora proveedora"
-            description="Publica los menús, controla cantidades y resuelve solicitudes fuera de horario."
-            action="Abrir panel proveedor"
-            tone="herb"
-          />
-        </div>
+        {currentUser ? (
+          <CurrentRoleCard role={currentUser.role} />
+        ) : (
+          <LoginCard />
+        )}
       </section>
 
-      <section className="card mt-8 grid gap-5 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
-        <span className="grid size-12 place-items-center rounded-2xl bg-[var(--herb-soft)] text-[var(--herb)]">
-          <GraduationCap size={24} />
-        </span>
-        <div>
-          <h2 className="font-extrabold">Capacitaciones sin cuentas individuales</h2>
-          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            La administradora de Securitas registra el grupo, la cantidad de
-            alumnos y sus alternativas. Cada colación se suma al conteo general.
-          </p>
-        </div>
-      </section>
-
-      <div className="mt-7 flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
-        <ShieldCheck size={15} className="text-[var(--herb)]" />
-        Datos ficticios en modo demostración. Supabase será la persistencia real.
+      <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+        <ShieldCheck size={15} className="text-[var(--herb)]" aria-hidden="true" />
+        El acceso y los roles se validan con Supabase y con la API del sistema.
       </div>
     </main>
+  );
+}
+
+function LoginCard() {
+  return (
+    <div className="max-w-xl">
+      <RoleCard
+        href="/login"
+        icon={ShieldCheck}
+        title="Acceso seguro"
+        description="Sólo pueden ingresar las personas registradas previamente por la administración."
+        action="Ingresar al sistema"
+        tone="tomato"
+      />
+    </div>
+  );
+}
+
+function CurrentRoleCard({ role }: { role: AppRole }) {
+  if (role === "worker") {
+    return (
+      <RoleCard
+        href="/pedidos"
+        icon={ClipboardCheck}
+        title="Mis colaciones"
+        description="Revisa el menú semanal, elige una colación y modifica tu reserva antes del cierre."
+        action="Ir a mis pedidos"
+        tone="tomato"
+      />
+    );
+  }
+  if (role === "company_admin") {
+    return (
+      <RoleCard
+        href="/admin/empresa"
+        icon={Building2}
+        title="Administración Securitas"
+        description="Gestiona capacitaciones, personal externo, extras y solicitudes excepcionales."
+        action="Abrir panel empresa"
+        tone="sun"
+      />
+    );
+  }
+  return (
+    <RoleCard
+      href="/admin/proveedor"
+      icon={ChefHat}
+      title="Administración proveedora"
+      description="Publica los menús, controla cantidades y resuelve solicitudes fuera de horario."
+      action="Abrir panel proveedor"
+      tone="herb"
+    />
   );
 }
 
@@ -110,16 +124,16 @@ function RoleCard({ href, icon: Icon, title, description, action, tone }: RoleCa
   return (
     <Link
       href={href}
-      className="focus-ring card group flex min-h-64 flex-col p-6 transition duration-300 hover:-translate-y-1 hover:border-[var(--brand)]/30 hover:shadow-xl"
+      className="focus-ring card group flex min-h-48 max-w-xl flex-col p-6 transition duration-300 hover:-translate-y-1 hover:border-[var(--brand)]/30 hover:shadow-xl"
     >
       <span className={`grid size-12 place-items-center rounded-2xl ${tones[tone]}`}>
-        <Icon size={23} />
+        <Icon size={23} aria-hidden="true" />
       </span>
-      <h3 className="mt-7 text-xl font-black tracking-[-0.025em]">{title}</h3>
+      <h3 className="mt-5 text-xl font-black tracking-[-0.025em]">{title}</h3>
       <p className="mt-2 flex-1 text-sm leading-6 text-[var(--muted)]">{description}</p>
-      <span className="mt-6 flex items-center gap-2 text-sm font-extrabold text-[var(--brand)]">
+      <span className="mt-4 flex items-center gap-2 text-sm font-extrabold text-[var(--brand)]">
         {action}
-        <ArrowRight size={17} className="transition group-hover:translate-x-1" />
+        <ArrowRight size={17} className="transition group-hover:translate-x-1" aria-hidden="true" />
       </span>
     </Link>
   );

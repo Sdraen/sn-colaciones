@@ -1,13 +1,17 @@
 openapi: 3.1.0
 info:
   title: SN Colaciones API
-  version: 0.1.0
-  description: API para pedidos, menús y administración de colaciones.
+  version: 0.3.0
+  description: API autenticada para menús, reservas y operación de colaciones.
 servers:
   - url: http://localhost:4000
+security:
+  - bearerAuth: []
 paths:
   /api/health:
     get:
+      security: []
+      tags: [Sistema]
       summary: Comprueba el estado del backend
       responses:
         "200":
@@ -18,10 +22,696 @@ paths:
                 type: object
                 required: [status, service, timestamp]
                 properties:
-                  status:
-                    const: ok
-                  service:
-                    const: sn-colaciones-backend
-                  timestamp:
-                    type: string
-                    format: date-time
+                  status: { const: ok }
+                  service: { const: sn-colaciones-backend }
+                  timestamp: { type: string, format: date-time }
+  /api/v1/auth/me:
+    get:
+      tags: [Autenticación]
+      summary: Obtiene la identidad y el rol del usuario autenticado
+      responses:
+        "200":
+          description: Perfil activo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CurrentUser" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/menus/current:
+    get:
+      tags: [Menús]
+      summary: Obtiene una semana de menú visible para el usuario
+      parameters:
+        - $ref: "#/components/parameters/StartsOn"
+      responses:
+        "200":
+          description: Semana con días y alternativas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MenuWeek" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/orders/me:
+    get:
+      tags: [Pedidos del trabajador]
+      summary: Lista los pedidos del trabajador para una semana
+      parameters:
+        - $ref: "#/components/parameters/StartsOn"
+      responses:
+        "200":
+          description: Menú y pedidos del trabajador
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [Pedidos del trabajador]
+      summary: Crea o modifica atómicamente el pedido de un día
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SaveOrderInput" }
+      responses:
+        "200":
+          description: Pedido guardado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Order" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/orders/me/{orderId}:
+    delete:
+      tags: [Pedidos del trabajador]
+      summary: Cancela un pedido perteneciente al trabajador
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Pedido cancelado
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/company/operations:
+    get:
+      tags: [Securitas]
+      summary: Obtiene el tablero semanal de capacitaciones, extras y excepciones
+      parameters:
+        - $ref: "#/components/parameters/StartsOn"
+      responses:
+        "200":
+          description: Operación semanal de Securitas
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/company/reports:
+    get:
+      tags: [Securitas]
+      summary: Genera un reporte diario, semanal o mensual
+      parameters:
+        - $ref: "#/components/parameters/ReportPeriod"
+        - $ref: "#/components/parameters/ReportDate"
+      responses:
+        "200":
+          description: Totales y detalle diario del período solicitado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OrdersReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/company/training-sessions:
+    post:
+      tags: [Securitas]
+      summary: Crea atómicamente una capacitación y su pedido grupal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTrainingInput" }
+      responses:
+        "201":
+          description: Capacitación y pedido creados
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/extras:
+    post:
+      tags: [Securitas]
+      summary: Registra una colación extra entre las 08:00 y las 11:00
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateExtraInput" }
+      responses:
+        "201":
+          description: Colación extra registrada
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/exceptions:
+    post:
+      tags: [Securitas]
+      summary: Solicita una colación extraordinaria entre las 11:00 y las 12:00
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateExceptionInput" }
+      responses:
+        "201":
+          description: Solicitud pendiente creada y notificada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ExceptionalRequest" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/notifications:
+    get:
+      tags: [Notificaciones]
+      summary: Lista las notificaciones del usuario autenticado
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+      responses:
+        "200":
+          description: Notificaciones ordenadas desde la más reciente
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/notifications/{notificationId}/read:
+    patch:
+      tags: [Notificaciones]
+      summary: Marca como leída una notificación propia
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Notificación actualizada
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/menu-weeks/{startsOn}:
+    put:
+      tags: [Proveedora]
+      summary: Crea o reemplaza atómicamente un borrador semanal
+      description: El parámetro startsOn debe ser el lunes de la semana siguiente y el cuerpo debe contener sus siete días.
+      parameters:
+        - name: startsOn
+          in: path
+          required: true
+          schema: { type: string, format: date }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MenuWeekDraftInput" }
+      responses:
+        "200":
+          description: Borrador completo guardado
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/provider/menu-weeks/{weekId}/publish:
+    post:
+      tags: [Proveedora]
+      summary: Publica una semana completa para trabajadores y Securitas
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Menú publicado
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/calendar-blocks:
+    get:
+      tags: [Proveedora]
+      summary: Lista feriados, vacaciones, días sin servicio y fechas especiales
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200": { description: Bloqueos de calendario visibles para la organización }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Proveedora]
+      summary: Registra una regla de calendario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CalendarBlockInput" }
+      responses:
+        "201": { description: Bloqueo registrado }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/provider/calendar-blocks/{blockId}:
+    delete:
+      tags: [Proveedora]
+      summary: Elimina una regla de calendario
+      parameters:
+        - name: blockId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Bloqueo eliminado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/menu-options/{menuOptionId}/availability:
+    patch:
+      tags: [Proveedora]
+      summary: Informa disponibilidad y visibilidad de una alternativa
+      parameters:
+        - name: menuOptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [capacity]
+              properties:
+                capacity:
+                  oneOf:
+                    - { type: integer, minimum: 0, maximum: 10000 }
+                    - { type: "null" }
+                visible: { type: boolean }
+      responses:
+        "200":
+          description: Disponibilidad actualizada y auditada
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/orders/{orderId}/fulfillment:
+    patch:
+      tags: [Proveedora]
+      summary: Marca o desmarca una colación como entregada
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [delivered]
+              properties:
+                delivered: { type: boolean }
+      responses:
+        "200":
+          description: Estado de entrega actualizado
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/exceptions/{exceptionId}:
+    patch:
+      tags: [Proveedora]
+      summary: Aprueba o rechaza una solicitud extraordinaria pendiente
+      description: Al aprobar, el pedido extraordinario se crea en la misma transacción.
+      parameters:
+        - name: exceptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveExceptionInput" }
+      responses:
+        "200":
+          description: Solicitud resuelta y Securitas notificada
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/provider/reports/weekly:
+    get:
+      tags: [Proveedora]
+      summary: Genera el reporte operacional de una semana
+      parameters:
+        - $ref: "#/components/parameters/StartsOn"
+      responses:
+        "200":
+          description: Totales semanales y detalle por día y menú
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WeeklyReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/reports:
+    get:
+      tags: [Proveedora]
+      summary: Genera un reporte diario, semanal o mensual
+      parameters:
+        - $ref: "#/components/parameters/ReportPeriod"
+        - $ref: "#/components/parameters/ReportDate"
+      responses:
+        "200":
+          description: Totales y detalle diario del período solicitado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OrdersReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/provider/operations:
+    get:
+      tags: [Proveedora]
+      summary: Lista el detalle completo de pedidos y beneficiarios de una semana
+      parameters:
+        - $ref: "#/components/parameters/StartsOn"
+      responses:
+        "200":
+          description: Menú y pedidos regulares, grupales, extras y extraordinarios
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token emitido por Supabase Auth.
+  parameters:
+    StartsOn:
+      name: startsOn
+      in: query
+      required: false
+      description: Lunes de la semana solicitada.
+      schema: { type: string, format: date }
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ReportPeriod:
+      name: period
+      in: query
+      required: false
+      schema: { enum: [daily, weekly, monthly], default: daily }
+    ReportDate:
+      name: date
+      in: query
+      required: false
+      description: Fecha consultada, fin del período mensual o día perteneciente a la semana.
+      schema: { type: string, format: date }
+  schemas:
+    CurrentUser:
+      type: object
+      required: [id, email, fullName, organizationId, role]
+      properties:
+        id: { type: string, format: uuid }
+        email:
+          oneOf:
+            - { type: string, format: email }
+            - { type: "null" }
+        fullName: { type: string }
+        organizationId: { type: string, format: uuid }
+        role:
+          enum: [worker, company_admin, provider_admin]
+    SaveOrderInput:
+      type: object
+      required: [serviceDayId, menuOptionId, side]
+      additionalProperties: false
+      properties:
+        serviceDayId: { type: string, format: uuid }
+        menuOptionId: { type: string, format: uuid }
+        side: { enum: [ensalada, postre, ninguno] }
+        bread: { type: boolean, default: false }
+        tea: { type: boolean, default: false }
+      description: Debe elegirse exactamente una alternativa entre pan y té.
+    MealSelectionInput:
+      type: object
+      required: [serviceDayId, menuOptionId, side]
+      properties:
+        serviceDayId: { type: string, format: uuid }
+        menuOptionId: { type: string, format: uuid }
+        side: { enum: [ensalada, postre, ninguno] }
+        bread: { type: boolean, default: false }
+        tea: { type: boolean, default: false }
+      description: Debe elegirse exactamente una alternativa entre pan y té.
+    CreateTrainingInput:
+      allOf:
+        - $ref: "#/components/schemas/MealSelectionInput"
+        - type: object
+          required: [name, attendeeCount]
+          properties:
+            name: { type: string, minLength: 3, maxLength: 120 }
+            attendeeCount: { type: integer, minimum: 1, maximum: 500 }
+    CreateExtraInput:
+      allOf:
+        - $ref: "#/components/schemas/MealSelectionInput"
+        - type: object
+          required: [beneficiaryLabel]
+          properties:
+            beneficiaryLabel: { type: string, minLength: 2, maxLength: 120 }
+    CreateExceptionInput:
+      allOf:
+        - $ref: "#/components/schemas/CreateExtraInput"
+        - type: object
+          required: [reason]
+          properties:
+            reason: { type: string, minLength: 5, maxLength: 500 }
+    ResolveExceptionInput:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { enum: [approved, rejected] }
+        resolutionNote:
+          type: string
+          minLength: 5
+          maxLength: 500
+          description: Obligatorio cuando status es rejected.
+    ExceptionalRequest:
+      type: object
+      required: [id, serviceDayId, menuOptionId, beneficiaryLabel, reason, side, bread, tea, status]
+      properties:
+        id: { type: string, format: uuid }
+        serviceDayId: { type: string, format: uuid }
+        menuOptionId: { type: string, format: uuid }
+        beneficiaryLabel: { type: string }
+        reason: { type: string }
+        side: { enum: [ensalada, postre, ninguno] }
+        bread: { type: boolean }
+        tea: { type: boolean }
+        status: { enum: [pending, approved, rejected] }
+        resolutionNote:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+    Order:
+      type: object
+      required: [id, serviceDayId, menuOptionId, kind, quantity, side, bread, tea, status]
+      properties:
+        id: { type: string, format: uuid }
+        serviceDayId: { type: string, format: uuid }
+        menuOptionId: { type: string, format: uuid }
+        kind: { enum: [regular, training, extra, exceptional] }
+        quantity: { type: integer, minimum: 1 }
+        side: { enum: [ensalada, postre, ninguno] }
+        bread: { type: boolean }
+        tea: { type: boolean }
+        status: { enum: [confirmed, cancelled] }
+        fulfilledAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+    MenuOption:
+      type: object
+      required: [id, category, label, description, capacity, trainingMenu, visible, sortOrder]
+      properties:
+        id: { type: string, format: uuid }
+        category: { enum: [principal, vegetariano, hipocalorico, sandwich, handroll, especial] }
+        label: { type: string }
+        description: { type: string }
+        capacity:
+          oneOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        trainingMenu: { type: boolean }
+        visible: { type: boolean }
+        sortOrder: { type: integer }
+    MenuOptionDraftInput:
+      type: object
+      required: [category, label, description]
+      additionalProperties: false
+      properties:
+        category: { enum: [principal, vegetariano, hipocalorico, sandwich, handroll, especial] }
+        label: { type: string, minLength: 2, maxLength: 80 }
+        description: { type: string, minLength: 3, maxLength: 300 }
+        capacity:
+          oneOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+          default: null
+        visible: { type: boolean, default: true }
+        trainingMenu:
+          type: boolean
+          default: false
+          description: Define el menú único para capacitaciones de ese día.
+        sortOrder: { type: integer, minimum: 0, maximum: 100, default: 0 }
+    MenuDayDraftInput:
+      type: object
+      required: [serviceDate, options]
+      additionalProperties: false
+      properties:
+        serviceDate: { type: string, format: date }
+        disabled: { type: boolean, default: false }
+        options:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/MenuOptionDraftInput" }
+    MenuWeekDraftInput:
+      type: object
+      required: [days]
+      additionalProperties: false
+      properties:
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { $ref: "#/components/schemas/MenuDayDraftInput" }
+    CalendarBlockInput:
+      type: object
+      required: [startsOn, endsOn, kind, reason]
+      additionalProperties: false
+      properties:
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        kind: { enum: [holiday, vacation, no_service, special] }
+        reason: { type: string, minLength: 3, maxLength: 300 }
+    ServiceDay:
+      type: object
+      required: [id, serviceDate, disabled, options]
+      properties:
+        id: { type: string, format: uuid }
+        serviceDate: { type: string, format: date }
+        preorderDeadline: { type: string, format: date-time }
+        sameDayOpensAt: { type: string, format: date-time }
+        sameDayClosesAt: { type: string, format: date-time }
+        deliveryClosesAt: { type: string, format: date-time }
+        disabled: { type: boolean }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/MenuOption" }
+    MenuWeek:
+      type: object
+      required: [id, organizationId, startsOn, days]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        startsOn: { type: string, format: date }
+        publishedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        days:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceDay" }
+    WeeklyReport:
+      type: object
+      required: [menuWeek, totals, days, generatedAt]
+      properties:
+        menuWeek: { type: object }
+        totals: { $ref: "#/components/schemas/ReportTotals" }
+        days:
+          type: array
+          items: { type: object }
+        generatedAt: { type: string, format: date-time }
+    OrdersReport:
+      type: object
+      required: [period, range, totals, days, generatedAt]
+      properties:
+        period: { enum: [daily, weekly, monthly] }
+        range:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        totals: { $ref: "#/components/schemas/ReportTotals" }
+        days:
+          type: array
+          items: { type: object }
+        generatedAt: { type: string, format: date-time }
+    ReportTotals:
+      type: object
+      required: [requested, confirmed, cancelled, fulfilled, byKind, sides, bread, tea]
+      properties:
+        requested: { type: integer }
+        confirmed: { type: integer }
+        cancelled: { type: integer }
+        fulfilled: { type: integer }
+        byKind: { type: object }
+        sides: { type: object }
+        bread: { type: integer }
+        tea: { type: integer }
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            details: {}
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido o expirado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Forbidden:
+      description: El usuario no tiene el rol o acceso requerido
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    ValidationError:
+      description: Cuerpo, parámetros o query inválidos
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    NotFound:
+      description: Recurso inexistente o no visible para el usuario
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Conflict:
+      description: La regla de negocio impide la operación
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }

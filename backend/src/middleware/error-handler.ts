@@ -5,11 +5,16 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
   void _next;
   const appError = error instanceof AppError ? error : new AppError("Error interno del servidor");
 
+  if (!(error instanceof AppError)) {
+    console.error(`[${_request.requestId}]`, error);
+  }
+
   response.status(appError.statusCode).json({
     error: {
       code: appError.code,
       message: appError.message,
       ...(appError.details === undefined ? {} : { details: appError.details }),
+      requestId: _request.requestId,
     },
   });
 };

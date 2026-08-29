@@ -19,3 +19,10 @@ npm run dev -w frontend
 npm run lint -w frontend
 npm run build -w frontend
 ```
+
+## Acceso y datos
+
+No existe un modo demostración. Todas las rutas operativas requieren una sesión
+de Supabase, un perfil activo y el rol correspondiente. Las lecturas iniciales
+se realizan en Server Components y todas las mutaciones pasan por la API Express,
+que vuelve a validar JWT, rol, RLS y reglas horarias.

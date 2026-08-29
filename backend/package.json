@@ -13,7 +13,11 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "verify:supabase": "tsx scripts/verify-supabase.ts"
+    "verify:supabase": "tsx scripts/verify-supabase.ts",
+    "notifications:email": "tsx scripts/dispatch-email-notifications.ts",
+    "notifications:morning": "tsx scripts/send-morning-summaries.ts",
+    "import:workers": "tsx scripts/import-workers.ts",
+    "provision:user": "tsx scripts/provision-user.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
@@ -21,6 +25,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "resend": "^6.25.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

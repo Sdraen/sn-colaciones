@@ -19,6 +19,12 @@ const adminEnvSchema = supabaseEnvSchema.extend({
   SUPABASE_SECRET_KEY: z.string().startsWith("sb_secret_"),
 });
 
+const emailEnvSchema = z.object({
+  RESEND_API_KEY: z.string().min(1),
+  EMAIL_FROM: z.string().min(3),
+  APP_URL: z.url().default("http://localhost:3000"),
+});
+
 export function getRuntimeEnv() {
   return runtimeEnvSchema.parse(process.env);
 }
@@ -29,4 +35,8 @@ export function getSupabaseEnv() {
 
 export function getSupabaseAdminEnv() {
   return adminEnvSchema.parse(process.env);
+}
+
+export function getEmailEnv() {
+  return emailEnvSchema.parse(process.env);
 }

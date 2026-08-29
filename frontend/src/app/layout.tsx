@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { DemoProvider } from "@/components/demo-provider";
 import { SiteHeader } from "@/components/site-header";
+import { getCurrentApiUser } from "@/lib/api/server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,14 +23,14 @@ export const metadata: Metadata = {
     "Gestión simple y sincronizada de menús, pedidos y colaciones disponibles.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const currentUser = await getCurrentApiUser();
+
   return (
     <html lang="es" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <DemoProvider>
-          <SiteHeader />
-          {children}
-        </DemoProvider>
+        <SiteHeader currentUser={currentUser} />
+        {children}
       </body>
     </html>
   );

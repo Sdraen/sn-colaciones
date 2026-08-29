@@ -1,53 +1,48 @@
-# Decisiones provisionales del MVP
+# Decisiones del MVP
 
-Última actualización: 24 de agosto de 2026.
+Última actualización: 29 de agosto de 2026, según las correcciones acordadas con la proveedora.
 
-## Confirmado
+## Reglas confirmadas
 
 - Existen tres roles: trabajador, administradora Securitas y administradora proveedora.
-- Los trabajadores seleccionan sus propias colaciones.
-- Los alumnos de capacitaciones no necesitan cuentas individuales.
-- La administradora Securitas registra cada capacitación y sus cantidades.
-- Un bloque de capacitación representa una cantidad de alumnos con el mismo menú y agregados. Si el grupo elige alternativas distintas, se registran varios bloques con el mismo nombre.
-- La proveedora publica los menús de la semana siguiente los viernes.
-- La inscripción anticipada cierra a las 22:00 del día anterior.
-- A las 08:00 se publican los cupos disponibles del día.
-- Entre las 08:00 y las 11:00 se permiten pedidos únicamente mientras existan cupos.
-- A las 11:00 se cierra definitivamente el pedido normal.
-- Las solicitudes posteriores al cierre requieren aprobación de la proveedora.
-- La administradora Securitas puede registrar colaciones extra para personal externo.
-- El resumen debe incluir totales por plato, ensalada, fruta/postre, pan y té.
+- El trabajador puede reservar cualquier día publicado de la semana, modificarlo o eliminarlo hasta las 22:00 del día anterior. No puede ingresar pedidos el mismo día.
+- Cada colación elige ensalada, postre o ninguno, y exactamente una opción entre pan y té.
+- Entre las 08:00 y las 11:00 del mismo día solamente la administradora Securitas puede agregar colaciones, sujetas a la disponibilidad informada por la proveedora.
+- Entre las 11:00 y las 12:00 Securitas puede crear una solicitud extraordinaria. La proveedora debe aprobarla o rechazarla e indicar un motivo claro al rechazar.
+- La disponibilidad se registra por alternativa de menú y bloquea altas del mismo día cuando se alcanza. Su método de cálculo sigue pendiente de la clienta.
+- La proveedora puede preparar durante la semana actual el menú de la semana siguiente.
+- La proveedora define un único menú diario para capacitaciones.
+- Marcia Sepúlveda, como administradora Securitas, registra el nombre y la cantidad total de asistentes entre las 00:00 y las 09:00 del mismo día. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
+- No se permiten capacitaciones en fines de semana, feriados, vacaciones o días sin servicio.
+- Ambas administradoras reciben entre las 07:00 y las 08:00 un resumen de las colaciones registradas.
+- Las notificaciones se entregan dentro del sistema y por correo. Resend es el proveedor inicial.
+- Ambas administradoras disponen de reportes diarios, semanales y mensuales. El mensual comprende desde el día 1 hasta la fecha seleccionada.
+- Los reportes incluyen cantidades solicitadas, confirmadas, canceladas, entregadas, tipo de pedido, menú, acompañamiento, pan y té.
+- El sistema no administra precios, pagos ni cobranzas.
 
-## Supuestos temporales para la demostración
+## Acceso recomendado
 
-- Se permite elegir cualquier día visible de la semana.
-- Ensalada, fruta/postre o ninguno son alternativas excluyentes.
-- Pan y té se pueden seleccionar de manera independiente.
-- Las colaciones de capacitación ingresan directamente al conteo.
-- Los menús y pedidos viven solo durante la sesión del navegador.
-- Los horarios se muestran, pero todavía no bloquean acciones.
-- Los datos y nombres mostrados son ficticios.
+- Usar Supabase Auth y no almacenar contraseñas propias.
+- Aprovisionar previamente las cuentas autorizadas para impedir el registro público.
+- Usar enlaces mágicos u OTP con `shouldCreateUser: false`.
+- Exigir MFA TOTP a las administradoras antes de producción.
+- Mantener la autorización por rol mediante perfiles y Row Level Security.
 
 ## Pendiente de confirmar
 
-- Si el trabajador reserva toda la semana o solo el día siguiente.
-- Cómo se calcula y quién ingresa la disponibilidad de las 08:00.
-- Si los cupos son globales o específicos por plato y agregado.
-- Cómo se registran capacitaciones cuyos alumnos eligen menús diferentes.
-- Si una capacitación requiere aprobación de la proveedora.
-- Qué diferencia operativa exacta existe entre extra y excepcional.
-- Cómo inicia sesión un trabajador sin correo corporativo.
-- Si el sistema administrará precios y cobros o solo emitirá reportes.
-- Canal de notificación inicial: aplicación, correo, notificación web o WhatsApp.
-- Reglas para fines de semana, feriados, cancelaciones y días sin servicio.
+- Cómo calcula la proveedora la disponibilidad diaria.
+- Correos definitivos de administradoras y trabajadores.
+- Fuente oficial de feriados, vacaciones y días excepcionales.
+- Dominio y remitente que se verificarán en Resend.
+- Continuación de la frase incompleta del documento: “A la administradora Securitas y…”. Hasta aclararla, los reportes quedan disponibles para ambas administradoras sin agregar otra regla.
 
-## Criterio de diseño de datos
-
-Se separan las personas que **utilizan el sistema** de las personas que **reciben una colación**:
+## Modelo de datos
 
 - `profiles`: cuentas autenticadas y roles.
 - `diners`: trabajadores, alumnos o externos que reciben una colación.
-- `training_sessions`: capacitaciones temporales.
-- `orders`: pedidos individuales o agregados, siempre relacionados con un día y un menú.
+- `training_sessions`: grupos temporales de capacitación.
+- `orders`: pedidos individuales o agregados, relacionados con un día y un menú.
+- `service_calendar_blocks`: feriados, vacaciones y cierres.
+- `notifications`: avisos web y correos pendientes, enviados o fallidos.
 
-Esta separación evita crear cuentas para alumnos temporales y permite que la administradora Securitas registre sus pedidos.
+Esta separación evita crear cuentas para alumnos y visitas y conserva las decisiones sensibles en manos de las administradoras.

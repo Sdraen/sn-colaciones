@@ -70,8 +70,8 @@ export function OperationsReports({
   }
 
   return (
-    <section className="mt-6 space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="provider-panel-enter mt-6 space-y-5">
+      <div className="provider-report-header flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Reportes de colaciones</p>
           <h2 className="mt-1 text-2xl font-black">Historial operacional</h2>
@@ -110,14 +110,14 @@ export function OperationsReports({
             type="button"
             onClick={loadReport}
             disabled={loading}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white"
+            className="provider-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white"
           >
             <Search size={17} /> {loading ? "Consultando…" : "Consultar"}
           </button>
           <button
             type="button"
             onClick={downloadCsv}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--herb)] px-4 font-extrabold text-white"
+            className="provider-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--herb)] px-4 font-extrabold text-white"
           >
             <Download size={17} /> CSV
           </button>
@@ -125,24 +125,25 @@ export function OperationsReports({
       </div>
 
       {error ? (
-        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
+        <p role="alert" className="provider-feedback-enter rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
           {error}
         </p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Solicitadas" value={report.totals.requested} />
-        <Metric label="Confirmadas" value={report.totals.confirmed} strong />
-        <Metric label="Entregadas" value={report.totals.fulfilled} />
-        <Metric label="Canceladas" value={report.totals.cancelled} />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Metric label="Pan" value={report.totals.bread} />
-        <Metric label="Té" value={report.totals.tea} />
-        <Metric label="Capacitaciones" value={report.totals.byKind.training} />
-      </div>
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
+      <div key={report.generatedAt} className="provider-report-results space-y-5">
+        <div className="provider-stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Solicitadas" value={report.totals.requested} />
+          <Metric label="Confirmadas" value={report.totals.confirmed} strong />
+          <Metric label="Entregadas" value={report.totals.fulfilled} />
+          <Metric label="Canceladas" value={report.totals.cancelled} />
+        </div>
+        <div className="provider-stagger-grid grid gap-4 sm:grid-cols-3">
+          <Metric label="Pan" value={report.totals.bread} />
+          <Metric label="Té" value={report.totals.tea} />
+          <Metric label="Capacitaciones" value={report.totals.byKind.training} />
+        </div>
+        <div className="provider-table-enter card overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
             <tr>
               <th className="px-5 py-3">Fecha</th>
@@ -174,7 +175,8 @@ export function OperationsReports({
               </tr>
             ) : null}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </section>
   );
@@ -191,7 +193,7 @@ function Metric({
 }) {
   const Icon = strong ? CheckCircle2 : XCircle;
   return (
-    <article className={`card p-5 ${strong ? "card-strong" : ""}`}>
+    <article className={`provider-card-motion card p-5 ${strong ? "card-strong" : ""}`}>
       <Icon size={19} />
       <p className="mt-3 text-3xl font-black">{value}</p>
       <p className={`text-sm font-bold ${strong ? "text-white/80" : "text-[var(--muted)]"}`}>

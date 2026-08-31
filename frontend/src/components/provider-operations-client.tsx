@@ -124,8 +124,8 @@ export function ProviderOperationsClient({
   }
 
   return (
-    <main className="page-shell">
-      <div className="flex flex-wrap justify-between gap-4">
+    <main className="page-shell provider-shell-enter">
+      <div className="provider-header-enter flex flex-wrap justify-between gap-4">
         <div>
           <p className="eyebrow">Panel proveedor</p>
           <h1 className="mt-2 text-3xl font-black">Gestión de colaciones</h1>
@@ -133,12 +133,12 @@ export function ProviderOperationsClient({
             Producción real, menú de la próxima semana y reportes.
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
+        <span className="provider-notification-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
           <BellRing size={15} /> {notifications.filter((item) => !item.readAt).length} avisos
         </span>
       </div>
 
-      <div className="mt-6 inline-flex flex-wrap rounded-xl bg-[var(--surface-muted)] p-1">
+      <div className="provider-tabs-enter mt-6 inline-flex flex-wrap rounded-xl bg-[var(--surface-muted)] p-1">
         {(
           [
             ["production", "Producción", LayoutDashboard],
@@ -154,7 +154,7 @@ export function ProviderOperationsClient({
               setMessage("");
               setError("");
             }}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+            className={`provider-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
               view === value
                 ? "bg-white text-[var(--brand)] shadow-sm"
                 : "text-[var(--muted)]"
@@ -168,13 +168,13 @@ export function ProviderOperationsClient({
       {message ? (
         <p
           role="status"
-          className="mt-4 rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]"
+          className="provider-feedback-enter mt-4 rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]"
         >
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
+        <p role="alert" className="provider-feedback-enter mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -231,8 +231,8 @@ function ProductionView({
 }) {
   if (!operations) {
     return (
-      <section className="mt-6">
-        <div className="card p-8 text-center">
+      <section className="provider-panel-enter mt-6">
+        <div className="provider-card-motion card p-8 text-center">
           <h2 className="text-xl font-black">Aún no existe un menú publicado para esta semana</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Puedes preparar la próxima semana desde la pestaña correspondiente.
@@ -243,14 +243,14 @@ function ProductionView({
   }
 
   return (
-    <section className="mt-6">
-      <div className="flex gap-2 overflow-x-auto">
+    <section className="provider-panel-enter mt-6">
+      <div className="provider-day-tabs flex gap-2 overflow-x-auto pb-1">
         {operations.menu.days.map((day) => (
           <button
             key={day.id}
             type="button"
             onClick={() => onSelectDay(day.id)}
-            className={`min-w-36 rounded-xl border px-4 py-2.5 font-bold ${
+            className={`provider-tab min-w-36 rounded-xl border px-4 py-2.5 font-bold ${
               activeDayId === day.id ? "bg-[var(--brand)] text-white" : "bg-white"
             }`}
           >
@@ -258,15 +258,15 @@ function ProductionView({
           </button>
         ))}
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+      <div className="provider-stagger-grid mt-5 grid gap-4 sm:grid-cols-3">
         <Metric label="Total" value={summary.total} />
         <Metric label="Pan" value={summary.bread} />
         <Metric label="Té" value={summary.tea} />
       </div>
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_.9fr]">
-        <div className="card p-5">
+      <div className="provider-stagger-grid mt-5 grid gap-5 lg:grid-cols-[1fr_.9fr]">
+        <div className="provider-card-motion card p-5">
           <h2 className="text-xl font-black">Disponibilidad del día</h2>
-          <div className="mt-4 space-y-3">
+          <div className="provider-list-enter mt-4 space-y-3">
             {activeDay?.options.map((option) => (
               <AvailabilityRow
                 key={option.id}
@@ -277,9 +277,9 @@ function ProductionView({
             ))}
           </div>
         </div>
-        <div className="card p-5">
+        <div className="provider-card-motion card p-5">
           <h2 className="text-xl font-black">Solicitudes pendientes</h2>
-          <div className="mt-4 space-y-4">
+          <div className="provider-list-enter mt-4 space-y-4">
             {pending.length ? (
               pending.map((request) => (
                 <div key={request.id} className="rounded-xl border border-[var(--line)] p-4">
@@ -296,14 +296,14 @@ function ProductionView({
                       type="button"
                       onClick={() => onResolve(request, "rejected")}
                       disabled={!rejectionNotes[request.id]?.trim()}
-                      className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-[var(--danger)] disabled:opacity-40"
+                      className="provider-action inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-[var(--danger)] disabled:opacity-40"
                     >
                       <X size={15} /> Rechazar
                     </button>
                     <button
                       type="button"
                       onClick={() => onResolve(request, "approved")}
-                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--herb-soft)] px-3 py-2 text-sm font-bold text-[var(--herb-strong)]"
+                      className="provider-action inline-flex items-center gap-1 rounded-lg bg-[var(--herb-soft)] px-3 py-2 text-sm font-bold text-[var(--herb-strong)]"
                     >
                       <Check size={15} /> Aprobar
                     </button>
@@ -333,7 +333,7 @@ function AvailabilityRow({
   const [visible, setVisible] = useState(option.visible);
 
   return (
-    <div className="grid gap-3 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-[1fr_.6fr_auto]">
+    <div className="provider-list-item grid gap-3 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-[1fr_.6fr_auto]">
       <div>
         <strong>{option.label}</strong>
         <p className="text-xs text-[var(--muted)]">{option.description}</p>
@@ -349,7 +349,7 @@ function AvailabilityRow({
         type="button"
         disabled={disabled}
         onClick={() => onSave(option.id, capacity === "" ? null : Number(capacity), visible)}
-        className="rounded-xl bg-[var(--brand)] px-3 font-bold text-white disabled:opacity-40"
+        className="provider-action rounded-xl bg-[var(--brand)] px-3 font-bold text-white disabled:opacity-40"
       >
         Guardar
       </button>
@@ -368,7 +368,7 @@ function AvailabilityRow({
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <article className="card p-5">
+    <article className="provider-card-motion card p-5">
       <p className="text-3xl font-black">{value}</p>
       <p className="text-sm font-bold text-[var(--muted)]">{label}</p>
     </article>

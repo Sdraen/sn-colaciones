@@ -34,6 +34,7 @@
 html {
   background: var(--background);
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -177,6 +178,262 @@ a {
   box-shadow: none;
 }
 
+.provider-shell-enter {
+  animation: provider-fade-in 240ms ease-out both;
+}
+
+.provider-header-enter {
+  animation: menu-fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-notification-enter {
+  animation: provider-badge-in 380ms 100ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.provider-tabs-enter {
+  animation: menu-fade-up 320ms 70ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-panel-enter {
+  animation: provider-panel-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-report-header {
+  animation: menu-fade-up 300ms 40ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-report-results {
+  animation: provider-fade-in 220ms ease-out both;
+}
+
+.provider-table-enter {
+  animation: menu-fade-up 320ms 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-stagger-grid > * {
+  animation: menu-fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-stagger-grid > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.provider-stagger-grid > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.provider-stagger-grid > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+
+.provider-list-enter > * {
+  animation: menu-fade-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-list-enter > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.provider-list-enter > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.provider-feedback-enter {
+  animation: menu-feedback-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.provider-tab {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.provider-tab:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.provider-tab:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+.provider-card-motion {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.provider-card-motion:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(102, 57, 27, 0.13);
+}
+
+.provider-list-item {
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.provider-list-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216, 75, 42, 0.35);
+  box-shadow: 0 10px 24px rgba(102, 57, 27, 0.08);
+}
+
+.provider-action {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    background-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.provider-action:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(102, 57, 27, 0.12);
+}
+
+.provider-action:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
+}
+
+.company-shell-enter {
+  animation: provider-fade-in 240ms ease-out both;
+}
+
+.company-header-enter {
+  animation: menu-fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-badge-enter {
+  animation: provider-badge-in 380ms 100ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.company-tabs-enter {
+  animation: menu-fade-up 320ms 70ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-panel-enter {
+  animation: provider-panel-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-selected-day {
+  animation: menu-feedback-in 260ms 60ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-stagger-grid > * {
+  animation: menu-fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-stagger-grid > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.company-stagger-grid > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.company-mode-grid > * {
+  animation: menu-fade-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-mode-grid > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.company-mode-grid > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.company-form-enter {
+  animation: provider-panel-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-list-enter > * {
+  animation: menu-fade-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-list-enter > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.company-list-enter > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.company-feedback-enter {
+  animation: menu-feedback-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.company-tab,
+.company-mode-card,
+.company-card-motion,
+.company-list-item,
+.company-choice,
+.company-action,
+.company-input {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+}
+
+.company-tab:not(:disabled):hover,
+.company-mode-card:not(:disabled):hover,
+.company-action:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.company-tab:not(:disabled):active,
+.company-mode-card:not(:disabled):active,
+.company-action:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+.company-mode-card:hover,
+.company-choice:hover {
+  border-color: rgba(216, 75, 42, 0.45);
+  box-shadow: 0 8px 20px rgba(102, 57, 27, 0.08);
+}
+
+.company-card-motion:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(102, 57, 27, 0.13);
+}
+
+.company-list-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216, 75, 42, 0.35);
+  box-shadow: 0 10px 24px rgba(102, 57, 27, 0.08);
+}
+
+.company-choice:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.company-input:focus {
+  transform: translateY(-1px);
+  border-color: var(--brand);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.company-action:not(:disabled):hover {
+  box-shadow: 0 8px 18px rgba(102, 57, 27, 0.14);
+  filter: brightness(0.98);
+}
+
 @keyframes menu-fade-up {
   from {
     opacity: 0;
@@ -211,6 +468,37 @@ a {
   }
 }
 
+@keyframes provider-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes provider-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes provider-badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -219,18 +507,66 @@ a {
   .menu-editor-enter,
   .menu-week-list > div,
   .menu-feedback-enter,
-  .menu-status-ready {
+  .menu-status-ready,
+  .provider-shell-enter,
+  .provider-header-enter,
+  .provider-notification-enter,
+  .provider-tabs-enter,
+  .provider-panel-enter,
+  .provider-report-header,
+  .provider-report-results,
+  .provider-table-enter,
+  .provider-stagger-grid > *,
+  .provider-list-enter > *,
+  .provider-feedback-enter,
+  .company-shell-enter,
+  .company-header-enter,
+  .company-badge-enter,
+  .company-tabs-enter,
+  .company-panel-enter,
+  .company-selected-day,
+  .company-stagger-grid > *,
+  .company-mode-grid > *,
+  .company-form-enter,
+  .company-list-enter > *,
+  .company-feedback-enter {
     animation: none;
   }
 
   .menu-collapsible,
   .menu-progress-fill,
-  .menu-action {
+  .menu-action,
+  .provider-tab,
+  .provider-card-motion,
+  .provider-list-item,
+  .provider-action,
+  .company-tab,
+  .company-mode-card,
+  .company-card-motion,
+  .company-list-item,
+  .company-choice,
+  .company-action,
+  .company-input {
     transition: none;
   }
 
   .menu-action:not(:disabled):hover,
-  .menu-action:not(:disabled):active {
+  .menu-action:not(:disabled):active,
+  .provider-tab:not(:disabled):hover,
+  .provider-tab:not(:disabled):active,
+  .provider-card-motion:hover,
+  .provider-list-item:hover,
+  .provider-action:not(:disabled):hover,
+  .provider-action:not(:disabled):active,
+  .company-tab:not(:disabled):hover,
+  .company-tab:not(:disabled):active,
+  .company-mode-card:not(:disabled):hover,
+  .company-mode-card:not(:disabled):active,
+  .company-card-motion:hover,
+  .company-list-item:hover,
+  .company-action:not(:disabled):hover,
+  .company-action:not(:disabled):active,
+  .company-input:focus {
     transform: none;
   }
 }

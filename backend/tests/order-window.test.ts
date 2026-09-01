@@ -17,14 +17,17 @@ describe("reglas horarias de colaciones", () => {
     );
   });
 
-  it("separa pedido normal y extraordinario el mismo día", () => {
+  it("separa extras directos y extras con aprobación hasta las 13:00", () => {
     expect(getOrderWindow(serviceDate, new Date("2026-08-26T08:30:00-04:00"))).toBe(
       "same_day_open",
     );
     expect(getOrderWindow(serviceDate, new Date("2026-08-26T11:30:00-04:00"))).toBe(
       "exceptional_open",
     );
-    expect(getOrderWindow(serviceDate, new Date("2026-08-26T12:01:00-04:00"))).toBe(
+    expect(getOrderWindow(serviceDate, new Date("2026-08-26T12:59:00-04:00"))).toBe(
+      "exceptional_open",
+    );
+    expect(getOrderWindow(serviceDate, new Date("2026-08-26T13:00:00-04:00"))).toBe(
       "closed",
     );
   });

@@ -11,16 +11,20 @@ type MenuOptionSummary = Pick<
   | "category"
   | "label"
   | "description"
+  | "dessert"
+  | "beverage"
+  | "notes"
   | "capacity"
   | "capacity_updated_at"
   | "available_for_training"
+  | "available_for_workers"
   | "visible"
   | "sort_order"
 >;
 
 export async function getMenuWeek(
   supabase: UserDatabaseClient,
-  options: { startsOn?: string; includeDrafts: boolean },
+  options: { startsOn?: string; includeDrafts: boolean; availableForWorkersOnly?: boolean },
 ) {
   let weekQuery = supabase
     .from("menu_weeks")
@@ -50,11 +54,14 @@ export async function getMenuWeek(
   let menuOptionsQuery = supabase
     .from("menu_options")
     .select(
-      "id, service_day_id, category, label, description, capacity, capacity_updated_at, available_for_training, visible, sort_order",
+      "id, service_day_id, category, label, description, dessert, beverage, notes, capacity, capacity_updated_at, available_for_training, available_for_workers, visible, sort_order",
     )
     .in("service_day_id", dayIds)
     .order("sort_order", { ascending: true });
   if (!options.includeDrafts) menuOptionsQuery = menuOptionsQuery.eq("visible", true);
+  if (options.availableForWorkersOnly) {
+    menuOptionsQuery = menuOptionsQuery.eq("available_for_workers", true);
+  }
   const optionsResult = dayIds.length
     ? await menuOptionsQuery
     : { data: [], error: null };
@@ -90,9 +97,13 @@ export async function getMenuWeek(
         category: menuOption.category,
         label: menuOption.label,
         description: menuOption.description,
+        dessert: menuOption.dessert,
+        beverage: menuOption.beverage,
+        notes: menuOption.notes,
         capacity: menuOption.capacity,
         capacityUpdatedAt: menuOption.capacity_updated_at,
         trainingMenu: menuOption.available_for_training,
+        availableForWorkers: menuOption.available_for_workers,
         visible: menuOption.visible,
         sortOrder: menuOption.sort_order,
       })),
@@ -109,8 +120,12 @@ type MenuWeekDraftInput = {
       category: MenuCategory;
       label: string;
       description: string;
+      dessert: string | null;
+      beverage: string | null;
+      notes: string | null;
       capacity: number | null;
       trainingMenu: boolean;
+      availableForWorkers: boolean;
       visible: boolean;
       sortOrder: number;
     }>;
@@ -204,8 +219,12 @@ export async function copyPreviousMenuWeek(
       category: option.category,
       label: option.label,
       description: option.description,
+      dessert: option.dessert,
+      beverage: option.beverage,
+      notes: option.notes,
       capacity: option.capacity,
       trainingMenu: option.trainingMenu,
+      availableForWorkers: option.availableForWorkers,
       visible: option.visible,
       sortOrder: option.sortOrder,
     })),
@@ -225,8 +244,12 @@ export async function saveMenuWeekDraft(
       category: option.category,
       label: option.label,
       description: option.description,
+      dessert: option.dessert,
+      beverage: option.beverage,
+      notes: option.notes,
       capacity: option.capacity,
       training_menu: option.trainingMenu,
+      available_for_workers: option.availableForWorkers,
       visible: option.visible,
       sort_order: option.sortOrder,
     })),
@@ -253,7 +276,9 @@ export async function publishMenuWeek(
   });
   const incompleteDays = draft.days.filter((day) => {
     if (day.disabled) return false;
-    const visibleOptions = day.options.filter((option) => option.visible);
+    const visibleOptions = day.options.filter(
+      (option) => option.visible && option.availableForWorkers,
+    );
     return (
       visibleOptions.length === 0 ||
       visibleOptions.some(

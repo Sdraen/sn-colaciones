@@ -60,7 +60,7 @@ export async function queueMorningSummaries(
           .from("profiles")
           .select("id")
           .eq("organization_id", organization.id)
-          .in("role", ["company_admin", "provider_admin"])
+          .in("role", ["company_admin", "provider_admin", "delivery"])
           .eq("active", true),
       ]);
     if (orderError) throw new Error(`No fue posible contar los pedidos: ${orderError.message}`);
@@ -122,7 +122,7 @@ export function summarizeOrders(
 }
 
 export function buildMorningSummaryMessage(counts: SummaryCounts) {
-  return `${counts.total} colaciones confirmadas: ${counts.regular} trabajadores, ${counts.training} capacitaciones, ${counts.extra} ingresos de 08:00 a 11:00 y ${counts.exceptional} extraordinarias aprobadas.`;
+  return `${counts.total} colaciones confirmadas: ${counts.regular} trabajadores, ${counts.training} capacitaciones y ${counts.extra + counts.exceptional} extras.`;
 }
 
 function dateInTimeZone(date: Date, timeZone: string) {

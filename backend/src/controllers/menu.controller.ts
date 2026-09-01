@@ -9,6 +9,7 @@ export const getCurrentMenuWeek: RequestHandler = async (request, response) => {
   const menu = await getMenuWeek(supabase, {
     startsOn: query.startsOn,
     includeDrafts: profile.role === "provider_admin",
+    availableForWorkersOnly: profile.role === "worker",
   });
   response.status(200).json({ data: menu });
 };

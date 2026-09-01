@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type AppRole = "worker" | "company_admin" | "provider_admin";
+export type AppRole = "worker" | "company_admin" | "provider_admin" | "delivery";
 export type MenuCategory =
   | "principal"
   | "vegetariano"
@@ -65,6 +65,30 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: Relationship[];
+      };
+      audit_events: {
+        Row: {
+          id: number;
+          organization_id: string;
+          actor_id: string | null;
+          entity_type: string;
+          entity_id: string | null;
+          action: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: never;
+          organization_id: string;
+          actor_id?: string | null;
+          entity_type: string;
+          entity_id?: string | null;
+          action: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_events"]["Insert"]>;
         Relationships: Relationship[];
       };
       service_calendar_blocks: {
@@ -185,6 +209,10 @@ export interface Database {
           capacity: number | null;
           capacity_updated_at: string | null;
           available_for_training: boolean;
+          available_for_workers: boolean;
+          dessert: string | null;
+          beverage: string | null;
+          notes: string | null;
           visible: boolean;
           sort_order: number;
           created_at: string;
@@ -199,6 +227,10 @@ export interface Database {
           capacity?: number | null;
           capacity_updated_at?: string | null;
           available_for_training?: boolean;
+          available_for_workers?: boolean;
+          dessert?: string | null;
+          beverage?: string | null;
+          notes?: string | null;
           visible?: boolean;
           sort_order?: number;
           created_at?: string;

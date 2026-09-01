@@ -6,6 +6,7 @@ import { requestContext } from "../src/middleware/request-context.js";
 import { validateRequest } from "../src/middleware/validate-request.js";
 import { saveRegularOrderRequestSchema } from "../src/schemas/order.schema.js";
 import { resolveExceptionRequestSchema } from "../src/schemas/provider.schema.js";
+import { createWorkerAccountRequestSchema } from "../src/schemas/worker-admin.schema.js";
 
 describe("validación de contratos HTTP", () => {
   const app = express();
@@ -17,8 +18,13 @@ describe("validación de contratos HTTP", () => {
     (httpRequest, response) => response.json({ data: httpRequest.validated }),
   );
   app.patch(
-    "/exceptions/:exceptionId",
+    "/extra-requests/:requestId",
     validateRequest(resolveExceptionRequestSchema),
+    (httpRequest, response) => response.json({ data: httpRequest.validated }),
+  );
+  app.post(
+    "/workers",
+    validateRequest(createWorkerAccountRequestSchema),
     (httpRequest, response) => response.json({ data: httpRequest.validated }),
   );
   app.use(errorHandler);
@@ -47,9 +53,9 @@ describe("validación de contratos HTTP", () => {
     expect(response.body.error.details.fields.body).toBeDefined();
   });
 
-  it("exige un motivo claro al rechazar una solicitud extraordinaria", async () => {
+  it("exige un motivo claro al rechazar una colación extra", async () => {
     const response = await request(app)
-      .patch("/exceptions/00000000-0000-4000-8000-000000000003")
+      .patch("/extra-requests/00000000-0000-4000-8000-000000000003")
       .send({ status: "rejected" });
 
     expect(response.status).toBe(400);
@@ -58,10 +64,29 @@ describe("validación de contratos HTTP", () => {
 
   it("permite aprobar una solicitud sin motivo de rechazo", async () => {
     const response = await request(app)
-      .patch("/exceptions/00000000-0000-4000-8000-000000000003")
+      .patch("/extra-requests/00000000-0000-4000-8000-000000000003")
       .send({ status: "approved" });
 
     expect(response.status).toBe(200);
     expect(response.body.data.body.status).toBe("approved");
+  });
+
+  it("normaliza el correo al vincular una cuenta a la nómina", async () => {
+    const response = await request(app).post("/workers").send({
+      email: "  TRABAJADOR@EMPRESA.CL ",
+      dinerId: "00000000-0000-4000-8000-000000000004",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.body.email).toBe("trabajador@empresa.cl");
+  });
+
+  it("exige nombre cuando se registra un trabajador fuera de la nómina", async () => {
+    const response = await request(app).post("/workers").send({
+      email: "trabajador@empresa.cl",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 });

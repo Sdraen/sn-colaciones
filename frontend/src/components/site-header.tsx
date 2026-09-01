@@ -9,6 +9,7 @@ import {
   Home,
   LogIn,
   LogOut,
+  Truck,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api/types";
 
@@ -120,6 +121,9 @@ function navigationFor(currentUser: CurrentUser | null) {
   }
   if (currentUser.role === "company_admin") {
     return [...links, { href: "/admin/empresa", label: "Securitas", icon: Building2 }];
+  }
+  if (currentUser.role === "delivery") {
+    return [...links, { href: "/despacho", label: "Despacho", icon: Truck }];
   }
   return [...links, { href: "/admin/proveedor", label: "Proveedor", icon: ChefHat }];
 }

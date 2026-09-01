@@ -109,20 +109,20 @@ export async function markOrderFulfillment(
 export async function resolveExceptionalRequest(
   supabase: UserDatabaseClient,
   input: {
-    exceptionId: string;
+    requestId: string;
     status: "approved" | "rejected";
     resolutionNote?: string;
   },
 ) {
   const { data, error } = await supabase.rpc("resolve_exception_request", {
-    target_exception_id: input.exceptionId,
+    target_exception_id: input.requestId,
     decision: input.status,
     ...(input.resolutionNote === undefined
       ? {}
       : { rejection_note: input.resolutionNote }),
   });
-  if (error) throwSupabaseError(error, "No fue posible resolver la solicitud extraordinaria");
-  if (!data) throw new AppError("No se encontró la solicitud", 404, "EXCEPTION_NOT_FOUND");
+  if (error) throwSupabaseError(error, "No fue posible resolver la solicitud tardía de colación extra");
+  if (!data) throw new AppError("No se encontró la solicitud de colación extra", 404, "EXTRA_REQUEST_NOT_FOUND");
 
   return {
     id: data.id,
@@ -250,7 +250,7 @@ export async function getProviderOperations(
   if (dinersResult.error) throwSupabaseError(dinersResult.error, "No fue posible consultar trabajadores");
   if (trainingsResult.error) throwSupabaseError(trainingsResult.error, "No fue posible consultar capacitaciones");
   if (exceptionsResult.error) throwSupabaseError(exceptionsResult.error, "No fue posible consultar excepciones");
-  if (requestsResult.error) throwSupabaseError(requestsResult.error, "No fue posible consultar solicitudes extraordinarias");
+  if (requestsResult.error) throwSupabaseError(requestsResult.error, "No fue posible consultar solicitudes de colaciones extra");
 
   const dinersById = new Map((dinersResult.data ?? []).map((diner) => [diner.id, diner]));
   const trainingsById = new Map(
@@ -262,7 +262,7 @@ export async function getProviderOperations(
 
   return {
     menu,
-    exceptions: (requestsResult.data ?? []).map((request) => ({
+    extraRequests: (requestsResult.data ?? []).map((request) => ({
       id: request.id,
       serviceDayId: request.service_day_id,
       menuOptionId: request.menu_option_id,
@@ -387,7 +387,7 @@ function addOrderToTotals(totals: ReportTotals, order: ReportOrder) {
   }
 
   totals.confirmed += order.quantity;
-  totals.byKind[order.kind] += order.quantity;
+  totals.byKind[order.kind === "exceptional" ? "extra" : order.kind] += order.quantity;
   if (order.fulfilled_at) totals.fulfilled += order.quantity;
   if (order.side === "ensalada") totals.sides.salad += order.quantity;
   if (order.side === "postre") totals.sides.dessert += order.quantity;

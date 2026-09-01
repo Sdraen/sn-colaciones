@@ -113,7 +113,7 @@ describe("servicios operacionales atómicos", () => {
     const { rpc, client } = clientWithRpc(resolved);
 
     const result = await resolveExceptionalRequest(client, {
-      exceptionId: exceptionRow.id,
+      requestId: exceptionRow.id,
       status: "rejected",
       resolutionNote: "No queda disponibilidad para hoy",
     });

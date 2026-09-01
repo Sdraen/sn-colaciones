@@ -2,18 +2,22 @@ import type { RequestHandler } from "express";
 import { getRequestAuth, getValidatedRequest } from "../lib/request-data.js";
 import type {
   CompanyOperationsRequest,
-  CreateExceptionRequest,
   CreateExtraRequest,
   CreateTrainingRequest,
 } from "../schemas/company.schema.js";
 import {
-  createExceptionalRequest,
   createExtraOrder,
   createTrainingOrder,
   getCompanyOperations,
 } from "../services/company.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
 import { getOrdersReport } from "../services/report.service.js";
+import type { CreateWorkerAccountRequest } from "../schemas/worker-admin.schema.js";
+import { createAdminSupabaseClient } from "../lib/supabase.js";
+import {
+  createWorkerAccount,
+  listWorkerAccounts,
+} from "../services/worker-admin.service.js";
 
 export const postTrainingOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -25,15 +29,8 @@ export const postTrainingOrder: RequestHandler = async (request, response) => {
 export const postExtraOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { body } = getValidatedRequest<CreateExtraRequest>(request);
-  const order = await createExtraOrder(supabase, body);
-  response.status(201).json({ data: order });
-};
-
-export const postExceptionalRequest: RequestHandler = async (request, response) => {
-  const { supabase } = getRequestAuth(request);
-  const { body } = getValidatedRequest<CreateExceptionRequest>(request);
-  const exception = await createExceptionalRequest(supabase, body);
-  response.status(201).json({ data: exception });
+  const result = await createExtraOrder(supabase, body);
+  response.status(201).json({ data: result });
 };
 
 export const getOperations: RequestHandler = async (request, response) => {
@@ -48,4 +45,24 @@ export const getCompanyReport: RequestHandler = async (request, response) => {
   const { query } = getValidatedRequest<ReportRequest>(request);
   const report = await getOrdersReport(supabase, query);
   response.status(200).json({ data: report });
+};
+
+export const getWorkers: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const workers = await listWorkerAccounts(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+  );
+  response.status(200).json({ data: workers });
+};
+
+export const postWorker: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CreateWorkerAccountRequest>(request);
+  const worker = await createWorkerAccount(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+    body,
+  );
+  response.status(201).json({ data: worker });
 };

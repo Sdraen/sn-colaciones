@@ -28,7 +28,7 @@ export const resolveExceptionRequestSchema = z
       status: z.enum(["approved", "rejected"]),
       resolutionNote: z.string().trim().min(5).max(500).optional(),
     }),
-    params: z.object({ exceptionId: uuidSchema }),
+    params: z.object({ requestId: uuidSchema }),
     query: z.object({}),
   })
   .superRefine((request, context) => {

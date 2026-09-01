@@ -46,7 +46,7 @@ export function getOrderWindow(serviceDate: string, now = new Date()): OrderWind
   if (current.date > serviceDate) return "closed";
   if (current.minutes < 8 * 60) return "waiting_same_day";
   if (current.minutes < 11 * 60) return "same_day_open";
-  if (current.minutes <= 12 * 60) return "exceptional_open";
+  if (current.minutes < 13 * 60) return "exceptional_open";
   return "closed";
 }
 

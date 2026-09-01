@@ -35,17 +35,7 @@ export const createExtraRequestSchema = z.object({
   body: requireBreadOrTea(
     mealSelectionSchema.extend({
       beneficiaryLabel: z.string().trim().min(2).max(120),
-    }),
-  ),
-  params: z.object({}),
-  query: z.object({}),
-});
-
-export const createExceptionRequestSchema = z.object({
-  body: requireBreadOrTea(
-    mealSelectionSchema.extend({
-      beneficiaryLabel: z.string().trim().min(2).max(120),
-      reason: z.string().trim().min(5).max(500),
+      reason: z.string().trim().min(5).max(500).optional(),
     }),
   ),
   params: z.object({}),
@@ -60,5 +50,4 @@ export const companyOperationsRequestSchema = z.object({
 
 export type CreateTrainingRequest = z.infer<typeof createTrainingRequestSchema>;
 export type CreateExtraRequest = z.infer<typeof createExtraRequestSchema>;
-export type CreateExceptionRequest = z.infer<typeof createExceptionRequestSchema>;
 export type CompanyOperationsRequest = z.infer<typeof companyOperationsRequestSchema>;

@@ -2,23 +2,37 @@ import { Router } from "express";
 import {
   getCompanyReport,
   getOperations,
-  postExceptionalRequest,
+  getWorkers,
   postExtraOrder,
   postTrainingOrder,
+  postWorker,
 } from "../controllers/company.controller.js";
 import { requireRole } from "../middleware/require-role.js";
 import { validateRequest } from "../middleware/validate-request.js";
 import {
   companyOperationsRequestSchema,
-  createExceptionRequestSchema,
   createExtraRequestSchema,
   createTrainingRequestSchema,
 } from "../schemas/company.schema.js";
 import { reportRequestSchema } from "../schemas/report.schema.js";
+import {
+  createWorkerAccountRequestSchema,
+  listWorkerAccountsRequestSchema,
+} from "../schemas/worker-admin.schema.js";
 
 export const companyRouter = Router();
 
 companyRouter.use(requireRole("company_admin"));
+companyRouter.get(
+  "/workers",
+  validateRequest(listWorkerAccountsRequestSchema),
+  getWorkers,
+);
+companyRouter.post(
+  "/workers",
+  validateRequest(createWorkerAccountRequestSchema),
+  postWorker,
+);
 companyRouter.get(
   "/reports",
   validateRequest(reportRequestSchema),
@@ -38,9 +52,4 @@ companyRouter.post(
   "/extras",
   validateRequest(createExtraRequestSchema),
   postExtraOrder,
-);
-companyRouter.post(
-  "/exceptions",
-  validateRequest(createExceptionRequestSchema),
-  postExceptionalRequest,
 );

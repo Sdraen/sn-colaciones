@@ -37,7 +37,7 @@ administradora proveedora.
 Finalmente, ejecutar `supabase/migrations/0003_confirmed_business_rules.sql`.
 Esta migración agrega disponibilidad, calendario de feriados y vacaciones,
 notificaciones internas, trazabilidad de entregas y la obligación de justificar
-los rechazos de solicitudes extraordinarias.
+los rechazos de solicitudes tardías que existían en esa versión del modelo.
 
 Después de configurar la API Express, ejecutar
 `supabase/migrations/0004_backend_rpc_and_guards.sql`. Agrega operaciones
@@ -47,14 +47,20 @@ eventos de auditoría.
 
 Luego ejecutar `supabase/migrations/0005_agreed_operational_corrections.sql`.
 Esta migración aplica las correcciones acordadas: pan o té excluyentes,
-ventana extraordinaria hasta las 12:00, capacitaciones hasta las 09:00 con un
+ventana tardía vigente hasta las 12:00 en la versión anterior, capacitaciones hasta las 09:00 con un
 menú definido por la proveedora, disponibilidad efectiva, menú de la semana
 siguiente y cola doble de notificaciones web/correo.
+
+Finalmente ejecutar `supabase/migrations/0006_delivery_extras_and_training_menu.sql`.
+Esta migración fija el cierre definitivo a las 13:00, unifica las operaciones
+bajo el nombre colación extra, separa el menú opcional de capacitaciones,
+incorpora fruta/postre, bebida y observaciones, y agrega el rol de despacho con
+acceso de sólo lectura al resumen diario.
 
 ## 3. Estado y pendientes antes de producción
 
 - Las migraciones `0001` a `0004` ya fueron ejecutadas y verificadas en el proyecto remoto.
-- La migración `0005` debe ejecutarse y verificarse antes de probar estas correcciones con datos reales.
+- La migración `0006` debe ejecutarse y verificarse antes de probar estas funciones con datos reales.
 - Se creó la organización `Securitas Concepción` y se importaron 78 trabajadores
   desde la hoja revisada, sin cuentas ni correos asociados.
 - El acceso OTP del frontend está implementado con creación pública deshabilitada.

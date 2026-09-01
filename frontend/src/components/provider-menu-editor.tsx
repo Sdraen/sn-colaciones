@@ -22,8 +22,12 @@ type DraftOption = {
   category: string;
   label: string;
   description: string;
+  dessert: string | null;
+  beverage: string | null;
+  notes: string | null;
   capacity: number | null;
   trainingMenu: boolean;
+  availableForWorkers: boolean;
   visible: boolean;
   sortOrder: number;
 };
@@ -56,7 +60,13 @@ export function ProviderMenuEditor({
 
   const weekdays = days.slice(0, 5);
   const readyDays = weekdays.filter((day) => day.disabled || isDayComplete(day)).length;
-  const weekComplete = readyDays === weekdays.length;
+  const trainingDraft = days
+    .flatMap((day) => day.options)
+    .find((option) => option.trainingMenu && !option.availableForWorkers);
+  const trainingComplete = !trainingDraft || (
+    trainingDraft.label.trim().length >= 2 && trainingDraft.description.trim().length >= 3
+  );
+  const weekComplete = readyDays === weekdays.length && trainingComplete;
   const published = Boolean(menu?.publishedAt);
 
   function updateDay(dayIndex: number, patch: Partial<DraftDay>) {
@@ -88,21 +98,25 @@ export function ProviderMenuEditor({
     setFeedback(null);
   }
 
-  function setTrainingMenu(dayIndex: number, optionIndex: number) {
-    setDays((current) =>
-      current.map((day, index) =>
-        index === dayIndex
-          ? {
-              ...day,
-              options: day.options.map((option, currentIndex) => ({
-                ...option,
-                trainingMenu: currentIndex === optionIndex,
-              })),
-            }
-          : day,
-      ),
-    );
+  const trainingMenu = trainingDraft;
+
+  function updateTrainingMenu(patch: Partial<DraftOption> | null) {
+    setDays((current) => current.map((day, index) => {
+      const regularOptions = day.options
+        .filter((option) => option.availableForWorkers)
+        .map((option) => ({ ...option, trainingMenu: false }));
+      if (patch === null || index >= 5) return { ...day, options: regularOptions };
+      const existing = day.options.find(
+        (option) => option.trainingMenu && !option.availableForWorkers,
+      );
+      const base = existing ?? trainingOption();
+      return {
+        ...day,
+        options: [...regularOptions, { ...base, ...patch, trainingMenu: true, availableForWorkers: false }],
+      };
+    }));
     setDirty(true);
+    setFeedback(null);
   }
 
   async function persistDraft() {
@@ -243,13 +257,21 @@ export function ProviderMenuEditor({
         </p>
       ) : null}
 
+      <TrainingMenuEditor
+        option={trainingMenu}
+        published={published}
+        onEnable={() => updateTrainingMenu(trainingOption())}
+        onDisable={() => updateTrainingMenu(null)}
+        onChange={(patch) => updateTrainingMenu(patch)}
+      />
+
       <div className="menu-week-list card divide-y divide-[var(--line)] overflow-hidden">
         {weekdays.map((day, dayIndex) => {
           const complete = day.disabled || isDayComplete(day);
           const expanded = editingDay === dayIndex && !published;
           const description = day.disabled
             ? "Sin servicio"
-            : day.options.find((option) => option.visible)?.description.trim() ||
+            : day.options.find((option) => option.visible && option.availableForWorkers)?.description.trim() ||
               "Preparación pendiente";
 
           return (
@@ -303,7 +325,6 @@ export function ProviderMenuEditor({
                     onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
                     onUpdateDay={updateDay}
                     onUpdateOption={updateOption}
-                    onSetTrainingMenu={setTrainingMenu}
                     onDone={() => setEditingDay(null)}
                   />
                 </div>
@@ -371,6 +392,61 @@ export function ProviderMenuEditor({
   );
 }
 
+function TrainingMenuEditor({
+  option,
+  published,
+  onEnable,
+  onDisable,
+  onChange,
+}: {
+  option: DraftOption | undefined;
+  published: boolean;
+  onEnable: () => void;
+  onDisable: () => void;
+  onChange: (patch: Partial<DraftOption>) => void;
+}) {
+  return (
+    <section className="provider-card-motion card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <p className="eyebrow">Apartado independiente</p>
+          <h3 className="mt-1 text-lg font-black">Menú de capacitaciones</h3>
+          <p className="mt-1 text-sm text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
+        </div>
+        {!published ? (
+          <button type="button" onClick={option ? onDisable : onEnable} className={`menu-action min-h-10 rounded-xl px-4 text-sm font-extrabold ${option ? "bg-red-50 text-[var(--danger)]" : "bg-[var(--herb)] text-white"}`}>
+            {option ? "Quitar menú" : "Agregar menú"}
+          </button>
+        ) : null}
+      </div>
+      {option ? (
+        <div className="grid gap-4 border-t border-[var(--line)] bg-[var(--cream)] p-5 md:grid-cols-2">
+          <label className="text-sm font-extrabold">Nombre visible
+            <input disabled={published} value={option.label} onChange={(event) => onChange({ label: event.target.value })} placeholder="Ej.: Menú capacitación" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          </label>
+          <label className="text-sm font-extrabold">Disponibilidad máxima (opcional)
+            <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value ? Number(event.target.value) : null })} placeholder="Sin límite" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          </label>
+          <label className="text-sm font-extrabold md:col-span-2">Preparación
+            <textarea disabled={published} required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={2} placeholder="Ej.: Espirales con salsa, ensalada y pan" className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white p-3 font-normal" />
+          </label>
+          <label className="text-sm font-extrabold">Postre o fruta
+            <input disabled={published} value={option.dessert ?? ""} onChange={(event) => onChange({ dessert: event.target.value || null })} placeholder="Ej.: Fruta" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          </label>
+          <label className="text-sm font-extrabold">Bebida
+            <input disabled={published} value={option.beverage ?? ""} onChange={(event) => onChange({ beverage: event.target.value || null })} placeholder="Ej.: Jugo en caja" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          </label>
+          <label className="text-sm font-extrabold md:col-span-2">Observaciones (opcional)
+            <input disabled={published} value={option.notes ?? ""} onChange={(event) => onChange({ notes: event.target.value || null })} placeholder="Indicaciones para cocina" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          </label>
+        </div>
+      ) : (
+        <p className="border-t border-[var(--line)] p-5 text-sm text-[var(--muted)]">Si no se agrega, Securitas no podrá registrar capacitaciones para esa semana.</p>
+      )}
+    </section>
+  );
+}
+
 function DayEditor({
   day,
   dayIndex,
@@ -378,7 +454,6 @@ function DayEditor({
   onToggleAdvanced,
   onUpdateDay,
   onUpdateOption,
-  onSetTrainingMenu,
   onDone,
 }: {
   day: DraftDay;
@@ -387,10 +462,9 @@ function DayEditor({
   onToggleAdvanced: () => void;
   onUpdateDay: (index: number, patch: Partial<DraftDay>) => void;
   onUpdateOption: (dayIndex: number, optionIndex: number, patch: Partial<DraftOption>) => void;
-  onSetTrainingMenu: (dayIndex: number, optionIndex: number) => void;
   onDone: () => void;
 }) {
-  const primary = day.options[0] ?? emptyOption(0);
+  const primary = day.options.find((option) => option.availableForWorkers) ?? emptyOption(0);
 
   return (
     <div className="border-t border-[var(--line)] bg-[var(--cream)] px-4 py-5 sm:px-5">
@@ -450,7 +524,7 @@ function DayEditor({
           >
             <div className="min-h-0 overflow-hidden">
               <div className="mt-3 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
-              {day.options.map((option, optionIndex) => (
+              {day.options.filter((option) => option.availableForWorkers).map((option, optionIndex) => (
                 <div
                   key={`${day.serviceDate}-${optionIndex}`}
                   className="grid gap-3 border-b border-[var(--line)] pb-4 last:border-0 last:pb-0 lg:grid-cols-2"
@@ -498,6 +572,24 @@ function DayEditor({
                     </label>
                   ) : null}
                   <label className="text-xs font-extrabold text-[var(--muted)]">
+                    Postre o fruta (opcional)
+                    <input
+                      value={option.dessert ?? ""}
+                      onChange={(event) => onUpdateOption(dayIndex, optionIndex, { dessert: event.target.value || null })}
+                      placeholder="Ej.: Fruta de estación"
+                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
+                    />
+                  </label>
+                  <label className="text-xs font-extrabold text-[var(--muted)]">
+                    Bebida (opcional)
+                    <input
+                      value={option.beverage ?? ""}
+                      onChange={(event) => onUpdateOption(dayIndex, optionIndex, { beverage: event.target.value || null })}
+                      placeholder="Ej.: Jugo en caja"
+                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
+                    />
+                  </label>
+                  <label className="text-xs font-extrabold text-[var(--muted)]">
                     Disponibilidad máxima (opcional)
                     <input
                       type="number"
@@ -513,16 +605,6 @@ function DayEditor({
                     />
                   </label>
                   <div className="flex flex-wrap items-end gap-4 pb-2 text-xs font-extrabold">
-                    <label>
-                      <input
-                        type="radio"
-                        name={`training-${dayIndex}`}
-                        checked={option.trainingMenu}
-                        onChange={() => onSetTrainingMenu(dayIndex, optionIndex)}
-                        className="mr-2 accent-[var(--herb)]"
-                      />
-                      Menú capacitación
-                    </label>
                     <label>
                       <input
                         type="checkbox"
@@ -556,7 +638,11 @@ function DayEditor({
                 type="button"
                 onClick={() =>
                   onUpdateDay(dayIndex, {
-                    options: [...day.options, emptyOption(day.options.length)],
+                    options: [
+                      ...day.options.filter((option) => option.availableForWorkers),
+                      emptyOption(day.options.filter((option) => option.availableForWorkers).length),
+                      ...day.options.filter((option) => !option.availableForWorkers),
+                    ],
                   })
                 }
                 className="menu-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--brand)] px-3 text-sm font-extrabold text-[var(--brand)]"
@@ -594,8 +680,12 @@ function toDraftDays(menu: MenuWeekDto): DraftDay[] {
       category: option.category,
       label: option.label,
       description: option.description,
+      dessert: option.dessert,
+      beverage: option.beverage,
+      notes: option.notes,
       capacity: option.capacity,
       trainingMenu: option.trainingMenu,
+      availableForWorkers: option.availableForWorkers,
       visible: option.visible,
       sortOrder: option.sortOrder,
     })),
@@ -603,7 +693,9 @@ function toDraftDays(menu: MenuWeekDto): DraftDay[] {
 }
 
 function isDayComplete(day: DraftDay) {
-  const visibleOptions = day.options.filter((option) => option.visible);
+  const visibleOptions = day.options.filter(
+    (option) => option.visible && option.availableForWorkers,
+  );
   return (
     visibleOptions.length > 0 &&
     visibleOptions.every(
@@ -618,10 +710,30 @@ function emptyOption(sortOrder: number): DraftOption {
     category: "principal",
     label: sortOrder === 0 ? "Menú principal" : `Alternativa ${sortOrder + 1}`,
     description: "",
+    dessert: null,
+    beverage: null,
+    notes: null,
     capacity: null,
-    trainingMenu: sortOrder === 0,
+    trainingMenu: false,
+    availableForWorkers: true,
     visible: true,
     sortOrder,
+  };
+}
+
+function trainingOption(): DraftOption {
+  return {
+    category: "especial",
+    label: "Menú capacitación",
+    description: "",
+    dessert: null,
+    beverage: null,
+    notes: null,
+    capacity: null,
+    trainingMenu: true,
+    availableForWorkers: false,
+    visible: true,
+    sortOrder: 99,
   };
 }
 

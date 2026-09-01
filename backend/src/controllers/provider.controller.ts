@@ -81,12 +81,12 @@ export const patchOrderFulfillment: RequestHandler = async (request, response) =
 export const patchExceptionalRequest: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { params, body } = getValidatedRequest<ResolveExceptionRequest>(request);
-  const exception = await resolveExceptionalRequest(supabase, {
-    exceptionId: params.exceptionId,
+  const extraRequest = await resolveExceptionalRequest(supabase, {
+    requestId: params.requestId,
     status: body.status,
     resolutionNote: body.resolutionNote,
   });
-  response.status(200).json({ data: exception });
+  response.status(200).json({ data: extraRequest });
 };
 
 export const postMenuWeek: RequestHandler = async (request, response) => {

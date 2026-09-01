@@ -17,7 +17,12 @@
     "notifications:email": "tsx scripts/dispatch-email-notifications.ts",
     "notifications:morning": "tsx scripts/send-morning-summaries.ts",
     "import:workers": "tsx scripts/import-workers.ts",
-    "provision:user": "tsx scripts/provision-user.ts"
+    "provision:user": "tsx scripts/provision-user.ts",
+    "seed:test-week": "tsx scripts/seed-test-week.ts",
+    "verify:live-flows": "tsx scripts/verify-live-flows.ts",
+    "verify:worker-provisioning": "tsx scripts/verify-worker-provisioning.ts",
+    "load:test-workers": "tsx scripts/load-test-workers.ts",
+    "load:cleanup-workers": "tsx scripts/load-test-workers.ts --cleanup-only"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

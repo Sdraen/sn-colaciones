@@ -9,7 +9,7 @@ export const ORDER_SCHEDULE = {
   preorderCloses: "22:00",
   sameDayOpens: "08:00",
   sameDayCloses: "11:00",
-  deliveryCloses: "12:00",
+  deliveryCloses: "13:00",
 } as const;
 
 function previousCalendarDate(isoDate: string) {
@@ -49,7 +49,7 @@ export function getBookingPhase(serviceDate: string, now = new Date()): BookingP
   if (current.date > serviceDate) return "closed";
   if (current.minutes < 8 * 60) return "waiting_same_day";
   if (current.minutes < 11 * 60) return "same_day_open";
-  if (current.minutes <= 12 * 60) return "exceptional_open";
+  if (current.minutes < 13 * 60) return "exceptional_open";
   return "closed";
 }
 
@@ -92,8 +92,8 @@ export const bookingPhaseCopy: Record<
     description: "Sólo la administradora de Securitas puede ingresar colaciones disponibles hasta las 11:00.",
   },
   exceptional_open: {
-    title: "Solo solicitudes extraordinarias",
-    description: "Securitas puede solicitar una colación extra hasta las 12:00; la proveedora debe confirmarla.",
+    title: "Colación extra con aprobación",
+    description: "Entre las 11:00 y las 13:00 la proveedora debe aprobar o rechazar la solicitud.",
   },
   closed: {
     title: "Día cerrado",

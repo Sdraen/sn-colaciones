@@ -47,8 +47,9 @@ function safeNextPath(value?: string) {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
-function homeByRole(role: "worker" | "company_admin" | "provider_admin") {
+function homeByRole(role: "worker" | "company_admin" | "provider_admin" | "delivery") {
   if (role === "worker") return "/pedidos";
   if (role === "company_admin") return "/admin/empresa";
+  if (role === "delivery") return "/despacho";
   return "/admin/proveedor";
 }

@@ -11,29 +11,32 @@ import {
   Clock3,
   GraduationCap,
   Plus,
-  Send,
   UserPlus,
   UsersRound,
   UtensilsCrossed,
 } from "lucide-react";
 import { OperationsReports } from "@/components/provider-reports";
+import { DailySummary } from "@/components/daily-summary";
+import { WorkerManagement } from "@/components/worker-management";
 import { browserApiRequest } from "@/lib/api/client";
 import type {
   CompanyOperationsDto,
+  DailySummaryDto,
   ExceptionDto,
   MenuWeekDto,
   NotificationDto,
   OrderDto,
   OrdersReportDto,
   SideChoice,
+  WorkerAccountDto,
 } from "@/lib/api/contracts";
 import {
   formatChileanDateWithWeekday,
   formatChileanTabDate,
 } from "@/lib/date-format";
 
-type Mode = "training" | "same_day" | "exception";
-type View = "operations" | "reports";
+type Mode = "training" | "extra";
+type View = "operations" | "summary" | "reports" | "workers";
 
 const modes = [
   {
@@ -44,18 +47,11 @@ const modes = [
     icon: GraduationCap,
   },
   {
-    value: "same_day",
+    value: "extra",
     label: "Colación extra",
-    schedule: "08:00 a 11:00",
-    description: "Para visitas o personas externas que almorzarán en la empresa.",
+    schedule: "08:00 a 13:00",
+    description: "Directa hasta las 11:00; después requiere aprobación de la proveedora.",
     icon: UserPlus,
-  },
-  {
-    value: "exception",
-    label: "Extraordinaria",
-    schedule: "11:00 a 14:00",
-    description: "Se envía a la proveedora para que la apruebe o rechace.",
-    icon: AlertCircle,
   },
 ] as const;
 
@@ -65,12 +61,18 @@ export function CompanyOperationsClient({
   initialReport,
   notifications,
   nowIso,
+  initialSummary,
+  initialWorkers,
+  initialView,
 }: {
   menu: MenuWeekDto | null;
   initialOperations: CompanyOperationsDto | null;
   initialReport: OrdersReportDto;
   notifications: NotificationDto[];
   nowIso: string;
+  initialSummary: DailySummaryDto | null;
+  initialWorkers: WorkerAccountDto[];
+  initialView?: View;
 }) {
   const currentDate = localDate(new Date(nowIso));
   const initialDayId =
@@ -81,7 +83,7 @@ export function CompanyOperationsClient({
   const [operations, setOperations] = useState(initialOperations);
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [mode, setMode] = useState<Mode>("training");
-  const [view, setView] = useState<View>("operations");
+  const [view, setView] = useState<View>(initialView ?? "operations");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -91,7 +93,7 @@ export function CompanyOperationsClient({
   const activeOrders = orders.filter(
     (order) => order.serviceDayId === activeDayId && order.status === "confirmed",
   );
-  const activeExceptions = (operations?.exceptions ?? []).filter(
+  const activeExceptions = (operations?.extraRequests ?? []).filter(
     (item) => item.serviceDayId === activeDayId,
   );
   const trainingMenu = activeDay?.options.find(
@@ -115,22 +117,15 @@ export function CompanyOperationsClient({
       localMinutes(now) <= 9 * 60 &&
       trainingMenu,
   );
-  const sameDayOpen = Boolean(
+  const extraOpen = Boolean(
     activeDay &&
       !activeDay.disabled &&
       !blocked &&
       now >= new Date(activeDay.sameDayOpensAt) &&
-      now < new Date(activeDay.sameDayClosesAt),
+      now < new Date(activeDay.deliveryClosesAt),
   );
-  const exceptionOpen = Boolean(
-    activeDay &&
-      !activeDay.disabled &&
-      !blocked &&
-      now >= new Date(activeDay.sameDayClosesAt) &&
-      now <= new Date(activeDay.deliveryClosesAt),
-  );
-  const modeOpen =
-    mode === "training" ? trainingOpen : mode === "same_day" ? sameDayOpen : exceptionOpen;
+  const lateExtra = Boolean(activeDay && now >= new Date(activeDay.sameDayClosesAt));
+  const modeOpen = mode === "training" ? trainingOpen : extraOpen;
   const selectedMode = modes.find((item) => item.value === mode) ?? modes[0];
   const unreadNotifications = notifications.filter((item) => !item.readAt).length;
 
@@ -181,39 +176,30 @@ export function CompanyOperationsClient({
               }
             : current,
         );
-      } else if (mode === "same_day") {
-        const order = await browserApiRequest<OrderDto>("/api/v1/company/extras", {
+      } else {
+        const result = await browserApiRequest<
+          | { outcome: "confirmed"; order: OrderDto }
+          | { outcome: "pending"; request: ExceptionDto }
+        >("/api/v1/company/extras", {
           method: "POST",
           body: JSON.stringify({
             ...common,
             beneficiaryLabel: String(form.get("name")),
+            ...(lateExtra ? { reason: String(form.get("reason")) } : {}),
           }),
         });
         setOperations((current) =>
-          current ? { ...current, orders: [order, ...current.orders] } : current,
-        );
-      } else {
-        const request = await browserApiRequest<ExceptionDto>(
-          "/api/v1/company/exceptions",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              ...common,
-              beneficiaryLabel: String(form.get("name")),
-              reason: String(form.get("reason")),
-            }),
-          },
-        );
-        setOperations((current) =>
           current
-            ? { ...current, exceptions: [request, ...current.exceptions] }
+            ? result.outcome === "confirmed"
+              ? { ...current, orders: [result.order, ...current.orders] }
+              : { ...current, extraRequests: [result.request, ...current.extraRequests] }
             : current,
         );
       }
       formElement.reset();
       setMessage(
-        mode === "exception"
-          ? "Solicitud enviada a la proveedora."
+        mode === "extra" && lateExtra
+          ? "Solicitud de colación extra enviada a la proveedora."
           : "Colaciones agregadas correctamente.",
       );
     } catch (caught) {
@@ -230,7 +216,7 @@ export function CompanyOperationsClient({
           <p className="eyebrow">Panel empresa</p>
           <h1 className="mt-2 text-3xl font-black">Administración Securitas</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            Gestiona capacitaciones, colaciones extra y solicitudes extraordinarias.
+            Gestiona capacitaciones y colaciones extra con sus horarios de aprobación.
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -248,6 +234,30 @@ export function CompanyOperationsClient({
         role="tablist"
         aria-label="Secciones de administración Securitas"
       >
+        <button
+          type="button"
+          onClick={() => setView("workers")}
+          role="tab"
+          aria-selected={view === "workers"}
+          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+            view === "workers"
+              ? "bg-white text-[var(--brand)] shadow-sm"
+              : "text-[var(--muted)]"
+          }`}
+        >
+          <UserPlus size={17} /> Trabajadores
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("summary")}
+          role="tab"
+          aria-selected={view === "summary"}
+          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+            view === "summary" ? "bg-white text-[var(--brand)] shadow-sm" : "text-[var(--muted)]"
+          }`}
+        >
+          <UsersRound size={17} /> Resumen diario
+        </button>
         <button
           type="button"
           onClick={() => setView("operations")}
@@ -276,7 +286,11 @@ export function CompanyOperationsClient({
         </button>
       </div>
 
-      {view === "reports" ? (
+      {view === "summary" ? (
+        <div className="mt-7"><DailySummary initialSummary={initialSummary} /></div>
+      ) : view === "workers" ? (
+        <WorkerManagement initialWorkers={initialWorkers} />
+      ) : view === "reports" ? (
         <OperationsReports endpoint="/api/v1/company/reports" initialReport={initialReport} />
       ) : !menu || !operations ? (
         <section className="company-panel-enter mt-7">
@@ -347,7 +361,7 @@ export function CompanyOperationsClient({
             />
             <Metric
               icon={AlertCircle}
-              label="Extraordinarias pendientes"
+              label="Extras pendientes"
               value={activeExceptions.filter((item) => item.status === "pending").length}
             />
           </div>
@@ -360,7 +374,7 @@ export function CompanyOperationsClient({
                 Elige el tipo de colación y completa solo la información necesaria.
               </p>
 
-              <div className="company-mode-grid mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="company-mode-grid mt-5 grid gap-3 sm:grid-cols-2">
                 {modes.map((item) => {
                   const Icon = item.icon;
                   const selected = mode === item.value;
@@ -463,7 +477,7 @@ export function CompanyOperationsClient({
                         className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-3"
                       >
                         {activeDay?.options
-                          .filter((option) => option.visible)
+                          .filter((option) => option.visible && option.availableForWorkers)
                           .map((option) => (
                             <option key={option.id} value={option.id}>
                               {option.label} · {option.description}
@@ -509,14 +523,14 @@ export function CompanyOperationsClient({
                     </div>
                   </fieldset>
 
-                  {mode === "exception" ? (
-                    <Field label="Motivo de la solicitud">
+                  {mode === "extra" && lateExtra ? (
+                    <Field label="Motivo de la solicitud tardía">
                       <textarea
                         name="reason"
                         required
                         minLength={5}
                         rows={3}
-                        placeholder="Explica por qué se necesita fuera del horario normal"
+                        placeholder="Explica por qué se necesita después de las 11:00"
                         className="company-input w-full rounded-xl border border-[var(--line)] p-3"
                       />
                     </Field>
@@ -527,10 +541,10 @@ export function CompanyOperationsClient({
                     disabled={!modeOpen || saving}
                     className="company-action flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {mode === "exception" ? <Send size={17} /> : <Plus size={17} />}
+                    <Plus size={17} />
                     {saving
                       ? "Guardando…"
-                      : mode === "exception"
+                      : mode === "extra" && lateExtra
                         ? "Enviar solicitud"
                         : "Agregar al conteo"}
                   </button>
@@ -558,7 +572,7 @@ export function CompanyOperationsClient({
             <aside className="space-y-5">
               <section className="company-card-motion card p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-black">Solicitudes extraordinarias</h2>
+                  <h2 className="font-black">Solicitudes tardías de extras</h2>
                   <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold">
                     {activeExceptions.length}
                   </span>
@@ -673,10 +687,7 @@ function closedWindowMessage(mode: Mode, blocked: boolean) {
   if (mode === "training") {
     return "Las capacitaciones se registran el mismo día hasta las 09:00.";
   }
-  if (mode === "same_day") {
-    return "Las colaciones extra se registran el mismo día entre las 08:00 y las 11:00.";
-  }
-  return "Las solicitudes extraordinarias se envían entre las 11:00 y las 14:00.";
+  return "Las colaciones extra abren a las 08:00 y cierran por completo a las 13:00.";
 }
 
 function isWeekday(date: string) {

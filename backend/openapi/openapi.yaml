@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SN Colaciones API
-  version: 0.3.0
+  version: 0.4.0
   description: API autenticada para menús, reservas y operación de colaciones.
 servers:
   - url: http://localhost:4000
@@ -101,6 +101,48 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/company/workers:
+    get:
+      tags: [Securitas]
+      summary: Lista la nomina de trabajadores y el estado de sus cuentas
+      responses:
+        "200":
+          description: Trabajadores de la organizacion
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkerAccount" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Securitas]
+      summary: Crea una cuenta de trabajador o la vincula a la nomina existente
+      description: La cuenta queda confirmada y accede mediante enlace magico; no se genera una contrasena compartida.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkerAccountInput" }
+      responses:
+        "201":
+          description: Cuenta creada y vinculada al trabajador
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/WorkerAccount" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/company/operations:
     get:
       tags: [Securitas]
@@ -150,7 +192,8 @@ paths:
   /api/v1/company/extras:
     post:
       tags: [Securitas]
-      summary: Registra una colación extra entre las 08:00 y las 11:00
+      summary: Registra o solicita una colación extra entre las 08:00 y las 13:00
+      description: Se confirma directamente hasta las 11:00. Luego queda pendiente de la proveedora y requiere motivo. A las 13:00 cierra.
       requestBody:
         required: true
         content:
@@ -158,29 +201,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateExtraInput" }
       responses:
         "201":
-          description: Colación extra registrada
-        "400": { $ref: "#/components/responses/ValidationError" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
-  /api/v1/company/exceptions:
-    post:
-      tags: [Securitas]
-      summary: Solicita una colación extraordinaria entre las 11:00 y las 12:00
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateExceptionInput" }
-      responses:
-        "201":
-          description: Solicitud pendiente creada y notificada
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: "#/components/schemas/ExceptionalRequest" }
+          description: Colación extra confirmada o solicitud pendiente creada
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -397,13 +418,13 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-  /api/v1/provider/exceptions/{exceptionId}:
+  /api/v1/provider/extra-requests/{requestId}:
     patch:
       tags: [Proveedora]
-      summary: Aprueba o rechaza una solicitud extraordinaria pendiente
-      description: Al aprobar, el pedido extraordinario se crea en la misma transacción.
+      summary: Aprueba o rechaza una solicitud tardía de colación extra
+      description: Al aprobar, la colación extra se crea en la misma transacción.
       parameters:
-        - name: exceptionId
+        - name: requestId
           in: path
           required: true
           schema: { type: string, format: uuid }
@@ -464,7 +485,23 @@ paths:
         - $ref: "#/components/parameters/StartsOn"
       responses:
         "200":
-          description: Menú y pedidos regulares, grupales, extras y extraordinarios
+          description: Menú y pedidos regulares, grupales y extras
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/summaries/daily:
+    get:
+      tags: [Resumen diario]
+      summary: Obtiene el resumen operativo y la nómina de una fecha
+      description: Disponible para proveedora, Securitas y despacho. Es en vivo antes de las 13:00 y final después del cierre.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Totales, preparaciones, componentes, capacitaciones y manifiesto nominal
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -511,7 +548,40 @@ components:
         fullName: { type: string }
         organizationId: { type: string, format: uuid }
         role:
-          enum: [worker, company_admin, provider_admin]
+          enum: [worker, company_admin, provider_admin, delivery]
+    WorkerAccount:
+      type: object
+      required: [id, fullName, employeeCode, email, accountCreated, active, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        employeeCode:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+        email:
+          oneOf:
+            - { type: string, format: email }
+            - { type: "null" }
+        accountCreated: { type: boolean }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    CreateWorkerAccountInput:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        dinerId:
+          type: string
+          format: uuid
+          description: Trabajador sin cuenta que ya existe en la nomina.
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 120
+          description: Obligatorio cuando no se envia dinerId.
+        employeeCode: { type: string, minLength: 1, maxLength: 80 }
     SaveOrderInput:
       type: object
       required: [serviceDayId, menuOptionId, side]
@@ -548,6 +618,7 @@ components:
           required: [beneficiaryLabel]
           properties:
             beneficiaryLabel: { type: string, minLength: 2, maxLength: 120 }
+            reason: { type: string, minLength: 5, maxLength: 500, description: Obligatorio entre las 11:00 y las 13:00. }
     CreateExceptionInput:
       allOf:
         - $ref: "#/components/schemas/CreateExtraInput"
@@ -608,11 +679,15 @@ components:
         category: { enum: [principal, vegetariano, hipocalorico, sandwich, handroll, especial] }
         label: { type: string }
         description: { type: string }
+        dessert: { type: [string, "null"] }
+        beverage: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
         capacity:
           oneOf:
             - { type: integer, minimum: 0 }
             - { type: "null" }
         trainingMenu: { type: boolean }
+        availableForWorkers: { type: boolean }
         visible: { type: boolean }
         sortOrder: { type: integer }
     MenuOptionDraftInput:

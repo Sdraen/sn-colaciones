@@ -99,7 +99,7 @@ providerRouter.patch(
   patchMenuOptionAvailability,
 );
 providerRouter.patch(
-  "/exceptions/:exceptionId",
+  "/extra-requests/:requestId",
   validateRequest(resolveExceptionRequestSchema),
   patchExceptionalRequest,
 );

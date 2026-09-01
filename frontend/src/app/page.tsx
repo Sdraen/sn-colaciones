@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, ChefHat, ClipboardCheck, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Building2, ChefHat, ClipboardCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
 import { getCurrentApiUser } from "@/lib/api/server";
 import type { AppRole } from "@/lib/api/types";
 
@@ -87,8 +87,20 @@ function CurrentRoleCard({ role }: { role: AppRole }) {
         href="/admin/empresa"
         icon={Building2}
         title="Administración Securitas"
-        description="Gestiona capacitaciones, personal externo, extras y solicitudes excepcionales."
+        description="Gestiona capacitaciones y colaciones extra dentro de sus horarios."
         action="Abrir panel empresa"
+        tone="sun"
+      />
+    );
+  }
+  if (role === "delivery") {
+    return (
+      <RoleCard
+        href="/despacho"
+        icon={Truck}
+        title="Despacho diario"
+        description="Revisa cantidades, componentes y la nómina completa de cada entrega."
+        action="Abrir panel de despacho"
         tone="sun"
       />
     );

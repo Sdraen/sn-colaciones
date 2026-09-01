@@ -7,7 +7,7 @@ const inputSchema = z
   .object({
     email: z.email().transform((value) => value.trim().toLocaleLowerCase("es-CL")),
     fullName: z.string().trim().min(3).max(120),
-    role: z.enum(["worker", "company_admin", "provider_admin"]),
+    role: z.enum(["worker", "company_admin", "provider_admin", "delivery"]),
     organization: z.string().trim().min(2).max(120).default("Securitas Concepción"),
     workerName: z.string().trim().min(3).max(120).optional(),
     createWorker: z.boolean().default(false),

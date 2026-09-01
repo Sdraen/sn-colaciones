@@ -14,8 +14,12 @@ const menuOptionDraftSchema = z.object({
   category: menuCategorySchema,
   label: z.string().trim().min(2).max(80),
   description: z.string().trim().max(300),
+  dessert: z.string().trim().max(160).nullable().default(null),
+  beverage: z.string().trim().max(160).nullable().default(null),
+  notes: z.string().trim().max(500).nullable().default(null),
   capacity: z.number().int().min(0).max(10_000).nullable().default(null),
   trainingMenu: z.boolean().default(false),
+  availableForWorkers: z.boolean().default(true),
   visible: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(100).default(0),
 });

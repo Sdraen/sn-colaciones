@@ -33,8 +33,37 @@ export async function createTrainingOrder(
 
 export async function createExtraOrder(
   supabase: UserDatabaseClient,
-  input: MealSelection & { beneficiaryLabel: string },
+  input: MealSelection & { beneficiaryLabel: string; reason?: string },
 ) {
+  const { data: serviceDay, error: dayError } = await supabase
+    .from("service_days")
+    .select("same_day_closes_at, delivery_closes_at")
+    .eq("id", input.serviceDayId)
+    .maybeSingle();
+  if (dayError) throwSupabaseError(dayError, "No fue posible verificar el horario");
+  if (!serviceDay) throw new AppError("No se encontró el día de servicio", 404, "SERVICE_DAY_NOT_FOUND");
+
+  const now = Date.now();
+  const directClose = new Date(serviceDay.same_day_closes_at).getTime();
+  const finalClose = new Date(serviceDay.delivery_closes_at).getTime();
+  if (now >= finalClose) {
+    throw new AppError("A las 13:00 se cierran todas las colaciones del día", 409, "DAILY_ORDERS_CLOSED");
+  }
+  if (now >= directClose) {
+    if (!input.reason?.trim()) {
+      throw new AppError(
+        "Entre las 11:00 y las 13:00 debes indicar el motivo para que la proveedora decida",
+        422,
+        "EXTRA_REASON_REQUIRED",
+      );
+    }
+    const request = await createExceptionalRequest(supabase, {
+      ...input,
+      reason: input.reason,
+    });
+    return { outcome: "pending" as const, request };
+  }
+
   const { data, error } = await supabase.rpc("create_extra_order", {
     target_service_day_id: input.serviceDayId,
     target_menu_option_id: input.menuOptionId,
@@ -45,7 +74,7 @@ export async function createExtraOrder(
   });
   if (error) throwSupabaseError(error, "No fue posible registrar la colación extra");
   if (!data) throw new AppError("No se generó la colación extra", 503, "EXTRA_SAVE_EMPTY");
-  return serializeOperationalOrder(data);
+  return { outcome: "confirmed" as const, order: serializeOperationalOrder(data) };
 }
 
 export async function createExceptionalRequest(
@@ -61,7 +90,7 @@ export async function createExceptionalRequest(
     include_bread: input.bread,
     include_tea: input.tea,
   });
-  if (error) throwSupabaseError(error, "No fue posible enviar la solicitud extraordinaria");
+  if (error) throwSupabaseError(error, "No fue posible enviar la solicitud tardía de colación extra");
   if (!data) throw new AppError("No se generó la solicitud", 503, "EXCEPTION_SAVE_EMPTY");
   return serializeException(data);
 }
@@ -112,14 +141,14 @@ export async function getCompanyOperations(
   ]);
 
   if (trainingResult.error) throwSupabaseError(trainingResult.error, "No fue posible consultar capacitaciones");
-  if (exceptionResult.error) throwSupabaseError(exceptionResult.error, "No fue posible consultar solicitudes extraordinarias");
+  if (exceptionResult.error) throwSupabaseError(exceptionResult.error, "No fue posible consultar solicitudes de colaciones extra");
   if (orderResult.error) throwSupabaseError(orderResult.error, "No fue posible consultar pedidos operacionales");
   if (calendarResult.error) throwSupabaseError(calendarResult.error, "No fue posible consultar el calendario operacional");
 
   return {
     menuWeek: { id: menu.id, startsOn: menu.startsOn },
     trainingSessions: (trainingResult.data ?? []).map(serializeTrainingSession),
-    exceptions: (exceptionResult.data ?? []).map(serializeException),
+    extraRequests: (exceptionResult.data ?? []).map(serializeException),
     orders: (orderResult.data ?? []).map(serializeOperationalOrder),
     calendarBlocks: (calendarResult.data ?? []).map((block) => ({
       id: block.id,

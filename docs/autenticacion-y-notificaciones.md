@@ -26,8 +26,8 @@ No se recomienda compartir una sola clave entre trabajadores porque elimina la t
 
 La primera versión debe guardar todos los avisos dentro de `notifications`. El correo es un canal adicional, no la única fuente de verdad.
 
-- Nueva solicitud extraordinaria: aviso a la proveedora.
-- Extraordinaria aprobada o rechazada: aviso a Securitas, incluyendo el motivo cuando corresponda.
+- Nueva solicitud tardía de colación extra: aviso a la proveedora.
+- Colación extra aprobada o rechazada: aviso a Securitas, incluyendo el motivo cuando corresponda.
 - Menú semanal publicado: aviso opcional a trabajadores.
 - Resumen diario o semanal: correo opcional a las administradoras.
 
@@ -36,7 +36,7 @@ Resend puede enviar los correos de la aplicación y también puede configurarse 
 ## Implementación actual
 
 - El frontend usa Supabase Auth mediante cookies SSR y flujo PKCE.
-- `/pedidos` y `/admin/*` redirigen al login cuando no existe una sesión válida.
+- `/pedidos`, `/admin/*` y `/despacho` redirigen al login cuando no existe una sesión válida.
 - El frontend reenvía el access token a Express y `GET /api/v1/auth/me` obtiene
   el perfil y el rol; el navegador no decide permisos por sí solo.
 - La navegación muestra únicamente el área autorizada para el rol autenticado.
@@ -46,6 +46,14 @@ Resend puede enviar los correos de la aplicación y también puede configurarse 
 - `npm run provision:user -w backend` permite revisar y crear cuentas de forma
   controlada; nunca ejecuta cambios sin `--apply`. Las contraseñas temporales se
   reciben mediante `PROVISION_USER_PASSWORD` y no se guardan en archivos.
+- La administradora de Securitas puede crear exclusivamente cuentas de
+  trabajadores desde su panel. El backend vincula el usuario de Supabase Auth,
+  su perfil y la persona de la nómina dentro de la misma operación controlada.
+- Las cuentas creadas desde el panel no reciben una contraseña conocida por la
+  administradora. Cada trabajador solicita su propio enlace mágico en `/login`.
+- `npm run verify:worker-provisioning -w backend` comprueba la creación y la
+  limpieza de una cuenta temporal. `npm run load:test-workers -w backend`
+  simula por defecto 80 sesiones y pedidos, y elimina la información generada.
 
 Las cuentas de prueba deben usar correos individuales, rotar sus contraseñas o
 eliminarse antes de habilitar el sistema en producción.

@@ -7,13 +7,16 @@ import {
   Check,
   ChefHat,
   LayoutDashboard,
+  ListChecks,
   X,
 } from "lucide-react";
 import { ProviderMenuEditor } from "@/components/provider-menu-editor";
 import { OperationsReports } from "@/components/provider-reports";
+import { DailySummary } from "@/components/daily-summary";
 import { browserApiRequest } from "@/lib/api/client";
 import type {
   ExceptionDto,
+  DailySummaryDto,
   MenuWeekDto,
   NotificationDto,
   OrdersReportDto,
@@ -21,7 +24,7 @@ import type {
 } from "@/lib/api/contracts";
 import { formatChileanTabDate } from "@/lib/date-format";
 
-type View = "production" | "menu" | "reports";
+type View = "production" | "summary" | "menu" | "reports";
 
 export function ProviderOperationsClient({
   initialOperations,
@@ -29,12 +32,14 @@ export function ProviderOperationsClient({
   nextStartsOn,
   initialReport,
   notifications,
+  initialSummary,
 }: {
   initialOperations: ProviderOperationsDto | null;
   initialNextMenu: MenuWeekDto | null;
   nextStartsOn: string;
   initialReport: OrdersReportDto;
   notifications: NotificationDto[];
+  initialSummary: DailySummaryDto | null;
 }) {
   const [operations, setOperations] = useState(initialOperations);
   const [view, setView] = useState<View>(initialOperations ? "production" : "menu");
@@ -45,7 +50,7 @@ export function ProviderOperationsClient({
   const [rejectionNotes, setRejectionNotes] = useState<Record<string, string>>({});
 
   const activeDay = operations?.menu.days.find((day) => day.id === activeDayId);
-  const pending = operations?.exceptions.filter((request) => request.status === "pending") ?? [];
+  const pending = operations?.extraRequests.filter((request) => request.status === "pending") ?? [];
   const summary = useMemo(
     () =>
       (operations?.orders ?? [])
@@ -94,7 +99,7 @@ export function ProviderOperationsClient({
         status: "approved" | "rejected";
         resolutionNote: string | null;
         resolvedAt: string;
-      }>(`/api/v1/provider/exceptions/${request.id}`, {
+      }>(`/api/v1/provider/extra-requests/${request.id}`, {
         method: "PATCH",
         body: JSON.stringify({ status, ...(resolutionNote ? { resolutionNote } : {}) }),
       });
@@ -102,7 +107,7 @@ export function ProviderOperationsClient({
         current
           ? {
               ...current,
-              exceptions: current.exceptions.map((item) =>
+              extraRequests: current.extraRequests.map((item) =>
                 item.id === request.id
                   ? {
                       ...item,
@@ -142,6 +147,7 @@ export function ProviderOperationsClient({
         {(
           [
             ["production", "Producción", LayoutDashboard],
+            ["summary", "Resumen diario", ListChecks],
             ["menu", "Próxima semana", ChefHat],
             ["reports", "Reportes", BarChart3],
           ] as const
@@ -179,7 +185,9 @@ export function ProviderOperationsClient({
         </p>
       ) : null}
 
-      {view === "reports" ? (
+      {view === "summary" ? (
+        <div className="mt-7"><DailySummary initialSummary={initialSummary} /></div>
+      ) : view === "reports" ? (
         <OperationsReports endpoint="/api/v1/provider/reports" initialReport={initialReport} />
       ) : view === "menu" ? (
         <ProviderMenuEditor initialMenu={initialNextMenu} startsOn={nextStartsOn} />

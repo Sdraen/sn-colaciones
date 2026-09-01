@@ -5,7 +5,7 @@ API Node.js 24, Express 5, TypeScript, Zod y Supabase organizada por capas.
 ## Responsabilidades
 
 - Validar el JWT de Supabase y cargar el perfil activo.
-- Autorizar acciones mediante los roles `worker`, `company_admin` y `provider_admin`.
+- Autorizar acciones mediante los roles `worker`, `company_admin`, `provider_admin` y `delivery`.
 - Validar todos los parámetros HTTP con Zod.
 - Ejecutar consultas con el JWT del usuario para conservar Row Level Security.
 - Dejar reglas sensibles y operaciones atómicas dentro de PostgreSQL.
@@ -75,10 +75,11 @@ Authorization: Bearer <supabase-access-token>
 | DELETE | `/api/v1/orders/me/:orderId` | Trabajador propietario |
 | GET | `/api/v1/notifications` | Cualquier usuario activo |
 | PATCH | `/api/v1/notifications/:notificationId/read` | Destinatario |
+| GET | `/api/v1/company/workers` | Administradora Securitas |
+| POST | `/api/v1/company/workers` | Administradora Securitas |
 | GET | `/api/v1/company/operations` | Administradora Securitas |
 | POST | `/api/v1/company/training-sessions` | Administradora Securitas |
 | POST | `/api/v1/company/extras` | Administradora Securitas |
-| POST | `/api/v1/company/exceptions` | Administradora Securitas |
 | GET | `/api/v1/company/reports` | Administradora Securitas |
 | POST | `/api/v1/provider/menu-weeks` | Proveedora |
 | POST | `/api/v1/provider/menu-weeks/copy` | Proveedora |
@@ -88,7 +89,8 @@ Authorization: Bearer <supabase-access-token>
 | GET/POST | `/api/v1/provider/calendar-blocks` | Proveedora |
 | DELETE | `/api/v1/provider/calendar-blocks/:blockId` | Proveedora |
 | PATCH | `/api/v1/provider/menu-options/:menuOptionId/availability` | Proveedora |
-| PATCH | `/api/v1/provider/exceptions/:exceptionId` | Proveedora |
+| PATCH | `/api/v1/provider/extra-requests/:requestId` | Proveedora |
+| GET | `/api/v1/summaries/daily` | Proveedora, Securitas y despacho |
 | PATCH | `/api/v1/provider/orders/:orderId/fulfillment` | Proveedora |
 | GET | `/api/v1/provider/operations` | Proveedora |
 | GET | `/api/v1/provider/reports/weekly` | Proveedora |
@@ -98,7 +100,7 @@ Consultar `openapi/openapi.yaml` para los contratos completos.
 
 Las reglas horarias se evalúan con la zona configurada en la organización y
 los instantes almacenados en cada `service_day`. No dependen del reloj del
-navegador. Las solicitudes extraordinarias se notifican dentro de la aplicación
+navegador. Las solicitudes tardías de colaciones extra se notifican dentro de la aplicación
 y dejan un correo pendiente. Los reportes genéricos aceptan
 `period=daily|weekly|monthly` y una fecha ISO opcional en `date`.
 
@@ -145,10 +147,57 @@ npm run lint -w backend
 npm run test -w backend
 npm run build -w backend
 npm run verify:supabase -w backend
+npm run verify:worker-provisioning -w backend
+npm run load:test-workers -w backend
 npm run notifications:morning -w backend
 ```
 
 ## Importación y creación de cuentas
+
+La administradora de Securitas puede crear accesos desde la sección
+`Trabajadores` del panel. Puede vincular el correo a una persona importada desde
+la nómina o registrar una persona nueva. La aplicación no crea ni comparte una
+contraseña: el trabajador solicita un enlace de acceso de un solo uso en
+`/login`.
+
+La operación se puede comprobar de extremo a extremo creando una cuenta
+temporal, consultándola mediante la API y eliminándola al terminar:
+
+```bash
+npm run verify:worker-provisioning -w backend
+```
+
+Para simular trabajadores reales que inician sesión, consultan su menú y
+reservan todos los días aún abiertos de la semana, se incluye una prueba de
+carga segura. Por defecto crea 80 cuentas temporales, limita los inicios de
+sesión para respetar la protección antiabuso de Supabase, ejecuta los pedidos
+con concurrencia 10, distribuye las elecciones según los cupos restantes,
+vuelve a comprobar las reservas de cada cuenta y elimina todos los datos de
+prueba:
+
+```bash
+npm run load:test-workers -w backend
+```
+
+La carga se puede ajustar sin editar el script:
+
+```powershell
+$env:LOAD_TEST_WORKERS = "80"
+$env:LOAD_TEST_CONCURRENCY = "10"
+$env:LOAD_TEST_AUTH_INTERVAL_MS = "2100"
+npm run load:test-workers -w backend
+Remove-Item Env:LOAD_TEST_WORKERS, Env:LOAD_TEST_CONCURRENCY, Env:LOAD_TEST_AUTH_INTERVAL_MS
+```
+
+Solo se deben conservar datos temporales de forma deliberada con
+`LOAD_TEST_KEEP_DATA=true`. En el uso normal, la limpieza también elimina restos
+de una ejecución anterior que se haya interrumpido.
+
+Los datos conservados para una demostración se eliminan de forma explícita con:
+
+```bash
+npm run load:cleanup-workers -w backend
+```
 
 La nómina se puede revisar e importar desde el Excel sin guardar el archivo ni
 los nombres dentro del repositorio. El comando es una vista previa mientras no
@@ -183,7 +232,7 @@ Remove-Item Env:PROVISION_USER_PASSWORD
 nunca se imprime ni se guarda en el repositorio. Si la cuenta ya existe, el
 comando actualiza su contraseña solamente cuando se ejecuta con `--apply`.
 
-Roles válidos: `worker`, `company_admin` y `provider_admin`. Revisar la vista
+Roles válidos: `worker`, `company_admin`, `provider_admin` y `delivery`. Revisar la vista
 previa y recién entonces repetir el comando con `--apply`. El aprovisionamiento
 no envía correos. La persona puede usar su contraseña o solicitar un enlace
 desde `/login`.

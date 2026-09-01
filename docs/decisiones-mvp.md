@@ -1,20 +1,22 @@
 # Decisiones del MVP
 
-Última actualización: 29 de agosto de 2026, según las correcciones acordadas con la proveedora.
+Última actualización: 31 de agosto de 2026.
 
 ## Reglas confirmadas
 
-- Existen tres roles: trabajador, administradora Securitas y administradora proveedora.
+- Existen cuatro roles: trabajador, administradora Securitas, administradora proveedora y despacho.
 - El trabajador puede reservar cualquier día publicado de la semana, modificarlo o eliminarlo hasta las 22:00 del día anterior. No puede ingresar pedidos el mismo día.
 - Cada colación elige ensalada, postre o ninguno, y exactamente una opción entre pan y té.
 - Entre las 08:00 y las 11:00 del mismo día solamente la administradora Securitas puede agregar colaciones, sujetas a la disponibilidad informada por la proveedora.
-- Entre las 11:00 y las 12:00 Securitas puede crear una solicitud extraordinaria. La proveedora debe aprobarla o rechazarla e indicar un motivo claro al rechazar.
+- Entre las 11:00 y las 13:00 Securitas puede solicitar una colación extra tardía. La proveedora debe aprobarla o rechazarla e indicar un motivo claro al rechazar.
+- A las 13:00 se cierran por completo las nuevas colaciones del día.
 - La disponibilidad se registra por alternativa de menú y bloquea altas del mismo día cuando se alcanza. Su método de cálculo sigue pendiente de la clienta.
 - La proveedora puede preparar durante la semana actual el menú de la semana siguiente.
-- La proveedora define un único menú diario para capacitaciones.
+- La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores.
 - Marcia Sepúlveda, como administradora Securitas, registra el nombre y la cantidad total de asistentes entre las 00:00 y las 09:00 del mismo día. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
 - No se permiten capacitaciones en fines de semana, feriados, vacaciones o días sin servicio.
-- Ambas administradoras reciben entre las 07:00 y las 08:00 un resumen de las colaciones registradas.
+- La proveedora, Securitas y despacho pueden consultar siempre el resumen diario. Antes de las 13:00 es un conteo en vivo y luego queda como resumen final histórico.
+- El resumen incluye preparaciones, componentes, pan, té, acompañamientos, capacitaciones, extras y la nómina por nombre. La proveedora etiqueta las colaciones; despacho sólo verifica carga y entrega.
 - Las notificaciones se entregan dentro del sistema y por correo. Resend es el proveedor inicial.
 - Ambas administradoras disponen de reportes diarios, semanales y mensuales. El mensual comprende desde el día 1 hasta la fecha seleccionada.
 - Toda fecha visible usa el formato chileno `dd/mm/aaaa`; las horas se calculan

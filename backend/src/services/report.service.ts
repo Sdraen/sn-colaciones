@@ -154,7 +154,7 @@ export function summarizeReportOrders(orders: ReportOrder[]): ReportTotals {
       continue;
     }
     totals.confirmed += order.quantity;
-    totals.byKind[order.kind] += order.quantity;
+    totals.byKind[order.kind === "exceptional" ? "extra" : order.kind] += order.quantity;
     if (order.fulfilled_at) totals.fulfilled += order.quantity;
     if (order.side === "ensalada") totals.sides.salad += order.quantity;
     if (order.side === "postre") totals.sides.dessert += order.quantity;

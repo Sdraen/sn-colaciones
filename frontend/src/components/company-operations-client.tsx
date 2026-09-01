@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   BarChart3,
@@ -34,6 +34,7 @@ import {
   formatChileanDateWithWeekday,
   formatChileanTabDate,
 } from "@/lib/date-format";
+import { isTrainingRegistrationOpen } from "@/lib/business-rules";
 
 type Mode = "training" | "extra";
 type View = "operations" | "summary" | "reports" | "workers";
@@ -42,7 +43,7 @@ const modes = [
   {
     value: "training",
     label: "Capacitación",
-    schedule: "Hasta las 09:00",
+    schedule: "Hasta 09:00 · desde 14:00",
     description: "Registra a todos los alumnos como un solo grupo.",
     icon: GraduationCap,
   },
@@ -87,6 +88,12 @@ export function CompanyOperationsClient({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date(nowIso).getTime());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const activeDay = menu?.days.find((day) => day.id === activeDayId);
   const orders = operations?.orders ?? [];
@@ -99,7 +106,7 @@ export function CompanyOperationsClient({
   const trainingMenu = activeDay?.options.find(
     (option) => option.trainingMenu && option.visible,
   );
-  const now = new Date(nowIso);
+  const now = new Date(currentTime);
   const blocked =
     operations?.calendarBlocks.some(
       (block) =>
@@ -111,10 +118,7 @@ export function CompanyOperationsClient({
   const trainingOpen = Boolean(
     activeDay &&
       !activeDay.disabled &&
-      !blocked &&
-      isWeekday(activeDay.serviceDate) &&
-      currentDate === activeDay.serviceDate &&
-      localMinutes(now) <= 9 * 60 &&
+      isTrainingRegistrationOpen(activeDay.serviceDate, now, blocked) &&
       trainingMenu,
   );
   const extraOpen = Boolean(
@@ -211,10 +215,10 @@ export function CompanyOperationsClient({
 
   return (
     <main className="company-shell-enter page-shell">
-      <div className="company-header-enter flex flex-wrap justify-between gap-4">
-        <div>
+      <div className="company-header-enter flex min-w-0 flex-wrap justify-between gap-4">
+        <div className="min-w-0">
           <p className="eyebrow">Panel empresa</p>
-          <h1 className="mt-2 text-3xl font-black">Administración Securitas</h1>
+          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Administración Securitas</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Gestiona capacitaciones y colaciones extra con sus horarios de aprobación.
           </p>
@@ -230,7 +234,7 @@ export function CompanyOperationsClient({
       </div>
 
       <div
-        className="company-tabs-enter mt-6 inline-flex rounded-xl bg-[var(--surface-muted)] p-1"
+        className="company-tabs-enter mt-6 grid w-full grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-1 md:inline-flex md:w-auto"
         role="tablist"
         aria-label="Secciones de administración Securitas"
       >
@@ -239,7 +243,7 @@ export function CompanyOperationsClient({
           onClick={() => setView("workers")}
           role="tab"
           aria-selected={view === "workers"}
-          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+          className={`company-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
             view === "workers"
               ? "bg-white text-[var(--brand)] shadow-sm"
               : "text-[var(--muted)]"
@@ -252,7 +256,7 @@ export function CompanyOperationsClient({
           onClick={() => setView("summary")}
           role="tab"
           aria-selected={view === "summary"}
-          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+          className={`company-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
             view === "summary" ? "bg-white text-[var(--brand)] shadow-sm" : "text-[var(--muted)]"
           }`}
         >
@@ -263,7 +267,7 @@ export function CompanyOperationsClient({
           onClick={() => setView("operations")}
           role="tab"
           aria-selected={view === "operations"}
-          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+          className={`company-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
             view === "operations"
               ? "bg-white text-[var(--brand)] shadow-sm"
               : "text-[var(--muted)]"
@@ -276,7 +280,7 @@ export function CompanyOperationsClient({
           onClick={() => setView("reports")}
           role="tab"
           aria-selected={view === "reports"}
-          className={`company-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+          className={`company-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
             view === "reports"
               ? "bg-white text-[var(--brand)] shadow-sm"
               : "text-[var(--muted)]"
@@ -304,7 +308,7 @@ export function CompanyOperationsClient({
         </section>
       ) : (
         <section className="company-panel-enter mt-7">
-          <div className="company-day-tabs flex gap-2 overflow-x-auto pb-1">
+          <div className="company-day-tabs mobile-scroll-tabs flex gap-2 overflow-x-auto pb-1">
             {menu.days.map((day) => (
               <button
                 key={day.id}
@@ -315,7 +319,7 @@ export function CompanyOperationsClient({
                   setError("");
                 }}
                 aria-pressed={day.id === activeDayId}
-                className={`company-tab min-w-36 rounded-xl border px-4 py-2.5 font-bold ${
+                className={`company-tab min-w-32 snap-start rounded-xl border px-3 py-2.5 font-bold sm:min-w-36 sm:px-4 ${
                   day.id === activeDayId
                     ? "border-[var(--brand)] bg-[var(--brand)] text-white"
                     : "border-[var(--line)] bg-white"
@@ -685,14 +689,9 @@ function EmptyState({ text }: { text: string }) {
 function closedWindowMessage(mode: Mode, blocked: boolean) {
   if (blocked) return "La fecha está bloqueada por feriado, vacaciones o día sin servicio.";
   if (mode === "training") {
-    return "Las capacitaciones se registran el mismo día hasta las 09:00.";
+    return "Puedes registrar fechas actuales o futuras hasta las 09:00 y nuevamente desde las 14:00.";
   }
   return "Las colaciones extra abren a las 08:00 y cierran por completo a las 13:00.";
-}
-
-function isWeekday(date: string) {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  return day >= 1 && day <= 5;
 }
 
 function localDate(date: Date) {
@@ -704,16 +703,6 @@ function localDate(date: Date) {
   }).format(date);
 }
 
-function localMinutes(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Santiago",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return Number(values.hour) * 60 + Number(values.minute);
-}
 
 function statusLabel(status: ExceptionDto["status"]) {
   return status === "pending" ? "Pendiente" : status === "approved" ? "Aprobada" : "Rechazada";

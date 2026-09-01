@@ -174,15 +174,15 @@ export function WorkerOrdersClient({
       <header className="flex flex-wrap items-start justify-between gap-5">
         <div>
           <p className="eyebrow">Solicitud semanal</p>
-          <h1 className="mt-2 text-3xl font-black">Elige tus almuerzos</h1>
+          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Elige tus almuerzos</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Semana del {formatChileanDate(initialData.menuWeek.startsOn)}. Puedes
             reservar uno o varios días.
           </p>
         </div>
-        <span className="card flex items-center gap-3 px-4 py-3 text-sm font-bold">
-          <UserRound size={18} aria-hidden="true" />
-          {userName}
+        <span className="card flex max-w-full min-w-0 items-center gap-3 px-4 py-3 text-sm font-bold">
+          <UserRound size={18} className="shrink-0" aria-hidden="true" />
+          <span className="truncate">{userName}</span>
         </span>
       </header>
 
@@ -213,7 +213,7 @@ export function WorkerOrdersClient({
       </section>
 
       <div
-        className="mt-5 flex gap-2 overflow-x-auto pb-2"
+        className="mobile-scroll-tabs mt-5 flex gap-2 overflow-x-auto pb-2"
         role="tablist"
         aria-label="Días de la semana"
       >
@@ -229,7 +229,7 @@ export function WorkerOrdersClient({
               aria-selected={selected}
               aria-controls="worker-order-panel"
               onClick={() => openDay(day.id)}
-              className={`focus-ring min-w-36 rounded-2xl border px-4 py-3 text-left transition duration-200 ${
+              className={`focus-ring min-w-32 snap-start rounded-2xl border px-3 py-3 text-left transition duration-200 sm:min-w-36 sm:px-4 ${
                 selected
                   ? "border-[var(--brand)] bg-[var(--brand)] text-white shadow-md"
                   : "border-[var(--line)] bg-white hover:-translate-y-0.5 hover:border-[var(--brand)]"

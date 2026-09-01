@@ -57,6 +57,11 @@ bajo el nombre colación extra, separa el menú opcional de capacitaciones,
 incorpora fruta/postre, bebida y observaciones, y agrega el rol de despacho con
 acceso de sólo lectura al resumen diario.
 
+Luego ejecutar `supabase/migrations/0007_training_registration_windows.sql`.
+Esta corrección permite registrar capacitaciones para fechas hábiles actuales o
+futuras hasta las 09:00 y nuevamente desde las 14:00, manteniendo los bloqueos
+por feriados, vacaciones y días sin servicio.
+
 ## 3. Estado y pendientes antes de producción
 
 - Las migraciones `0001` a `0004` ya fueron ejecutadas y verificadas en el proyecto remoto.

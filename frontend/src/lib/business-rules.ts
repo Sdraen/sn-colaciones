@@ -66,13 +66,12 @@ export function isWeekday(isoDate: string) {
 export function isTrainingRegistrationOpen(
   serviceDate: string,
   now = new Date(),
+  blocked = false,
 ) {
+  if (blocked || !isWeekday(serviceDate)) return false;
   const current = chileDateTime(now);
-  return (
-    isWeekday(serviceDate) &&
-    current.date === serviceDate &&
-    current.minutes <= 9 * 60
-  );
+  if (serviceDate < current.date) return false;
+  return current.minutes <= 9 * 60 || current.minutes >= 14 * 60;
 }
 
 export const bookingPhaseCopy: Record<

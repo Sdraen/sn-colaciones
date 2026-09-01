@@ -177,6 +177,7 @@ paths:
     post:
       tags: [Securitas]
       summary: Crea atómicamente una capacitación y su pedido grupal
+      description: Permite fechas hábiles actuales o futuras hasta las 09:00 y nuevamente desde las 14:00 en America/Santiago.
       requestBody:
         required: true
         content:

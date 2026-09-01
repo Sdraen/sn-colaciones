@@ -33,7 +33,7 @@ const domainErrors: Record<string, { status: number; message: string }> = {
   TRAINING_DATE_BLOCKED: { status: 409, message: "No se permiten capacitaciones en esta fecha" },
   TRAINING_MENU_REQUIRED: { status: 409, message: "La proveedora todavía no ha definido el menú de capacitación para ese día" },
   TRAINING_SESSION_MISMATCH: { status: 409, message: "La capacitación no corresponde al día seleccionado" },
-  TRAINING_WINDOW_CLOSED: { status: 409, message: "Las capacitaciones se registran el mismo día entre las 00:00 y las 09:00" },
+  TRAINING_WINDOW_CLOSED: { status: 409, message: "Las capacitaciones para fechas actuales o futuras se registran hasta las 09:00 y desde las 14:00" },
   WORKER_ROLE_REQUIRED: { status: 403, message: "Esta acción requiere el rol de trabajador" },
 };
 

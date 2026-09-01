@@ -74,18 +74,18 @@ export function OperationsReports({
       <div className="provider-report-header flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Reportes de colaciones</p>
-          <h2 className="mt-1 text-2xl font-black">Historial operacional</h2>
+          <h2 className="mt-1 text-xl font-black sm:text-2xl">Historial operacional</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Período {formatChileanDate(report.range.from)} al {formatChileanDate(report.range.to)}
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
             Período
             <select
               value={period}
               onChange={(event) => setPeriod(event.target.value as OrdersReportDto["period"])}
-              className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold text-[var(--foreground)]"
+              className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold text-[var(--foreground)]"
             >
               <option value="daily">Diario</option>
               <option value="weekly">Semanal</option>
@@ -103,21 +103,21 @@ export function OperationsReports({
               value={dateText}
               onChange={(event) => setDateText(event.target.value)}
               aria-invalid={Boolean(error && !parseChileanDate(dateText))}
-              className="min-h-11 w-36 rounded-xl border border-[var(--line)] bg-white px-3 text-sm text-[var(--foreground)]"
+              className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm text-[var(--foreground)] sm:w-36"
             />
           </label>
           <button
             type="button"
             onClick={loadReport}
             disabled={loading}
-            className="provider-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white"
+            className="provider-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 font-extrabold text-white sm:px-4"
           >
             <Search size={17} /> {loading ? "Consultando…" : "Consultar"}
           </button>
           <button
             type="button"
             onClick={downloadCsv}
-            className="provider-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--herb)] px-4 font-extrabold text-white"
+            className="provider-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-3 font-extrabold text-white sm:px-4"
           >
             <Download size={17} /> CSV
           </button>
@@ -142,7 +142,7 @@ export function OperationsReports({
           <Metric label="Té" value={report.totals.tea} />
           <Metric label="Capacitaciones" value={report.totals.byKind.training} />
         </div>
-        <div className="provider-table-enter card overflow-x-auto">
+        <div className="provider-table-enter mobile-scroll-tabs card max-w-full overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
             <tr>

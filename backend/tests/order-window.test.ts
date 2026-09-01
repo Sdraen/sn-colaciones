@@ -32,7 +32,7 @@ describe("reglas horarias de colaciones", () => {
     );
   });
 
-  it("limita la carga de capacitaciones al mismo día entre 00:00 y 09:00", () => {
+  it("permite capacitaciones actuales o futuras hasta las 09:00 y desde las 14:00", () => {
     expect(
       isTrainingWindowOpen(serviceDate, new Date("2026-08-26T08:59:00-04:00")),
     ).toBe(true);
@@ -40,7 +40,19 @@ describe("reglas horarias de colaciones", () => {
       isTrainingWindowOpen(serviceDate, new Date("2026-08-26T09:01:00-04:00")),
     ).toBe(false);
     expect(
+      isTrainingWindowOpen(serviceDate, new Date("2026-08-26T14:00:00-04:00")),
+    ).toBe(true);
+    expect(
       isTrainingWindowOpen(serviceDate, new Date("2026-08-25T08:00:00-04:00")),
+    ).toBe(true);
+    expect(
+      isTrainingWindowOpen(serviceDate, new Date("2026-08-25T10:00:00-04:00")),
+    ).toBe(false);
+    expect(
+      isTrainingWindowOpen(serviceDate, new Date("2026-08-25T14:00:00-04:00")),
+    ).toBe(true);
+    expect(
+      isTrainingWindowOpen(serviceDate, new Date("2026-08-27T08:00:00-04:00")),
     ).toBe(false);
   });
 

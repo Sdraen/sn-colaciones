@@ -223,7 +223,7 @@ export function WorkerManagement({
             {filteredWorkers.length ? (
               <ul className="divide-y divide-[var(--line)]">
                 {filteredWorkers.map((worker) => (
-                  <li key={worker.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <li key={worker.id} className="flex flex-col items-start justify-between gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
                     <div className="min-w-0">
                       <p className="truncate font-extrabold">{worker.fullName}</p>
                       <p className="mt-1 truncate text-xs text-[var(--muted)]">

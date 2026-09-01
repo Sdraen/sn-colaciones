@@ -13,7 +13,7 @@
 - La disponibilidad se registra por alternativa de menú y bloquea altas del mismo día cuando se alcanza. Su método de cálculo sigue pendiente de la clienta.
 - La proveedora puede preparar durante la semana actual el menú de la semana siguiente.
 - La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores.
-- Marcia Sepúlveda, como administradora Securitas, registra el nombre y la cantidad total de asistentes entre las 00:00 y las 09:00 del mismo día. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
+- Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana. El ingreso está habilitado hasta las 09:00 y vuelve a abrir desde las 14:00; entre ambos horarios permanece cerrado. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
 - No se permiten capacitaciones en fines de semana, feriados, vacaciones o días sin servicio.
 - La proveedora, Securitas y despacho pueden consultar siempre el resumen diario. Antes de las 13:00 es un conteo en vivo y luego queda como resumen final histórico.
 - El resumen incluye preparaciones, componentes, pan, té, acompañamientos, capacitaciones, extras y la nómina por nombre. La proveedora etiqueta las colaciones; despacho sólo verifica carga y entrega.

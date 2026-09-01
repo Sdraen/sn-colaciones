@@ -104,6 +104,10 @@ navegador. Las solicitudes tardías de colaciones extra se notifican dentro de l
 y dejan un correo pendiente. Los reportes genéricos aceptan
 `period=daily|weekly|monthly` y una fecha ISO opcional en `date`.
 
+Las capacitaciones pueden registrarse para fechas hábiles actuales o futuras de
+la semana hasta las 09:00 y nuevamente desde las 14:00. Entre las 09:00 y las
+14:00 el ingreso permanece cerrado; los bloqueos de calendario siguen vigentes.
+
 ## Notificaciones y resumen matinal
 
 Los comandos son simulaciones mientras no se agregue `--apply`:

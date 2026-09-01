@@ -130,10 +130,10 @@ export function ProviderOperationsClient({
 
   return (
     <main className="page-shell provider-shell-enter">
-      <div className="provider-header-enter flex flex-wrap justify-between gap-4">
-        <div>
+      <div className="provider-header-enter flex min-w-0 flex-wrap justify-between gap-4">
+        <div className="min-w-0">
           <p className="eyebrow">Panel proveedor</p>
-          <h1 className="mt-2 text-3xl font-black">Gestión de colaciones</h1>
+          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Gestión de colaciones</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Producción real, menú de la próxima semana y reportes.
           </p>
@@ -143,7 +143,11 @@ export function ProviderOperationsClient({
         </span>
       </div>
 
-      <div className="provider-tabs-enter mt-6 inline-flex flex-wrap rounded-xl bg-[var(--surface-muted)] p-1">
+      <div
+        className="provider-tabs-enter mt-6 grid w-full grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-1 md:inline-flex md:w-auto"
+        role="tablist"
+        aria-label="Secciones de administración proveedora"
+      >
         {(
           [
             ["production", "Producción", LayoutDashboard],
@@ -155,12 +159,14 @@ export function ProviderOperationsClient({
           <button
             key={value}
             type="button"
+            role="tab"
+            aria-selected={view === value}
             onClick={() => {
               setView(value);
               setMessage("");
               setError("");
             }}
-            className={`provider-tab inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold ${
+            className={`provider-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
               view === value
                 ? "bg-white text-[var(--brand)] shadow-sm"
                 : "text-[var(--muted)]"
@@ -252,13 +258,13 @@ function ProductionView({
 
   return (
     <section className="provider-panel-enter mt-6">
-      <div className="provider-day-tabs flex gap-2 overflow-x-auto pb-1">
+      <div className="provider-day-tabs mobile-scroll-tabs flex gap-2 overflow-x-auto pb-1">
         {operations.menu.days.map((day) => (
           <button
             key={day.id}
             type="button"
             onClick={() => onSelectDay(day.id)}
-            className={`provider-tab min-w-36 rounded-xl border px-4 py-2.5 font-bold ${
+            className={`provider-tab min-w-32 snap-start rounded-xl border px-3 py-2.5 font-bold sm:min-w-36 sm:px-4 ${
               activeDayId === day.id ? "bg-[var(--brand)] text-white" : "bg-white"
             }`}
           >
@@ -271,8 +277,8 @@ function ProductionView({
         <Metric label="Pan" value={summary.bread} />
         <Metric label="Té" value={summary.tea} />
       </div>
-      <div className="provider-stagger-grid mt-5 grid gap-5 lg:grid-cols-[1fr_.9fr]">
-        <div className="provider-card-motion card p-5">
+      <div className="provider-stagger-grid mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[1fr_.9fr]">
+        <div className="provider-card-motion card min-w-0 p-5">
           <h2 className="text-xl font-black">Disponibilidad del día</h2>
           <div className="provider-list-enter mt-4 space-y-3">
             {activeDay?.options.map((option) => (
@@ -285,7 +291,7 @@ function ProductionView({
             ))}
           </div>
         </div>
-        <div className="provider-card-motion card p-5">
+        <div className="provider-card-motion card min-w-0 p-5">
           <h2 className="text-xl font-black">Solicitudes pendientes</h2>
           <div className="provider-list-enter mt-4 space-y-4">
             {pending.length ? (
@@ -341,8 +347,8 @@ function AvailabilityRow({
   const [visible, setVisible] = useState(option.visible);
 
   return (
-    <div className="provider-list-item grid gap-3 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-[1fr_.6fr_auto]">
-      <div>
+    <div className="provider-list-item grid min-w-0 gap-3 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-[1fr_.6fr_auto]">
+      <div className="min-w-0">
         <strong>{option.label}</strong>
         <p className="text-xs text-[var(--muted)]">{option.description}</p>
       </div>
@@ -351,7 +357,7 @@ function AvailabilityRow({
         min="0"
         value={capacity}
         onChange={(event) => setCapacity(event.target.value)}
-        className="min-h-10 rounded-xl border border-[var(--line)] px-3"
+        className="min-h-10 min-w-0 w-full rounded-xl border border-[var(--line)] px-3"
       />
       <button
         type="button"

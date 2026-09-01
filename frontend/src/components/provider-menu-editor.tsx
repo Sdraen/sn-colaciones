@@ -216,7 +216,7 @@ export function ProviderMenuEditor({
   return (
     <section className="menu-editor-enter mt-6 space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="eyebrow">Semana del {formatChileanDate(startsOn)}</p>
           <h2 className="mt-1 text-2xl font-black">Menú de la próxima semana</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
@@ -230,7 +230,7 @@ export function ProviderMenuEditor({
             type="button"
             onClick={copyPreviousWeek}
             disabled={saving}
-            className="menu-action inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 text-sm font-extrabold text-[var(--ink)] shadow-sm hover:bg-[var(--surface-muted)] disabled:opacity-50"
+            className="menu-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 text-sm font-extrabold text-[var(--ink)] shadow-sm hover:bg-[var(--surface-muted)] disabled:opacity-50 sm:w-auto"
           >
             <Copy size={17} /> Copiar semana anterior
           </button>
@@ -284,7 +284,7 @@ export function ProviderMenuEditor({
                 }}
                 aria-expanded={expanded}
                 disabled={published}
-                className="group grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] disabled:cursor-default disabled:hover:bg-white sm:px-5"
+                className="group grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] disabled:cursor-default disabled:hover:bg-white sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-full transition-all duration-300 ${
@@ -304,7 +304,7 @@ export function ProviderMenuEditor({
                   </span>
                 </span>
                 {!published ? (
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-sm font-extrabold text-[var(--brand)] transition-transform duration-200 group-hover:translate-x-0.5">
+                  <span className="col-span-2 ml-11 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-sm font-extrabold text-[var(--brand)] transition-transform duration-200 group-hover:translate-x-0.5 sm:col-span-1 sm:ml-0">
                     <Pencil size={15} /> {complete ? "Editar" : "Agregar"}
                   </span>
                 ) : null}
@@ -335,14 +335,14 @@ export function ProviderMenuEditor({
       </div>
 
       {!published ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="w-full sm:w-auto">
             {menu && !confirmingDelete ? (
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
                 disabled={saving}
-                className="menu-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)] hover:bg-red-100 disabled:opacity-50"
+                className="menu-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)] hover:bg-red-100 disabled:opacity-50 sm:w-auto"
               >
                 <Trash2 size={17} /> Eliminar borrador
               </button>
@@ -368,12 +368,12 @@ export function ProviderMenuEditor({
               </div>
             ) : null}
           </div>
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <button
               type="button"
               onClick={saveDraft}
               disabled={saving || !dirty}
-              className="menu-action inline-flex min-h-12 items-center gap-2 rounded-xl bg-[var(--brand)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
+              className="menu-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
             >
               <Save size={18} /> Guardar borrador
             </button>
@@ -381,7 +381,7 @@ export function ProviderMenuEditor({
               type="button"
               onClick={publishWeek}
               disabled={saving || !weekComplete}
-              className="menu-action inline-flex min-h-12 items-center gap-2 rounded-xl bg-[var(--herb)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
+              className="menu-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
             >
               <Send size={18} /> {dirty || !menu ? "Guardar y publicar" : "Publicar semana"}
             </button>

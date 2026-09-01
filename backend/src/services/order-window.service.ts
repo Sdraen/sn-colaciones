@@ -67,5 +67,6 @@ export function isTrainingWindowOpen(
 ) {
   if (!isTrainingDateAllowed(serviceDate, blocked)) return false;
   const current = dateTimeInChile(now);
-  return current.date === serviceDate && current.minutes <= 9 * 60;
+  if (serviceDate < current.date) return false;
+  return current.minutes <= 9 * 60 || current.minutes >= 14 * 60;
 }

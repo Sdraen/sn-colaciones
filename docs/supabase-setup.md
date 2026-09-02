@@ -64,16 +64,17 @@ por feriados, vacaciones y días sin servicio.
 
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0004` ya fueron ejecutadas y verificadas en el proyecto remoto.
-- La migración `0006` debe ejecutarse y verificarse antes de probar estas funciones con datos reales.
+- Las migraciones `0001` a `0007` ya fueron ejecutadas en el proyecto remoto.
+- Antes de la puesta en producción se debe verificar que el esquema remoto y las
+  funciones RPC correspondan a la versión actual de esas migraciones.
 - Se creó la organización `Securitas Concepción` y se importaron 78 trabajadores
   desde la hoja revisada, sin cuentas ni correos asociados.
 - El acceso OTP del frontend está implementado con creación pública deshabilitada.
 - Crear los perfiles iniciales cuando se confirmen los correos de las administradoras.
 - Deshabilitar además el registro público desde la configuración de Supabase Auth.
 - Exigir MFA TOTP para las administradoras.
-- Configurar SMTP de producción; Resend es la alternativa inicial.
-- Verificar un dominio en Resend y configurar `RESEND_API_KEY`, `EMAIL_FROM` y `APP_URL` sólo en el backend.
+- Configurar Resend como SMTP de producción para los correos generados por Supabase Auth.
+- Verificar un dominio en Resend y configurar `RESEND_API_KEY`, `EMAIL_FROM` y `APP_URL` sólo en el backend. Seguir `docs/configuracion-resend.md` y copiar las plantillas de `supabase/templates` en el Dashboard.
 - Programar `npm run notifications:morning -w backend -- --apply` entre las 07:00 y las 08:00 de Santiago. Sin `--apply`, el comando sólo simula.
 - Probar las políticas RLS con usuarios de cada rol.
 - Generar los tipos TypeScript desde el esquema remoto.

@@ -127,6 +127,10 @@ npm run notifications:morning -w backend -- --apply
 
 Resend usa una clave idempotente por notificación, por lo que un reintento no
 duplica el correo. El remitente debe pertenecer a un dominio verificado.
+Los mensajes se generan en HTML y texto plano con la plantilla de React Email
+ubicada en `src/templates/emails`. La configuración completa de Resend API,
+Supabase SMTP y las plantillas de acceso se documenta en
+`docs/configuracion-resend.md`.
 
 ## Respuestas de error
 

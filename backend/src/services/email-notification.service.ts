@@ -1,6 +1,8 @@
+import { render } from "react-email";
 import { Resend } from "resend";
 import { getEmailEnv } from "../config/env.js";
 import { createAdminSupabaseClient } from "../lib/supabase.js";
+import { NotificationEmail } from "../templates/emails/notification-email.js";
 
 interface DispatchEmailNotificationsInput {
   dryRun?: boolean;
@@ -62,17 +64,18 @@ export async function dispatchPendingEmailNotifications(
       continue;
     }
 
+    const emailContent = await renderNotificationEmail({
+      title: notification.title,
+      message: notification.body,
+      appUrl: emailConfig.APP_URL,
+    });
     const { error: sendError } = await resend.emails.send(
       {
         from: emailConfig.EMAIL_FROM,
         to: recipientEmail,
         subject: notification.title,
-        text: `${notification.body}\n\nRevisa el sistema: ${emailConfig.APP_URL}`,
-        html: renderNotificationEmail({
-          title: notification.title,
-          message: notification.body,
-          appUrl: emailConfig.APP_URL,
-        }),
+        text: emailContent.text,
+        html: emailContent.html,
       },
       { idempotencyKey: `notification-${notification.id}` },
     );
@@ -103,26 +106,15 @@ export async function dispatchPendingEmailNotifications(
   }
 }
 
-export function renderNotificationEmail(input: {
+export async function renderNotificationEmail(input: {
   title: string;
   message: string;
   appUrl: string;
 }) {
-  const title = escapeHtml(input.title);
-  const message = escapeHtml(input.message);
-  const appUrl = escapeHtml(input.appUrl);
-
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#fff7ed;font-family:Arial,sans-serif;color:#292524"><div style="max-width:560px;margin:32px auto;background:#fff;border:1px solid #fed7aa;border-radius:18px;padding:28px"><p style="margin:0 0 8px;color:#15803d;font-weight:700">SN Colaciones</p><h1 style="margin:0 0 16px;font-size:24px">${title}</h1><p style="line-height:1.6">${message}</p><a href="${appUrl}" style="display:inline-block;margin-top:18px;background:#ea580c;color:#fff;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:700">Abrir sistema</a></div></body></html>`;
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"]/g, (character) => {
-    const entities: Record<string, string> = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-    };
-    return entities[character] ?? character;
-  });
+  const template = NotificationEmail(input);
+  const [html, text] = await Promise.all([
+    render(template),
+    render(template, { plainText: true }),
+  ]);
+  return { html, text };
 }

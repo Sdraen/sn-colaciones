@@ -33,6 +33,9 @@ La primera versión debe guardar todos los avisos dentro de `notifications`. El 
 
 Resend puede enviar los correos de la aplicación y también puede configurarse como SMTP de Supabase para correos de autenticación. Antes de activarlo se necesita verificar un dominio y definir las direcciones remitentes.
 
+La guía de activación, los remitentes recomendados y la relación de plantillas se
+encuentran en `docs/configuracion-resend.md`.
+
 ## Implementación actual
 
 - El frontend usa Supabase Auth mediante cookies SSR y flujo PKCE.
@@ -54,6 +57,11 @@ Resend puede enviar los correos de la aplicación y también puede configurarse 
 - `npm run verify:worker-provisioning -w backend` comprueba la creación y la
   limpieza de una cuenta temporal. `npm run load:test-workers -w backend`
   simula por defecto 80 sesiones y pedidos, y elimina la información generada.
+- Los avisos operativos se renderizan con React Email en formato HTML y texto
+  plano, y se envían con Resend usando una clave idempotente por notificación.
+- Los enlaces mágicos, invitaciones, recuperaciones y avisos de seguridad siguen
+  siendo generados por Supabase Auth. Para entregarlos con Resend se debe activar
+  SMTP personalizado y copiar las plantillas versionadas en `supabase/templates`.
 
 Las cuentas de prueba deben usar correos individuales, rotar sus contraseñas o
 eliminarse antes de habilitar el sistema en producción.

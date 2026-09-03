@@ -13,6 +13,16 @@ export interface CompanyOperationsDto { menuWeek: { id: string; startsOn: string
 export interface ReportTotalsDto { requested: number; confirmed: number; cancelled: number; fulfilled: number; byKind: Record<OrderKind, number>; sides: { salad: number; dessert: number; none: number }; bread: number; tea: number; }
 export interface OrdersReportDto { period: "daily" | "weekly" | "monthly"; range: { from: string; to: string }; totals: ReportTotalsDto; days: Array<{ serviceDayId: string; serviceDate: string; totals: ReportTotalsDto; menuBreakdown: Array<{ menuOptionId: string; label: string; description: string; confirmed: number }> }>; generatedAt: string; }
 export interface NotificationDto { id: string; channel: "in_app" | "email"; eventType: string; title: string; message: string; relatedEntityType: string | null; relatedEntityId: string | null; deliveredAt: string | null; readAt: string | null; createdAt: string; }
+export interface DeliveryTrackingDto {
+  serviceDayId: string;
+  arrivedAt: string | null;
+  arrivedBy: string | null;
+  deliveredAt: string | null;
+  deliveredBy: string | null;
+  receiptConfirmedAt: string | null;
+  receiptConfirmedBy: string | null;
+  updatedAt: string | null;
+}
 export interface ProviderOrderDto extends OrderDto { beneficiary: { id: string | null; fullName: string; employeeCode: string | null; type: string }; training: { id: string; name: string; expectedAttendees: number } | null; exception: { id: string; reason: string; status: string; resolutionNote: string | null } | null; }
 export interface ProviderOperationsDto { menu: MenuWeekDto; extraRequests: ExceptionDto[]; orders: ProviderOrderDto[]; }
 export interface DailySummaryDto {
@@ -22,6 +32,7 @@ export interface DailySummaryDto {
   generatedAt: string;
   disabled: boolean;
   pendingExtraRequests: number;
+  delivery: DeliveryTrackingDto;
   totals: {
     colations: number;
     delivered: number;

@@ -6,6 +6,7 @@ import {
   postExtraOrder,
   postTrainingOrder,
   postWorker,
+  patchServiceReceipt,
 } from "../controllers/company.controller.js";
 import { requireRole } from "../middleware/require-role.js";
 import { validateRequest } from "../middleware/validate-request.js";
@@ -19,6 +20,7 @@ import {
   createWorkerAccountRequestSchema,
   listWorkerAccountsRequestSchema,
 } from "../schemas/worker-admin.schema.js";
+import { confirmServiceReceiptRequestSchema } from "../schemas/delivery.schema.js";
 
 export const companyRouter = Router();
 
@@ -52,4 +54,9 @@ companyRouter.post(
   "/extras",
   validateRequest(createExtraRequestSchema),
   postExtraOrder,
+);
+companyRouter.patch(
+  "/service-days/:serviceDayId/receipt",
+  validateRequest(confirmServiceReceiptRequestSchema),
+  patchServiceReceipt,
 );

@@ -7,18 +7,17 @@ en etapa de piloto funcional, pero aún no se considera listo para producción.
 
 ### 1. Confirmar las reglas pendientes con la clienta
 
-- Cómo calcula la disponibilidad diaria.
-- Cómo se informan feriados, vacaciones y días sin servicio.
-- Quién confirma finalmente que una colación fue entregada.
+- Confirmar si existe servicio en feriados y vacaciones, y cómo informa
+  Securitas la disponibilidad reducida para esas fechas.
 - Correos definitivos de cada rol.
 
 ### 2. Cerrar dos posibles vacíos detectados
 
-- El backend permite gestionar feriados y vacaciones, pero falta una interfaz
-  sencilla para hacerlo.
-- El backend puede marcar pedidos como entregados, pero debe definirse quién lo
-  hará y desde qué pantalla. Esto es necesario para que los reportes de
-  `entregadas` sean reales.
+- Una vez confirmada la regla de feriados y vacaciones, ajustar el calendario y
+  agregar una interfaz sencilla para gestionarlo.
+- Realizar la prueba funcional de llegada y término de entrega por despacho y
+  de confirmación final por Securitas. La migración `0008` ya fue ejecutada y
+  verificada en el proyecto remoto.
 
 ### 3. Realizar una prueba completa con datos reales
 
@@ -27,6 +26,8 @@ en etapa de piloto funcional, pero aún no se considera listo para producción.
 - Securitas registra capacitaciones y extras.
 - La proveedora aprueba o rechaza extras.
 - Delivery consulta e imprime el resumen.
+- Delivery registra la llegada y el término de la entrega; Securitas confirma
+  la recepción completa.
 - Ambas administradoras revisan reportes.
 
 ### 4. Antes de producción
@@ -38,7 +39,7 @@ en etapa de piloto funcional, pero aún no se considera listo para producción.
 - Desplegar frontend y backend.
 - Configurar respaldos, monitoreo y envío automático de correos.
 - Hacer una prueba móvil real.
-- Mantener documentado y verificar que las migraciones `0001` a `0007` fueron
+- Mantener documentado y verificar que las migraciones `0001` a `0008` fueron
   ejecutadas correctamente en el proyecto remoto.
 
 ## Clasificación de solicitudes durante la reunión

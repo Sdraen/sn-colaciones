@@ -16,12 +16,6 @@ export const weeklyReportRequestSchema = z.object({
   query: z.object({ startsOn: isoDateSchema.optional() }),
 });
 
-export const markFulfillmentRequestSchema = z.object({
-  body: z.object({ delivered: z.boolean() }),
-  params: z.object({ orderId: uuidSchema }),
-  query: z.object({}),
-});
-
 export const resolveExceptionRequestSchema = z
   .object({
     body: z.object({
@@ -79,7 +73,6 @@ export const deleteCalendarBlockRequestSchema = z.object({
 
 export type UpdateAvailabilityRequest = z.infer<typeof updateAvailabilityRequestSchema>;
 export type WeeklyReportRequest = z.infer<typeof weeklyReportRequestSchema>;
-export type MarkFulfillmentRequest = z.infer<typeof markFulfillmentRequestSchema>;
 export type ResolveExceptionRequest = z.infer<typeof resolveExceptionRequestSchema>;
 export type ListCalendarBlocksRequest = z.infer<typeof listCalendarBlocksRequestSchema>;
 export type CreateCalendarBlockRequest = z.infer<typeof createCalendarBlockRequestSchema>;

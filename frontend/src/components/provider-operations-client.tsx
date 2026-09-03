@@ -192,7 +192,7 @@ export function ProviderOperationsClient({
       ) : null}
 
       {view === "summary" ? (
-        <div className="mt-7"><DailySummary initialSummary={initialSummary} /></div>
+        <div className="mt-7"><DailySummary initialSummary={initialSummary} viewerRole="provider_admin" /></div>
       ) : view === "reports" ? (
         <OperationsReports endpoint="/api/v1/provider/reports" initialReport={initialReport} />
       ) : view === "menu" ? (

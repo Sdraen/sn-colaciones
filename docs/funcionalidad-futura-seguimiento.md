@@ -2,7 +2,9 @@
 
 ## Estado de la propuesta
 
-Propuesta aprobada conceptualmente para una etapa futura. **No implementar todavía.**
+La preparación animada sigue propuesta para una etapa futura. El seguimiento
+operativo de llegada, término de entrega y recepción se implementa por separado
+en la migración `0008`.
 
 El objetivo es que trabajadores y administradoras puedan conocer el avance de
 las colaciones del día sin tener que consultar directamente a la proveedora.
@@ -25,10 +27,11 @@ estados deben representar etapas operativas válidas para cualquier menú.
 
 - **Administradora proveedora:** puede avanzar desde `Pedidos cerrados` hasta
   `Listo para despacho`.
-- **Usuario delivery:** puede avanzar desde `Listo para despacho` a `En camino`
-  y finalmente a `Entregado`.
-- **Administradora Securitas:** puede consultar el estado, la hora de cada cambio
-  y el resumen del día, pero no modificar etapas de cocina o despacho.
+- **Usuario delivery:** en la funcionalidad actual registra su llegada a
+  Securitas y el término de la entrega. En una fase futura podrá reflejar además
+  `En camino` dentro del flujo animado completo.
+- **Administradora Securitas:** consulta el estado y confirma la recepción
+  completa después de que despacho termina la entrega.
 - **Trabajador:** puede consultar el estado de su propia colación, sin acceder a
   datos personales ni pedidos de otros trabajadores.
 

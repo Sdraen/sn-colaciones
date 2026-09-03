@@ -291,7 +291,7 @@ export function CompanyOperationsClient({
       </div>
 
       {view === "summary" ? (
-        <div className="mt-7"><DailySummary initialSummary={initialSummary} /></div>
+        <div className="mt-7"><DailySummary initialSummary={initialSummary} viewerRole="company_admin" /></div>
       ) : view === "workers" ? (
         <WorkerManagement initialWorkers={initialWorkers} />
       ) : view === "reports" ? (

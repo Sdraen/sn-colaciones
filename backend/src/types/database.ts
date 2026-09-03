@@ -199,6 +199,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["service_days"]["Insert"]>;
         Relationships: Relationship[];
       };
+      service_delivery_tracking: {
+        Row: {
+          service_day_id: string;
+          organization_id: string;
+          arrived_at: string | null;
+          arrived_by: string | null;
+          delivered_at: string | null;
+          delivered_by: string | null;
+          receipt_confirmed_at: string | null;
+          receipt_confirmed_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          service_day_id: string;
+          organization_id: string;
+          arrived_at?: string | null;
+          arrived_by?: string | null;
+          delivered_at?: string | null;
+          delivered_by?: string | null;
+          receipt_confirmed_at?: string | null;
+          receipt_confirmed_by?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["service_delivery_tracking"]["Insert"]>;
+        Relationships: Relationship[];
+      };
       menu_options: {
         Row: {
           id: string;
@@ -382,6 +408,10 @@ export interface Database {
         Args: { target_order_id: string };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };
+      confirm_service_receipt: {
+        Args: { target_service_day_id: string };
+        Returns: Database["public"]["Tables"]["service_delivery_tracking"]["Row"];
+      };
       create_extra_order: {
         Args: {
           target_service_day_id: string;
@@ -420,6 +450,10 @@ export interface Database {
           include_tea: boolean;
         };
         Returns: Database["public"]["Tables"]["exception_requests"]["Row"];
+      };
+      record_delivery_event: {
+        Args: { target_service_day_id: string; event_name: "arrived" | "delivered" };
+        Returns: Database["public"]["Tables"]["service_delivery_tracking"]["Row"];
       };
       publish_menu_week: {
         Args: { target_menu_week_id: string };

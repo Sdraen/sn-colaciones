@@ -53,6 +53,9 @@ Ejecutar en orden:
 3. `0003_confirmed_business_rules.sql`
 4. `0004_backend_rpc_and_guards.sql`
 5. `0005_agreed_operational_corrections.sql`
+6. `0006_delivery_extras_and_training_menu.sql`
+7. `0007_training_registration_windows.sql`
+8. `0008_delivery_tracking_and_receipt.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas por `0004`.
@@ -80,7 +83,9 @@ Authorization: Bearer <supabase-access-token>
 | GET | `/api/v1/company/operations` | Administradora Securitas |
 | POST | `/api/v1/company/training-sessions` | Administradora Securitas |
 | POST | `/api/v1/company/extras` | Administradora Securitas |
+| PATCH | `/api/v1/company/service-days/:serviceDayId/receipt` | Administradora Securitas |
 | GET | `/api/v1/company/reports` | Administradora Securitas |
+| PATCH | `/api/v1/delivery/service-days/:serviceDayId/events` | Despacho |
 | POST | `/api/v1/provider/menu-weeks` | Proveedora |
 | POST | `/api/v1/provider/menu-weeks/copy` | Proveedora |
 | PUT | `/api/v1/provider/menu-weeks/:weekId` | Proveedora |
@@ -91,7 +96,6 @@ Authorization: Bearer <supabase-access-token>
 | PATCH | `/api/v1/provider/menu-options/:menuOptionId/availability` | Proveedora |
 | PATCH | `/api/v1/provider/extra-requests/:requestId` | Proveedora |
 | GET | `/api/v1/summaries/daily` | Proveedora, Securitas y despacho |
-| PATCH | `/api/v1/provider/orders/:orderId/fulfillment` | Proveedora |
 | GET | `/api/v1/provider/operations` | Proveedora |
 | GET | `/api/v1/provider/reports/weekly` | Proveedora |
 | GET | `/api/v1/provider/reports` | Proveedora |
@@ -107,6 +111,11 @@ y dejan un correo pendiente. Los reportes genéricos aceptan
 Las capacitaciones pueden registrarse para fechas hábiles actuales o futuras de
 la semana hasta las 09:00 y nuevamente desde las 14:00. Entre las 09:00 y las
 14:00 el ingreso permanece cerrado; los bloqueos de calendario siguen vigentes.
+
+Despacho registra en orden la llegada a Securitas y el término de la entrega.
+Luego la administradora Securitas confirma la recepción completa. Cada hito usa
+la hora del servidor y queda en auditoría; la confirmación final es la que
+contabiliza los pedidos como entregados en los reportes.
 
 ## Notificaciones y resumen matinal
 

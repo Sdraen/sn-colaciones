@@ -87,25 +87,6 @@ export async function setMenuOptionAvailability(
   };
 }
 
-export async function markOrderFulfillment(
-  supabase: UserDatabaseClient,
-  input: { orderId: string; delivered: boolean },
-) {
-  const { data, error } = await supabase.rpc("mark_order_fulfilled", {
-    target_order_id: input.orderId,
-    delivered: input.delivered,
-  });
-  if (error) throwSupabaseError(error, "No fue posible actualizar la entrega");
-  if (!data) throw new AppError("No se encontró el pedido", 404, "ORDER_NOT_FOUND");
-
-  return {
-    id: data.id,
-    status: data.status,
-    fulfilledAt: data.fulfilled_at,
-    updatedAt: data.updated_at,
-  };
-}
-
 export async function resolveExceptionalRequest(
   supabase: UserDatabaseClient,
   input: {

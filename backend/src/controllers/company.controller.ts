@@ -18,6 +18,8 @@ import {
   createWorkerAccount,
   listWorkerAccounts,
 } from "../services/worker-admin.service.js";
+import type { ConfirmServiceReceiptRequest } from "../schemas/delivery.schema.js";
+import { confirmServiceReceipt } from "../services/delivery.service.js";
 
 export const postTrainingOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -65,4 +67,11 @@ export const postWorker: RequestHandler = async (request, response) => {
     body,
   );
   response.status(201).json({ data: worker });
+};
+
+export const patchServiceReceipt: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params } = getValidatedRequest<ConfirmServiceReceiptRequest>(request);
+  const tracking = await confirmServiceReceipt(supabase, params.serviceDayId);
+  response.status(200).json({ data: tracking });
 };

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppError } from "../errors/app-error.js";
 import { throwSupabaseError } from "../lib/supabase-error.js";
 import type { Database, OrderKind, SideChoice } from "../types/database.js";
+import { serializeDeliveryTracking } from "./delivery.service.js";
 
 type UserDatabaseClient = SupabaseClient<Database>;
 
@@ -17,7 +18,7 @@ export async function getDailySummary(
   if (dayError) throwSupabaseError(dayError, "No fue posible consultar el día de servicio");
   if (!day) throw new AppError("No existe un día de servicio para la fecha indicada", 404, "SERVICE_DAY_NOT_FOUND");
 
-  const [optionsResult, ordersResult, pendingResult] = await Promise.all([
+  const [optionsResult, ordersResult, pendingResult, trackingResult] = await Promise.all([
     supabase
       .from("menu_options")
       .select("id, label, description, dessert, beverage, notes")
@@ -32,10 +33,16 @@ export async function getDailySummary(
       .select("id")
       .eq("service_day_id", day.id)
       .eq("status", "pending"),
+    supabase
+      .from("service_delivery_tracking")
+      .select("service_day_id, organization_id, arrived_at, arrived_by, delivered_at, delivered_by, receipt_confirmed_at, receipt_confirmed_by, updated_at")
+      .eq("service_day_id", day.id)
+      .maybeSingle(),
   ]);
   if (optionsResult.error) throwSupabaseError(optionsResult.error, "No fue posible consultar el menú del día");
   if (ordersResult.error) throwSupabaseError(ordersResult.error, "No fue posible consultar las colaciones del día");
   if (pendingResult.error) throwSupabaseError(pendingResult.error, "No fue posible consultar las solicitudes pendientes");
+  if (trackingResult.error) throwSupabaseError(trackingResult.error, "No fue posible consultar el seguimiento del despacho");
 
   const orders = ordersResult.data ?? [];
   const dinerIds = unique(orders.map((order) => order.diner_id));
@@ -111,6 +118,18 @@ export async function getDailySummary(
     generatedAt: new Date().toISOString(),
     disabled: day.disabled,
     pendingExtraRequests: pendingResult.data?.length ?? 0,
+    delivery: trackingResult.data
+      ? serializeDeliveryTracking(trackingResult.data)
+      : {
+          serviceDayId: day.id,
+          arrivedAt: null,
+          arrivedBy: null,
+          deliveredAt: null,
+          deliveredBy: null,
+          receiptConfirmedAt: null,
+          receiptConfirmedBy: null,
+          updatedAt: null,
+        },
     totals: {
       colations: total,
       delivered: confirmed.filter((order) => order.fulfilled_at !== null).reduce((sum, order) => sum + order.quantity, 0),

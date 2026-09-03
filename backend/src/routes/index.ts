@@ -8,6 +8,7 @@ import { providerRouter } from "./provider.routes.js";
 import { companyRouter } from "./company.routes.js";
 import { notificationRouter } from "./notification.routes.js";
 import { summaryRouter } from "./summary.routes.js";
+import { deliveryRouter } from "./delivery.routes.js";
 
 export const apiRouter = Router();
 
@@ -20,3 +21,4 @@ apiRouter.use("/v1/notifications", notificationRouter);
 apiRouter.use("/v1/company", companyRouter);
 apiRouter.use("/v1/provider", providerRouter);
 apiRouter.use("/v1/summaries", summaryRouter);
+apiRouter.use("/v1/delivery", deliveryRouter);

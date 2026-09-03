@@ -424,8 +424,8 @@ function TrainingMenuEditor({
           <label className="text-sm font-extrabold">Nombre visible
             <input disabled={published} value={option.label} onChange={(event) => onChange({ label: event.target.value })} placeholder="Ej.: Menú capacitación" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
           </label>
-          <label className="text-sm font-extrabold">Disponibilidad máxima (opcional)
-            <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value ? Number(event.target.value) : null })} placeholder="Sin límite" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
+          <label className="text-sm font-extrabold">Disponibilidad estimada
+            <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value ? Number(event.target.value) : null })} placeholder="Ej.: 30" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
           </label>
           <label className="text-sm font-extrabold md:col-span-2">Preparación
             <textarea disabled={published} required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={2} placeholder="Ej.: Espirales con salsa, ensalada y pan" className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white p-3 font-normal" />
@@ -590,7 +590,7 @@ function DayEditor({
                     />
                   </label>
                   <label className="text-xs font-extrabold text-[var(--muted)]">
-                    Disponibilidad máxima (opcional)
+                    Disponibilidad estimada
                     <input
                       type="number"
                       min="0"
@@ -600,7 +600,7 @@ function DayEditor({
                           capacity: event.target.value === "" ? null : Number(event.target.value),
                         })
                       }
-                      placeholder="Sin límite"
+                      placeholder="Ej.: 50"
                       className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
                     />
                   </label>

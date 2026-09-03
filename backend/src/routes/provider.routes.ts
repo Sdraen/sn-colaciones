@@ -6,7 +6,6 @@ import {
   getCalendarBlocks,
   patchExceptionalRequest,
   patchMenuOptionAvailability,
-  patchOrderFulfillment,
   postCopyMenuWeek,
   postMenuWeek,
   postPublishMenuWeek,
@@ -18,7 +17,6 @@ import {
 import { requireRole } from "../middleware/require-role.js";
 import { validateRequest } from "../middleware/validate-request.js";
 import {
-  markFulfillmentRequestSchema,
   createCalendarBlockRequestSchema,
   deleteCalendarBlockRequestSchema,
   listCalendarBlocksRequestSchema,
@@ -102,9 +100,4 @@ providerRouter.patch(
   "/extra-requests/:requestId",
   validateRequest(resolveExceptionRequestSchema),
   patchExceptionalRequest,
-);
-providerRouter.patch(
-  "/orders/:orderId/fulfillment",
-  validateRequest(markFulfillmentRequestSchema),
-  patchOrderFulfillment,
 );

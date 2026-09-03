@@ -37,6 +37,14 @@ const checks = await Promise.all([
         head: true,
       }),
   ),
+  runCheck("migration 0008 delivery tracking", () =>
+    supabase
+      .from("service_delivery_tracking")
+      .select(
+        "service_day_id, arrived_at, delivered_at, receipt_confirmed_at",
+        { count: "exact", head: true },
+      ),
+  ),
 ]);
 
 const [organizations, profiles, diners] = checks.map((check) => check.result);
@@ -62,7 +70,7 @@ const { data: roleProfiles, error: roleError } = await supabase
 if (roleError) throw roleError;
 const roles = Object.groupBy(roleProfiles ?? [], (profile) => profile.role);
 
-console.log("Supabase administrativo: conexión y migraciones hasta 0006 verificadas.");
+console.log("Supabase administrativo: conexión y migraciones hasta 0008 verificadas.");
 console.log(
   `Datos actuales: ${organizations.count ?? 0} organizaciones, ${profiles.count ?? 0} perfiles, ${diners.count ?? 0} comensales.`,
 );

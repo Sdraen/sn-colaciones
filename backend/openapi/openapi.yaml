@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SN Colaciones API
-  version: 0.4.0
+  version: 0.5.0
   description: API autenticada para menús, reservas y operación de colaciones.
 servers:
   - url: http://localhost:4000
@@ -207,6 +207,68 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/service-days/{serviceDayId}/receipt:
+    patch:
+      tags: [Securitas]
+      summary: Confirma la recepción completa de las colaciones del día
+      description: Requiere que despacho haya registrado primero la llegada y el término de la entrega. Al confirmar, los pedidos activos se contabilizan como entregados.
+      parameters:
+        - $ref: "#/components/parameters/ServiceDayId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              additionalProperties: false
+              properties:
+                confirmed: { const: true }
+      responses:
+        "200":
+          description: Recepción confirmada con hora y responsable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DeliveryTracking" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/delivery/service-days/{serviceDayId}/events:
+    patch:
+      tags: [Despacho]
+      summary: Registra la llegada a Securitas o el término de la entrega
+      description: Los eventos se registran para el día actual, en orden y con la hora del servidor.
+      parameters:
+        - $ref: "#/components/parameters/ServiceDayId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              additionalProperties: false
+              properties:
+                event: { enum: [arrived, delivered] }
+      responses:
+        "200":
+          description: Seguimiento actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DeliveryTracking" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/notifications:
     get:
       tags: [Notificaciones]
@@ -397,28 +459,6 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-  /api/v1/provider/orders/{orderId}/fulfillment:
-    patch:
-      tags: [Proveedora]
-      summary: Marca o desmarca una colación como entregada
-      parameters:
-        - $ref: "#/components/parameters/OrderId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [delivered]
-              properties:
-                delivered: { type: boolean }
-      responses:
-        "200":
-          description: Estado de entrega actualizado
-        "400": { $ref: "#/components/responses/ValidationError" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
   /api/v1/provider/extra-requests/{requestId}:
     patch:
       tags: [Proveedora]
@@ -502,7 +542,7 @@ paths:
           schema: { type: string, format: date }
       responses:
         "200":
-          description: Totales, preparaciones, componentes, capacitaciones y manifiesto nominal
+          description: Totales, preparaciones, seguimiento de despacho, capacitaciones y manifiesto nominal
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -522,6 +562,11 @@ components:
       schema: { type: string, format: date }
     OrderId:
       name: orderId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ServiceDayId:
+      name: serviceDayId
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -741,6 +786,39 @@ components:
         endsOn: { type: string, format: date }
         kind: { enum: [holiday, vacation, no_service, special] }
         reason: { type: string, minLength: 3, maxLength: 300 }
+    DeliveryTracking:
+      type: object
+      required: [serviceDayId, arrivedAt, arrivedBy, deliveredAt, deliveredBy, receiptConfirmedAt, receiptConfirmedBy, updatedAt]
+      properties:
+        serviceDayId: { type: string, format: uuid }
+        arrivedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        arrivedBy:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
+        deliveredAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        deliveredBy:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
+        receiptConfirmedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        receiptConfirmedBy:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
+        updatedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
     ServiceDay:
       type: object
       required: [id, serviceDate, disabled, options]

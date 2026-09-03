@@ -62,11 +62,18 @@ Esta corrección permite registrar capacitaciones para fechas hábiles actuales 
 futuras hasta las 09:00 y nuevamente desde las 14:00, manteniendo los bloqueos
 por feriados, vacaciones y días sin servicio.
 
+Luego ejecutar `supabase/migrations/0008_delivery_tracking_and_receipt.sql`.
+Esta migración registra la llegada y el término de la entrega por despacho, y
+permite que Securitas confirme la recepción completa con hora y responsable.
+La confirmación final actualiza los reportes de colaciones entregadas.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0007` ya fueron ejecutadas en el proyecto remoto.
-- Antes de la puesta en producción se debe verificar que el esquema remoto y las
-  funciones RPC correspondan a la versión actual de esas migraciones.
+- Las migraciones `0001` a `0008` ya fueron ejecutadas en el proyecto remoto.
+- La conexión administrativa, las tablas y los roles requeridos por `0008`
+  fueron verificados correctamente el 03/09/2026.
+- Antes de la puesta en producción se debe realizar la prueba funcional completa
+  de llegada, término de entrega y confirmación de recepción con cada rol.
 - Se creó la organización `Securitas Concepción` y se importaron 78 trabajadores
   desde la hoja revisada, sin cuentas ni correos asociados.
 - El acceso OTP del frontend está implementado con creación pública deshabilitada.

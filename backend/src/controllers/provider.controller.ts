@@ -1,7 +1,6 @@
 import type { RequestHandler } from "express";
 import { getRequestAuth, getValidatedRequest } from "../lib/request-data.js";
 import type {
-  MarkFulfillmentRequest,
   CreateCalendarBlockRequest,
   DeleteCalendarBlockRequest,
   ListCalendarBlocksRequest,
@@ -15,7 +14,6 @@ import {
   createCalendarBlock,
   deleteCalendarBlock,
   listCalendarBlocks,
-  markOrderFulfillment,
   resolveExceptionalRequest,
   setMenuOptionAvailability,
 } from "../services/provider.service.js";
@@ -66,16 +64,6 @@ export const getOperationalDetail: RequestHandler = async (request, response) =>
   const { query } = getValidatedRequest<WeeklyReportRequest>(request);
   const operations = await getProviderOperations(supabase, query.startsOn);
   response.status(200).json({ data: operations });
-};
-
-export const patchOrderFulfillment: RequestHandler = async (request, response) => {
-  const { supabase } = getRequestAuth(request);
-  const { params, body } = getValidatedRequest<MarkFulfillmentRequest>(request);
-  const order = await markOrderFulfillment(supabase, {
-    orderId: params.orderId,
-    delivered: body.delivered,
-  });
-  response.status(200).json({ data: order });
 };
 
 export const patchExceptionalRequest: RequestHandler = async (request, response) => {

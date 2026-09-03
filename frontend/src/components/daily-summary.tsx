@@ -5,8 +5,15 @@ import { CalendarDays, CheckCircle2, Clock3, PackageCheck, Printer, Search, User
 import { useReactToPrint } from "react-to-print";
 import { browserApiRequest } from "@/lib/api/client";
 import type { DailySummaryDto } from "@/lib/api/contracts";
+import { DeliveryProgress } from "@/components/delivery-progress";
 
-export function DailySummary({ initialSummary }: { initialSummary: DailySummaryDto | null }) {
+export function DailySummary({
+  initialSummary,
+  viewerRole,
+}: {
+  initialSummary: DailySummaryDto | null;
+  viewerRole: "provider_admin" | "company_admin" | "delivery";
+}) {
   const printRef = useRef<HTMLElement>(null);
   const [summary, setSummary] = useState(initialSummary);
   const [date, setDate] = useState(initialSummary?.serviceDate ?? chileToday());
@@ -65,6 +72,26 @@ export function DailySummary({ initialSummary }: { initialSummary: DailySummaryD
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-bold text-[var(--muted)]"><CalendarDays size={16} /> {formatDate(summary.serviceDate)}</span>
             {summary.pendingExtraRequests > 0 ? <span className="rounded-full bg-red-50 px-3 py-2 font-bold text-[var(--danger)]">{summary.pendingExtraRequests} extra(s) pendientes</span> : null}
           </div>
+
+          <DeliveryProgress
+            key={summary.serviceDate}
+            tracking={summary.delivery}
+            serviceDate={summary.serviceDate}
+            viewerRole={viewerRole}
+            onUpdate={(delivery) =>
+              setSummary((current) =>
+                current
+                  ? {
+                      ...current,
+                      delivery,
+                      totals: delivery.receiptConfirmedAt
+                        ? { ...current.totals, delivered: current.totals.colations }
+                        : current.totals,
+                    }
+                  : current,
+              )
+            }
+          />
 
           <div className="provider-stagger-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Metric icon={PackageCheck} label="Colaciones" value={summary.totals.colations} accent />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   BarChart3,
@@ -11,6 +11,7 @@ import {
   Clock3,
   GraduationCap,
   Plus,
+  RefreshCw,
   UserPlus,
   UsersRound,
   UtensilsCrossed,
@@ -35,6 +36,7 @@ import {
   formatChileanTabDate,
 } from "@/lib/date-format";
 import { isTrainingRegistrationOpen } from "@/lib/business-rules";
+import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 type Mode = "training" | "extra";
 type View = "operations" | "summary" | "reports" | "workers";
@@ -57,7 +59,7 @@ const modes = [
 ] as const;
 
 export function CompanyOperationsClient({
-  menu,
+  menu: initialMenu,
   initialOperations,
   initialReport,
   notifications,
@@ -77,11 +79,13 @@ export function CompanyOperationsClient({
 }) {
   const currentDate = localDate(new Date(nowIso));
   const initialDayId =
-    menu?.days.find((day) => day.serviceDate === currentDate)?.id ??
-    menu?.days.find((day) => !day.disabled)?.id ??
-    menu?.days[0]?.id ??
+    initialMenu?.days.find((day) => day.serviceDate === currentDate)?.id ??
+    initialMenu?.days.find((day) => !day.disabled)?.id ??
+    initialMenu?.days[0]?.id ??
     "";
+  const [menu, setMenu] = useState(initialMenu);
   const [operations, setOperations] = useState(initialOperations);
+  const [liveNotifications, setLiveNotifications] = useState(notifications);
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [mode, setMode] = useState<Mode>("training");
   const [view, setView] = useState<View>(initialView ?? "operations");
@@ -94,6 +98,31 @@ export function CompanyOperationsClient({
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  const refreshOperations = useCallback(async () => {
+    const [nextMenu, nextOperations, nextNotifications] = await Promise.all([
+      browserApiRequest<MenuWeekDto>("/api/v1/menus/current"),
+      browserApiRequest<CompanyOperationsDto>("/api/v1/company/operations"),
+      browserApiRequest<NotificationDto[]>("/api/v1/notifications?limit=20"),
+    ]);
+    setMenu(nextMenu);
+    setOperations(nextOperations);
+    setLiveNotifications(nextNotifications);
+    setActiveDayId((current) => {
+      if (nextMenu.days.some((day) => day.id === current)) return current;
+      const today = localDate(new Date());
+      return (
+        nextMenu.days.find((day) => day.serviceDate === today)?.id ??
+        nextMenu.days.find((day) => !day.disabled)?.id ??
+        nextMenu.days[0]?.id ??
+        ""
+      );
+    });
+  }, []);
+  const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
+    refreshOperations,
+    { enabled: view === "operations" && !saving },
+  );
 
   const activeDay = menu?.days.find((day) => day.id === activeDayId);
   const orders = operations?.orders ?? [];
@@ -131,7 +160,7 @@ export function CompanyOperationsClient({
   const lateExtra = Boolean(activeDay && now >= new Date(activeDay.sameDayClosesAt));
   const modeOpen = mode === "training" ? trainingOpen : extraOpen;
   const selectedMode = modes.find((item) => item.value === mode) ?? modes[0];
-  const unreadNotifications = notifications.filter((item) => !item.readAt).length;
+  const unreadNotifications = liveNotifications.filter((item) => !item.readAt).length;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -230,6 +259,17 @@ export function CompanyOperationsClient({
           <span className="company-badge-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[var(--brand-strong)]">
             <BellRing size={15} /> {unreadNotifications} avisos
           </span>
+          {view === "operations" ? (
+            <button
+              type="button"
+              onClick={() => void refreshNow()}
+              disabled={refreshing || saving}
+              className="company-action inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-extrabold disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Actualizando…" : "Actualizar"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -289,6 +329,12 @@ export function CompanyOperationsClient({
           <BarChart3 size={17} /> Reportes
         </button>
       </div>
+
+      {view === "operations" ? (
+        <p role="status" className="mt-3 text-xs font-bold text-[var(--muted)]">
+          {refreshError || formatRefreshTime(lastUpdatedAt)}
+        </p>
+      ) : null}
 
       {view === "summary" ? (
         <div className="mt-7"><DailySummary initialSummary={initialSummary} viewerRole="company_admin" /></div>
@@ -614,8 +660,8 @@ export function CompanyOperationsClient({
                   <BellRing size={18} className="text-[var(--brand)]" />
                 </div>
                 <div className="company-list-enter mt-3 space-y-2">
-                  {notifications.length ? (
-                    notifications.slice(0, 5).map((item) => (
+                  {liveNotifications.length ? (
+                    liveNotifications.slice(0, 5).map((item) => (
                       <div
                         key={item.id}
                         className="company-list-item rounded-xl bg-[var(--surface-muted)] p-3 text-sm"

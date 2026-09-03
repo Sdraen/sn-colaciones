@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Download, Search, XCircle } from "lucide-react";
+import { useCallback, useState } from "react";
+import { CheckCircle2, Download, RefreshCw, XCircle } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import type { OrdersReportDto } from "@/lib/api/contracts";
 import { formatChileanDate, parseChileanDate } from "@/lib/date-format";
+import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export function OperationsReports({
   endpoint,
@@ -16,30 +17,33 @@ export function OperationsReports({
   const [report, setReport] = useState(initialReport);
   const [period, setPeriod] = useState<OrdersReportDto["period"]>(initialReport.period);
   const [dateText, setDateText] = useState(() => formatChileanDate(initialReport.range.to));
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const selectedDate = parseChileanDate(dateText);
+
+  const refreshReport = useCallback(async () => {
+    const date = parseChileanDate(dateText);
+    if (!date) return;
+    setReport(
+      await browserApiRequest<OrdersReportDto>(
+        `${endpoint}?period=${period}&date=${date}`,
+      ),
+    );
+  }, [dateText, endpoint, period]);
+  const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
+    refreshReport,
+    { enabled: Boolean(selectedDate) },
+  );
+  const error = validationError || refreshError;
 
   async function loadReport() {
-    const selectedDate = parseChileanDate(dateText);
     if (!selectedDate) {
-      setError("Ingresa una fecha válida con formato dd/mm/aaaa.");
+      setValidationError("Ingresa una fecha válida con formato dd/mm/aaaa.");
       return;
     }
 
-    setLoading(true);
-    setError("");
-    try {
-      setReport(
-        await browserApiRequest<OrdersReportDto>(
-          `${endpoint}?period=${period}&date=${selectedDate}`,
-        ),
-      );
-      setDateText(formatChileanDate(selectedDate));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No fue posible generar el reporte");
-    } finally {
-      setLoading(false);
-    }
+    setValidationError("");
+    setDateText(formatChileanDate(selectedDate));
+    await refreshNow();
   }
 
   function downloadCsv() {
@@ -108,11 +112,12 @@ export function OperationsReports({
           </label>
           <button
             type="button"
-            onClick={loadReport}
-            disabled={loading}
+            onClick={() => void loadReport()}
+            disabled={refreshing}
             className="provider-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 font-extrabold text-white sm:px-4"
           >
-            <Search size={17} /> {loading ? "Consultando…" : "Consultar"}
+            <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Actualizando…" : "Actualizar"}
           </button>
           <button
             type="button"
@@ -129,6 +134,9 @@ export function OperationsReports({
           {error}
         </p>
       ) : null}
+      <p role="status" className="text-xs font-bold text-[var(--muted)]">
+        {formatRefreshTime(lastUpdatedAt)}
+      </p>
 
       <div key={report.generatedAt} className="provider-report-results space-y-5">
         <div className="provider-stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

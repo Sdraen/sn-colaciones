@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3, PackageCheck, Printer, Search, UsersRound } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { CalendarDays, CheckCircle2, Clock3, PackageCheck, Printer, RefreshCw, UsersRound } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { browserApiRequest } from "@/lib/api/client";
 import type { DailySummaryDto } from "@/lib/api/contracts";
 import { DeliveryProgress } from "@/components/delivery-progress";
+import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export function DailySummary({
   initialSummary,
@@ -17,8 +18,6 @@ export function DailySummary({
   const printRef = useRef<HTMLElement>(null);
   const [summary, setSummary] = useState(initialSummary);
   const [date, setDate] = useState(initialSummary?.serviceDate ?? chileToday());
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const printSummary = useReactToPrint({
     contentRef: printRef,
     documentTitle: summary
@@ -27,17 +26,14 @@ export function DailySummary({
     pageStyle: printPageStyle,
   });
 
-  async function consult() {
-    setLoading(true);
-    setMessage(null);
-    try {
-      setSummary(await browserApiRequest<DailySummaryDto>(`/api/v1/summaries/daily?date=${date}`));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible consultar el resumen");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const refreshSummary = useCallback(async () => {
+    setSummary(
+      await browserApiRequest<DailySummaryDto>(`/api/v1/summaries/daily?date=${date}`),
+    );
+  }, [date]);
+  const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
+    refreshSummary,
+  );
 
   return (
     <section ref={printRef} className="daily-summary-print provider-panel-enter space-y-5" aria-labelledby="daily-summary-title">
@@ -52,8 +48,8 @@ export function DailySummary({
             Fecha
             <input className="company-input min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm text-[var(--ink)]" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
-          <button type="button" onClick={consult} disabled={loading} className="company-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 text-sm font-extrabold text-white disabled:opacity-50 sm:px-4">
-            <Search size={17} /> {loading ? "Consultando…" : "Consultar"}
+          <button type="button" onClick={() => void refreshNow()} disabled={refreshing} className="company-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 text-sm font-extrabold text-white disabled:opacity-50 sm:px-4">
+            <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Actualizando…" : "Actualizar"}
           </button>
           <button type="button" onClick={() => printSummary()} disabled={!summary} className="company-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:px-4">
             <Printer size={17} /> Imprimir
@@ -61,7 +57,10 @@ export function DailySummary({
         </div>
       </div>
 
-      {message ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{message}</p> : null}
+      <p role="status" className="print:hidden text-xs font-bold text-[var(--muted)]">
+        {formatRefreshTime(lastUpdatedAt)}
+      </p>
+      {refreshError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{refreshError}</p> : null}
       {!summary ? <div className="card p-8 text-center text-[var(--muted)]">No hay un día de servicio disponible para mostrar.</div> : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">

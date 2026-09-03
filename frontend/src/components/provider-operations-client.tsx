@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   BarChart3,
   BellRing,
@@ -8,6 +8,7 @@ import {
   ChefHat,
   LayoutDashboard,
   ListChecks,
+  RefreshCw,
   X,
 } from "lucide-react";
 import { ProviderMenuEditor } from "@/components/provider-menu-editor";
@@ -23,12 +24,14 @@ import type {
   ProviderOperationsDto,
 } from "@/lib/api/contracts";
 import { formatChileanTabDate } from "@/lib/date-format";
+import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 type View = "production" | "summary" | "menu" | "reports";
 
 export function ProviderOperationsClient({
   initialOperations,
   initialNextMenu,
+  currentStartsOn,
   nextStartsOn,
   initialReport,
   notifications,
@@ -36,18 +39,40 @@ export function ProviderOperationsClient({
 }: {
   initialOperations: ProviderOperationsDto | null;
   initialNextMenu: MenuWeekDto | null;
+  currentStartsOn: string;
   nextStartsOn: string;
   initialReport: OrdersReportDto;
   notifications: NotificationDto[];
   initialSummary: DailySummaryDto | null;
 }) {
   const [operations, setOperations] = useState(initialOperations);
+  const [liveNotifications, setLiveNotifications] = useState(notifications);
   const [view, setView] = useState<View>(initialOperations ? "production" : "menu");
   const [activeDayId, setActiveDayId] = useState(initialOperations?.menu.days[0]?.id ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [rejectionNotes, setRejectionNotes] = useState<Record<string, string>>({});
+
+  const refreshOperations = useCallback(async () => {
+    const [nextOperations, nextNotifications] = await Promise.all([
+      browserApiRequest<ProviderOperationsDto>(
+        `/api/v1/provider/operations?startsOn=${currentStartsOn}`,
+      ),
+      browserApiRequest<NotificationDto[]>("/api/v1/notifications?limit=20"),
+    ]);
+    setOperations(nextOperations);
+    setLiveNotifications(nextNotifications);
+    setActiveDayId((current) =>
+      nextOperations.menu.days.some((day) => day.id === current)
+        ? current
+        : (nextOperations.menu.days[0]?.id ?? ""),
+    );
+  }, [currentStartsOn]);
+  const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
+    refreshOperations,
+    { enabled: view === "production" && !saving },
+  );
 
   const activeDay = operations?.menu.days.find((day) => day.id === activeDayId);
   const pending = operations?.extraRequests.filter((request) => request.status === "pending") ?? [];
@@ -138,9 +163,22 @@ export function ProviderOperationsClient({
             Producción real, menú de la próxima semana y reportes.
           </p>
         </div>
-        <span className="provider-notification-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
-          <BellRing size={15} /> {notifications.filter((item) => !item.readAt).length} avisos
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="provider-notification-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
+            <BellRing size={15} /> {liveNotifications.filter((item) => !item.readAt).length} avisos
+          </span>
+          {view === "production" ? (
+            <button
+              type="button"
+              onClick={() => void refreshNow()}
+              disabled={refreshing || saving}
+              className="provider-action inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-extrabold disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Actualizando…" : "Actualizar"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -188,6 +226,11 @@ export function ProviderOperationsClient({
       {error ? (
         <p role="alert" className="provider-feedback-enter mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
           {error}
+        </p>
+      ) : null}
+      {view === "production" ? (
+        <p role="status" className="mt-3 text-xs font-bold text-[var(--muted)]">
+          {refreshError || formatRefreshTime(lastUpdatedAt)}
         </p>
       ) : null}
 

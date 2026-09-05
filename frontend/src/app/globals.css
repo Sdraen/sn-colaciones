@@ -138,6 +138,91 @@ a {
   outline-offset: 3px;
 }
 
+.login-page-enter {
+  isolation: isolate;
+  animation: login-page-in 280ms ease-out both;
+}
+
+.login-card-enter {
+  max-width: 420px;
+  box-shadow: 0 22px 52px rgba(102, 57, 27, 0.16);
+  animation: login-card-in 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-brand-enter {
+  animation: login-content-in 380ms 80ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-content-enter {
+  animation: login-content-in 380ms 130ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-orb {
+  position: absolute;
+  z-index: -1;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 999px;
+  filter: blur(2px);
+  opacity: 0.48;
+  pointer-events: none;
+  animation: login-orb-float 7s ease-in-out infinite alternate;
+}
+
+.login-orb-left {
+  left: max(-7rem, -8vw);
+  bottom: 8%;
+  background: radial-gradient(circle, rgba(63, 123, 72, 0.2), transparent 70%);
+}
+
+.login-orb-right {
+  top: 7%;
+  right: max(-6rem, -7vw);
+  background: radial-gradient(circle, rgba(239, 165, 31, 0.3), transparent 70%);
+  animation-delay: -2.5s;
+}
+
+.login-mode-button,
+.login-field,
+.login-submit {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.login-mode-button:not([aria-pressed="true"]):hover {
+  color: var(--foreground);
+}
+
+.login-mode-button:active,
+.login-submit:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+.login-field:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+  transform: translateY(-1px);
+}
+
+.login-submit:not(:disabled):hover {
+  background: var(--brand-strong);
+  box-shadow: 0 9px 20px rgba(170, 50, 29, 0.22);
+  transform: translateY(-2px);
+}
+
+.login-fields-enter {
+  animation: login-fields-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-feedback-enter {
+  animation: menu-feedback-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .menu-editor-enter {
   animation: menu-fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -520,6 +605,57 @@ a {
   }
 }
 
+@keyframes login-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-fields-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes login-orb-float {
+  from {
+    transform: translate3d(0, -5px, 0) scale(0.96);
+  }
+  to {
+    transform: translate3d(8px, 7px, 0) scale(1.04);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -554,6 +690,16 @@ a {
     animation: none;
   }
 
+  .login-page-enter,
+  .login-card-enter,
+  .login-brand-enter,
+  .login-content-enter,
+  .login-fields-enter,
+  .login-feedback-enter,
+  .login-orb {
+    animation: none;
+  }
+
   .menu-collapsible,
   .menu-progress-fill,
   .menu-action,
@@ -568,6 +714,12 @@ a {
   .company-choice,
   .company-action,
   .company-input {
+    transition: none;
+  }
+
+  .login-mode-button,
+  .login-field,
+  .login-submit {
     transition: none;
   }
 
@@ -588,6 +740,13 @@ a {
   .company-action:not(:disabled):hover,
   .company-action:not(:disabled):active,
   .company-input:focus {
+    transform: none;
+  }
+
+  .login-mode-button:active,
+  .login-field:focus-within,
+  .login-submit:not(:disabled):hover,
+  .login-submit:not(:disabled):active {
     transform: none;
   }
 }

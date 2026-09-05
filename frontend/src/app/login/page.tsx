@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ChefHat, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getCurrentApiUser } from "@/lib/api/server";
@@ -8,6 +9,7 @@ type LoginPageProps = {
 };
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Ingresar" };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [params, currentUser] = await Promise.all([searchParams, getCurrentApiUser()]);
@@ -15,27 +17,38 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const nextPath = safeNextPath(params.next);
 
   return (
-    <main className="page-shell grid min-h-[calc(100vh-72px)] place-items-center">
-      <section className="card w-full max-w-lg overflow-hidden">
-        <div className="bg-[linear-gradient(135deg,var(--brand-strong),var(--brand),var(--accent))] px-7 py-8 text-white sm:px-9">
-          <span className="grid size-12 place-items-center rounded-2xl bg-white/18">
-            <ChefHat size={25} aria-hidden="true" />
-          </span>
-          <h1 className="mt-5 text-3xl font-black tracking-[-0.04em]">Ingresar a SN Colaciones</h1>
-          <p className="mt-2 max-w-md text-sm leading-6 text-white/85">
-            Usa tu contraseña o solicita un enlace de acceso de un solo uso.
+    <main className="login-page-enter page-shell relative grid min-h-[calc(100vh-72px)] place-items-center overflow-hidden">
+      <span className="login-orb login-orb-left" aria-hidden="true" />
+      <span className="login-orb login-orb-right" aria-hidden="true" />
+
+      <section className="login-card-enter card relative z-10 w-full max-w-[420px] overflow-hidden">
+        <div className="bg-[linear-gradient(135deg,var(--brand-strong),var(--brand),var(--accent))] px-6 py-6 text-white sm:px-7">
+          <div className="login-brand-enter flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/18 shadow-sm">
+              <ChefHat size={23} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white/75">
+                Acceso privado
+              </p>
+              <p className="text-sm font-extrabold">SN Colaciones</p>
+            </div>
+          </div>
+          <h1 className="mt-4 text-2xl font-black tracking-[-0.035em]">Bienvenido</h1>
+          <p className="mt-1.5 text-sm leading-5 text-white/85">
+            Ingresa con tus datos autorizados.
           </p>
         </div>
-        <div className="px-7 py-8 sm:px-9">
+        <div className="login-content-enter px-6 py-6 sm:px-7">
           {params.error ? (
-            <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">
+            <p role="alert" className="login-feedback-enter rounded-xl bg-red-50 px-3.5 py-2.5 text-sm font-semibold text-[var(--danger)]">
               {params.error}
             </p>
           ) : null}
           <LoginForm nextPath={nextPath} />
-          <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-[var(--muted)]">
+          <p className="mt-4 flex items-start gap-2 border-t border-[var(--line)] pt-4 text-xs leading-5 text-[var(--muted)]">
             <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[var(--herb)]" />
-            El acceso está cerrado al público. Sólo funcionan correos creados previamente por la administración.
+            Solo pueden ingresar cuentas creadas previamente por la administración.
           </p>
         </div>
       </section>

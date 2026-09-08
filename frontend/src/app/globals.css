@@ -36,6 +36,7 @@ html {
   overflow-x: clip;
   background: var(--background);
   scroll-behavior: smooth;
+  scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   scrollbar-gutter: stable;
 }
 
@@ -43,6 +44,7 @@ body {
   max-width: 100%;
   overflow-x: clip;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -58,6 +60,25 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+.date-picker-input {
+  color-scheme: light;
+}
+
+.date-picker-control:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.date-picker-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
 }
 
 button,
@@ -113,24 +134,6 @@ a {
   background: linear-gradient(135deg, #bd3d24 0%, #dd572d 58%, #eb8d24 100%);
   color: white;
   box-shadow: 0 18px 34px rgba(170, 50, 29, 0.2);
-}
-
-.home-hero {
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 86% 18%, rgba(255, 228, 139, 0.34), transparent 20rem),
-    linear-gradient(135deg, #a9321f 0%, #d84b2a 48%, #ef9f1c 100%);
-  box-shadow: 0 24px 54px rgba(153, 61, 25, 0.24);
-}
-
-.home-hero::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px);
-  background-size: 18px 18px;
-  mask-image: linear-gradient(to left, black, transparent 60%);
-  content: "";
 }
 
 .focus-ring:focus-visible {
@@ -247,6 +250,14 @@ a {
   animation-delay: 180ms;
 }
 
+.menu-week-list > div:nth-child(6) {
+  animation-delay: 225ms;
+}
+
+.menu-week-list > div:nth-child(7) {
+  animation-delay: 270ms;
+}
+
 .menu-collapsible {
   transition:
     grid-template-rows 300ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -282,6 +293,56 @@ a {
 .menu-action:not(:disabled):active {
   transform: translateY(0) scale(0.98);
   box-shadow: none;
+}
+
+.header-menu-button,
+.header-menu-icon {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.header-menu-button:hover {
+  border-color: var(--brand);
+  color: var(--brand-strong);
+  box-shadow: 0 8px 20px rgba(102, 57, 27, 0.12);
+  transform: translateY(-1px);
+}
+
+.header-menu-button[aria-expanded="true"] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.header-menu-button[aria-expanded="true"] .header-menu-icon {
+  transform: rotate(90deg) scale(1.04);
+}
+
+.account-menu-backdrop {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.account-menu-panel {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.97);
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: top right;
+}
+
+.account-menu-layer[data-open="true"] .account-menu-backdrop,
+.account-menu-layer[data-open="true"] .account-menu-panel {
+  opacity: 1;
+}
+
+.account-menu-layer[data-open="true"] .account-menu-panel {
+  transform: translateY(0) scale(1);
 }
 
 .provider-shell-enter {
@@ -701,6 +762,7 @@ a {
   }
 
   .menu-collapsible,
+  .menu-day-chevron,
   .menu-progress-fill,
   .menu-action,
   .provider-tab,
@@ -720,6 +782,13 @@ a {
   .login-mode-button,
   .login-field,
   .login-submit {
+    transition: none;
+  }
+
+  .header-menu-button,
+  .header-menu-icon,
+  .account-menu-backdrop,
+  .account-menu-panel {
     transition: none;
   }
 
@@ -754,7 +823,13 @@ a {
 @media (max-width: 640px) {
   .page-shell {
     width: min(1180px, calc(100% - 24px));
-    padding-block: 24px 56px;
+    padding-top: 24px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .menu-save-actions {
+    position: static;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .card {

@@ -67,9 +67,14 @@ Esta migración registra la llegada y el término de la entrega por despacho, y
 permite que Securitas confirme la recepción completa con hora y responsable.
 La confirmación final actualiza los reportes de colaciones entregadas.
 
+Luego ejecutar `supabase/migrations/0009_allow_late_current_week_menus.sql`.
+Esta migración permite que la proveedora cargue la semana actual aunque ya
+haya comenzado, además de semanas futuras, sin reabrir los plazos vencidos de
+pedidos.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0008` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0009` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa

@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { CheckCircle2, Download, RefreshCw, XCircle } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import type { OrdersReportDto } from "@/lib/api/contracts";
-import { formatChileanDate, parseChileanDate } from "@/lib/date-format";
+import { DatePickerField } from "@/components/date-picker-field";
+import { formatChileanDate } from "@/lib/date-format";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export function OperationsReports({
@@ -16,19 +17,17 @@ export function OperationsReports({
 }) {
   const [report, setReport] = useState(initialReport);
   const [period, setPeriod] = useState<OrdersReportDto["period"]>(initialReport.period);
-  const [dateText, setDateText] = useState(() => formatChileanDate(initialReport.range.to));
+  const [selectedDate, setSelectedDate] = useState(initialReport.range.to);
   const [validationError, setValidationError] = useState("");
-  const selectedDate = parseChileanDate(dateText);
 
   const refreshReport = useCallback(async () => {
-    const date = parseChileanDate(dateText);
-    if (!date) return;
+    if (!selectedDate) return;
     setReport(
       await browserApiRequest<OrdersReportDto>(
-        `${endpoint}?period=${period}&date=${date}`,
+        `${endpoint}?period=${period}&date=${selectedDate}`,
       ),
     );
-  }, [dateText, endpoint, period]);
+  }, [endpoint, period, selectedDate]);
   const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
     refreshReport,
     { enabled: Boolean(selectedDate) },
@@ -42,7 +41,6 @@ export function OperationsReports({
     }
 
     setValidationError("");
-    setDateText(formatChileanDate(selectedDate));
     await refreshNow();
   }
 
@@ -96,20 +94,15 @@ export function OperationsReports({
               <option value="monthly">Mensual</option>
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
-            Fecha de referencia
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={10}
-              placeholder="dd/mm/aaaa"
-              value={dateText}
-              onChange={(event) => setDateText(event.target.value)}
-              aria-invalid={Boolean(error && !parseChileanDate(dateText))}
-              className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm text-[var(--foreground)] sm:w-36"
-            />
-          </label>
+          <DatePickerField
+            label="Fecha de referencia"
+            value={selectedDate}
+            onChange={(value) => {
+              setSelectedDate(value);
+              setValidationError("");
+            }}
+            inputClassName="sm:w-40"
+          />
           <button
             type="button"
             onClick={() => void loadReport()}

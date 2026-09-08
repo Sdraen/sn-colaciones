@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2, Clock3, PackageCheck, Printer, RefreshCw, U
 import { useReactToPrint } from "react-to-print";
 import { browserApiRequest } from "@/lib/api/client";
 import type { DailySummaryDto } from "@/lib/api/contracts";
+import { DatePickerField } from "@/components/date-picker-field";
 import { DeliveryProgress } from "@/components/delivery-progress";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
@@ -44,10 +45,13 @@ export function DailySummary({
           <p className="mt-1 text-sm text-[var(--muted)]">Totales en vivo, capacitaciones y detalle nominal para preparar y entregar.</p>
         </div>
         <div className="daily-summary-controls grid w-full grid-cols-2 items-end gap-2 print:hidden sm:flex sm:w-auto sm:flex-wrap">
-          <label className="col-span-2 grid gap-1 text-xs font-extrabold text-[var(--muted)] sm:col-span-1">
-            Fecha
-            <input className="company-input min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm text-[var(--ink)]" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
+          <DatePickerField
+            label="Fecha"
+            value={date}
+            onChange={setDate}
+            className="col-span-2 sm:col-span-1"
+            inputClassName="company-input"
+          />
           <button type="button" onClick={() => void refreshNow()} disabled={refreshing} className="company-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 text-sm font-extrabold text-white disabled:opacity-50 sm:px-4">
             <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Actualizando…" : "Actualizar"}
           </button>

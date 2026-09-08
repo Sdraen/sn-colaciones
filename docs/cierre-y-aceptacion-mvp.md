@@ -39,7 +39,7 @@ en etapa de piloto funcional, pero aún no se considera listo para producción.
 - Desplegar frontend y backend.
 - Configurar respaldos, monitoreo y envío automático de correos.
 - Hacer una prueba móvil real.
-- Mantener documentado y verificar que las migraciones `0001` a `0008` fueron
+- Mantener documentado y verificar que las migraciones `0001` a `0009` fueron
   ejecutadas correctamente en el proyecto remoto.
 
 ## Clasificación de solicitudes durante la reunión

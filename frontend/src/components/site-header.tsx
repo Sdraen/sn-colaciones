@@ -55,64 +55,62 @@ export function SiteHeader({
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Principal">
-            {links.map(({ href, label, icon: Icon }) => {
-              const active = href === "/" ? pathname === href : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={`focus-ring flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${
-                    active
-                      ? "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
-                      : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <Icon size={17} aria-hidden="true" />
-                  {label}
-                </Link>
-              );
-            })}
-            {currentUser ? (
-              <form action="/auth/signout" method="post" className="ml-2 border-l border-[var(--line)] pl-3">
-                <button
-                  type="submit"
-                  className="focus-ring flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
-                  title={`Cerrar sesión de ${currentUser.fullName}`}
-                >
-                  <span className="max-w-36 truncate">{currentUser.fullName}</span>
-                  <LogOut size={16} aria-hidden="true" />
-                </button>
-              </form>
-            ) : null}
-          </nav>
-          <button
-            type="button"
-            className="focus-ring grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-white text-[var(--foreground)] shadow-sm md:hidden"
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-account-menu"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <nav className="hidden items-center gap-1 md:flex" aria-label="Principal">
+              {links.map(({ href, label, icon: Icon }) => {
+                const active = href === "/" ? pathname === href : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`focus-ring flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${
+                      active
+                        ? "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
+                        : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <Icon size={17} aria-hidden="true" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <button
+              type="button"
+              className="header-menu-button focus-ring grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-white text-[var(--foreground)] shadow-sm"
+              aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={menuOpen}
+              aria-controls="account-menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span className="header-menu-icon grid place-items-center">
+                {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {menuOpen ? (
-        <div className="fixed inset-x-0 bottom-0 top-18 z-40 md:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-[#3b2418]/24 backdrop-blur-[2px]"
-            aria-label="Cerrar menú"
-            onClick={() => setMenuOpen(false)}
-          />
-          <nav
-            id="mobile-account-menu"
-            className="relative mx-3 mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffdf8] p-3 shadow-2xl"
-            aria-label="Navegación y cuenta"
-          >
+      <div
+        className={`account-menu-layer fixed inset-x-0 bottom-0 top-18 z-40 ${
+          menuOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+        data-open={menuOpen}
+        aria-hidden={!menuOpen}
+        inert={!menuOpen}
+      >
+        <button
+          type="button"
+          className="account-menu-backdrop absolute inset-0 bg-[#3b2418]/24 backdrop-blur-[2px]"
+          aria-label="Cerrar menú"
+          onClick={() => setMenuOpen(false)}
+        />
+        <nav
+          id="account-menu"
+          className="account-menu-panel relative mx-3 mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffdf8] p-3 shadow-2xl md:ml-auto md:mr-6 md:max-w-sm"
+          aria-label="Navegación y cuenta"
+        >
             {currentUser ? (
               <div className="mb-3 flex min-w-0 items-center gap-3 rounded-xl bg-[var(--surface-muted)] p-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-strong)]">
@@ -164,9 +162,8 @@ export function SiteHeader({
                 </button>
               </form>
             ) : null}
-          </nav>
-        </div>
-      ) : null}
+        </nav>
+      </div>
     </>
   );
 }

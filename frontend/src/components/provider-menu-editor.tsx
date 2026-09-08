@@ -43,9 +43,15 @@ type Feedback = { kind: "success" | "error"; text: string } | null;
 export function ProviderMenuEditor({
   initialMenu,
   startsOn,
+  periodLabel,
+  currentWeek = false,
+  onMenuChange,
 }: {
   initialMenu: MenuWeekDto | null;
   startsOn: string;
+  periodLabel: string;
+  currentWeek?: boolean;
+  onMenuChange?: (menu: MenuWeekDto | null) => void;
 }) {
   const [menu, setMenu] = useState(initialMenu);
   const [days, setDays] = useState<DraftDay[]>(() =>
@@ -58,15 +64,15 @@ export function ProviderMenuEditor({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const weekdays = days.slice(0, 5);
-  const readyDays = weekdays.filter((day) => day.disabled || isDayComplete(day)).length;
+  const serviceDays = days;
+  const readyDays = serviceDays.filter((day) => day.disabled || isDayComplete(day)).length;
   const trainingDraft = days
     .flatMap((day) => day.options)
     .find((option) => option.trainingMenu && !option.availableForWorkers);
   const trainingComplete = !trainingDraft || (
     trainingDraft.label.trim().length >= 2 && trainingDraft.description.trim().length >= 3
   );
-  const weekComplete = readyDays === weekdays.length && trainingComplete;
+  const weekComplete = readyDays === serviceDays.length && trainingComplete;
   const published = Boolean(menu?.publishedAt);
 
   function updateDay(dayIndex: number, patch: Partial<DraftDay>) {
@@ -128,6 +134,7 @@ export function ProviderMenuEditor({
       body: JSON.stringify({ startsOn, days }),
     });
     setMenu(saved);
+    onMenuChange?.(saved);
     setDays(toDraftDays(saved));
     setDirty(false);
     return saved;
@@ -156,6 +163,7 @@ export function ProviderMenuEditor({
         { method: "POST" },
       );
       setMenu(publishedMenu);
+      onMenuChange?.(publishedMenu);
       setDays(toDraftDays(publishedMenu));
       setEditingDay(null);
       setFeedback({
@@ -181,6 +189,7 @@ export function ProviderMenuEditor({
         },
       );
       setMenu(copied);
+      onMenuChange?.(copied);
       setDays(toDraftDays(copied));
       setDirty(false);
       setEditingDay(0);
@@ -201,6 +210,7 @@ export function ProviderMenuEditor({
         method: "DELETE",
       });
       setMenu(null);
+      onMenuChange?.(null);
       setDays(createEmptyWeek(startsOn));
       setDirty(false);
       setEditingDay(0);
@@ -214,15 +224,17 @@ export function ProviderMenuEditor({
   }
 
   return (
-    <section className="menu-editor-enter mt-6 space-y-5">
+    <section className="menu-editor-enter space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="eyebrow">Semana del {formatChileanDate(startsOn)}</p>
-          <h2 className="mt-1 text-2xl font-black">Menú de la próxima semana</h2>
+          <h2 className="mt-1 text-2xl font-black">Menú de la {periodLabel}</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
             {published
               ? "Esta semana ya está publicada y quedó protegida contra cambios."
-              : `${readyDays} de 5 días preparados. Completa cada día y luego publica.`}
+              : currentWeek
+                ? `${readyDays} de 7 días preparados. Puedes cargarla aunque la semana ya haya comenzado.`
+                : `${readyDays} de 7 días preparados. Completa cada día y luego publica.`}
           </p>
         </div>
         {!menu && !published ? (
@@ -240,7 +252,7 @@ export function ProviderMenuEditor({
       <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]" aria-hidden="true">
         <div
           className="menu-progress-fill h-full rounded-full bg-[var(--herb)]"
-          style={{ width: `${readyDays * 20}%` }}
+          style={{ width: `${(readyDays / serviceDays.length) * 100}%` }}
         />
       </div>
 
@@ -266,7 +278,7 @@ export function ProviderMenuEditor({
       />
 
       <div className="menu-week-list card divide-y divide-[var(--line)] overflow-hidden">
-        {weekdays.map((day, dayIndex) => {
+        {serviceDays.map((day, dayIndex) => {
           const complete = day.disabled || isDayComplete(day);
           const expanded = editingDay === dayIndex && !published;
           const description = day.disabled
@@ -283,8 +295,9 @@ export function ProviderMenuEditor({
                   setAdvancedOpen(false);
                 }}
                 aria-expanded={expanded}
+                aria-controls={`menu-day-${day.serviceDate}`}
                 disabled={published}
-                className="group grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] disabled:cursor-default disabled:hover:bg-white sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5"
+                className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] disabled:cursor-default disabled:hover:bg-white sm:px-5"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-full transition-all duration-300 ${
@@ -304,13 +317,20 @@ export function ProviderMenuEditor({
                   </span>
                 </span>
                 {!published ? (
-                  <span className="col-span-2 ml-11 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-sm font-extrabold text-[var(--brand)] transition-transform duration-200 group-hover:translate-x-0.5 sm:col-span-1 sm:ml-0">
-                    <Pencil size={15} /> {complete ? "Editar" : "Agregar"}
+                  <span className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-soft)] px-2.5 py-2 text-sm font-extrabold text-[var(--brand)] sm:px-3">
+                    <Pencil size={15} className="hidden sm:block" />
+                    <span className="hidden sm:inline">{complete ? "Editar" : "Agregar"}</span>
+                    <ChevronDown
+                      size={18}
+                      aria-hidden="true"
+                      className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                    />
                   </span>
                 ) : null}
               </button>
 
               <div
+                id={`menu-day-${day.serviceDate}`}
                 className={`menu-collapsible grid ${
                   expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
@@ -368,22 +388,28 @@ export function ProviderMenuEditor({
               </div>
             ) : null}
           </div>
-          <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+          <div className="menu-save-actions grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-3">
             <button
               type="button"
               onClick={saveDraft}
               disabled={saving || !dirty}
-              className="menu-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
+              className="menu-action inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 text-sm font-extrabold text-white hover:brightness-95 disabled:opacity-40 sm:px-5 sm:text-base"
             >
-              <Save size={18} /> Guardar borrador
+              <Save size={18} className="shrink-0" />
+              <span className="sm:hidden">Borrador</span>
+              <span className="hidden sm:inline">Guardar borrador</span>
             </button>
             <button
               type="button"
               onClick={publishWeek}
               disabled={saving || !weekComplete}
-              className="menu-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-5 font-extrabold text-white hover:brightness-95 disabled:opacity-40"
+              className="menu-action inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-3 text-sm font-extrabold text-white hover:brightness-95 disabled:opacity-40 sm:px-5 sm:text-base"
             >
-              <Send size={18} /> {dirty || !menu ? "Guardar y publicar" : "Publicar semana"}
+              <Send size={18} className="shrink-0" />
+              <span className="sm:hidden">Publicar</span>
+              <span className="hidden sm:inline">
+                {dirty || !menu ? "Guardar y publicar" : "Publicar semana"}
+              </span>
             </button>
           </div>
         </div>
@@ -407,14 +433,14 @@ function TrainingMenuEditor({
 }) {
   return (
     <section className="provider-card-motion card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+      <div className="grid gap-4 p-5 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="eyebrow">Apartado independiente</p>
           <h3 className="mt-1 text-lg font-black">Menú de capacitaciones</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
         </div>
         {!published ? (
-          <button type="button" onClick={option ? onDisable : onEnable} className={`menu-action min-h-10 rounded-xl px-4 text-sm font-extrabold ${option ? "bg-red-50 text-[var(--danger)]" : "bg-[var(--herb)] text-white"}`}>
+          <button type="button" onClick={option ? onDisable : onEnable} className={`menu-action min-h-11 w-full rounded-xl px-4 text-sm font-extrabold sm:min-h-10 sm:w-auto ${option ? "bg-red-50 text-[var(--danger)]" : "bg-[var(--herb)] text-white"}`}>
             {option ? "Quitar menú" : "Agregar menú"}
           </button>
         ) : null}
@@ -740,8 +766,8 @@ function trainingOption(): DraftOption {
 function createEmptyWeek(startsOn: string): DraftDay[] {
   return Array.from({ length: 7 }, (_, index) => ({
     serviceDate: addDays(startsOn, index),
-    disabled: index >= 5,
-    options: index >= 5 ? [] : [emptyOption(0)],
+    disabled: false,
+    options: [emptyOption(0)],
   }));
 }
 

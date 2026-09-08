@@ -13,7 +13,12 @@
 - La proveedora ingresa junto con cada alternativa del menú una disponibilidad
   estimada, basada en el promedio de colaciones solicitadas por la empresa. La
   disponibilidad bloquea altas cuando se alcanza y puede ajustarse posteriormente.
-- La proveedora puede preparar durante la semana actual el menú de la semana siguiente.
+- La proveedora puede crear y publicar el menú de la semana actual aunque se
+  haya atrasado. También puede preparar semanas futuras. Esta excepción no
+  reabre los plazos vencidos de pedidos de trabajadores.
+- El servicio regular y sus menús pueden estar disponibles de lunes a domingo.
+  Sábado y domingo se configuran igual que los demás días y solo se marcan
+  como `Sin servicio` cuando corresponda.
 - La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores.
 - Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana. El ingreso está habilitado hasta las 09:00 y vuelve a abrir desde las 14:00; entre ambos horarios permanece cerrado. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
 - La forma de operar durante feriados y vacaciones sigue pendiente de

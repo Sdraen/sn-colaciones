@@ -56,9 +56,11 @@ Ejecutar en orden:
 6. `0006_delivery_extras_and_training_menu.sql`
 7. `0007_training_registration_windows.sql`
 8. `0008_delivery_tracking_and_receipt.sql`
+9. `0009_allow_late_current_week_menus.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
-las funciones RPC creadas por `0004`.
+las funciones RPC creadas desde `0004` y actualizadas por las migraciones
+posteriores.
 
 ## Endpoints iniciales
 

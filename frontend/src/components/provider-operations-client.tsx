@@ -30,6 +30,7 @@ type View = "production" | "summary" | "menu" | "reports";
 
 export function ProviderOperationsClient({
   initialOperations,
+  initialCurrentMenu,
   initialNextMenu,
   currentStartsOn,
   nextStartsOn,
@@ -38,6 +39,7 @@ export function ProviderOperationsClient({
   initialSummary,
 }: {
   initialOperations: ProviderOperationsDto | null;
+  initialCurrentMenu: MenuWeekDto | null;
   initialNextMenu: MenuWeekDto | null;
   currentStartsOn: string;
   nextStartsOn: string;
@@ -46,6 +48,11 @@ export function ProviderOperationsClient({
   initialSummary: DailySummaryDto | null;
 }) {
   const [operations, setOperations] = useState(initialOperations);
+  const [currentMenu, setCurrentMenu] = useState(initialCurrentMenu);
+  const [nextMenu, setNextMenu] = useState(initialNextMenu);
+  const [menuPeriod, setMenuPeriod] = useState<"current" | "next">(
+    initialCurrentMenu ? "next" : "current",
+  );
   const [liveNotifications, setLiveNotifications] = useState(notifications);
   const [view, setView] = useState<View>(initialOperations ? "production" : "menu");
   const [activeDayId, setActiveDayId] = useState(initialOperations?.menu.days[0]?.id ?? "");
@@ -155,15 +162,15 @@ export function ProviderOperationsClient({
 
   return (
     <main className="page-shell provider-shell-enter">
-      <div className="provider-header-enter flex min-w-0 flex-wrap justify-between gap-4">
+      <div className="provider-header-enter grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
         <div className="min-w-0">
           <p className="eyebrow">Panel proveedor</p>
           <h1 className="mt-2 text-2xl font-black sm:text-3xl">Gestión de colaciones</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            Producción real, menú de la próxima semana y reportes.
+            Producción real, menús semanales y reportes.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-h-10 flex-wrap items-center gap-2 md:justify-end">
           <span className="provider-notification-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
             <BellRing size={15} /> {liveNotifications.filter((item) => !item.readAt).length} avisos
           </span>
@@ -190,7 +197,7 @@ export function ProviderOperationsClient({
           [
             ["production", "Producción", LayoutDashboard],
             ["summary", "Resumen diario", ListChecks],
-            ["menu", "Próxima semana", ChefHat],
+            ["menu", "Menús", ChefHat],
             ["reports", "Reportes", BarChart3],
           ] as const
         ).map(([value, label, Icon]) => (
@@ -239,7 +246,54 @@ export function ProviderOperationsClient({
       ) : view === "reports" ? (
         <OperationsReports endpoint="/api/v1/provider/reports" initialReport={initialReport} />
       ) : view === "menu" ? (
-        <ProviderMenuEditor initialMenu={initialNextMenu} startsOn={nextStartsOn} />
+        <section className="mt-6 space-y-4">
+          <div
+            className="grid w-full grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-1 sm:w-fit"
+            role="tablist"
+            aria-label="Semana del menú"
+          >
+            {(
+              [
+                ["current", "Semana actual"],
+                ["next", "Próxima semana"],
+              ] as const
+            ).map(([period, label]) => (
+              <button
+                key={period}
+                type="button"
+                role="tab"
+                aria-selected={menuPeriod === period}
+                onClick={() => setMenuPeriod(period)}
+                className={`menu-action min-h-11 rounded-lg px-4 text-sm font-extrabold ${
+                  menuPeriod === period
+                    ? "bg-white text-[var(--brand)] shadow-sm"
+                    : "text-[var(--muted)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {menuPeriod === "current" ? (
+            <ProviderMenuEditor
+              key={currentStartsOn}
+              initialMenu={currentMenu}
+              startsOn={currentStartsOn}
+              periodLabel="semana actual"
+              currentWeek
+              onMenuChange={setCurrentMenu}
+            />
+          ) : (
+            <ProviderMenuEditor
+              key={nextStartsOn}
+              initialMenu={nextMenu}
+              startsOn={nextStartsOn}
+              periodLabel="próxima semana"
+              onMenuChange={setNextMenu}
+            />
+          )}
+        </section>
       ) : (
         <ProductionView
           operations={operations}

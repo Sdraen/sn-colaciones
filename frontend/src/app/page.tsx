@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, ChefHat, ClipboardCheck, ShieldCheck, Sparkles, Truck } from "lucide-react";
+import { ArrowRight, Building2, ChefHat, ClipboardCheck, ShieldCheck, Truck } from "lucide-react";
 import { getCurrentApiUser } from "@/lib/api/server";
 import type { AppRole } from "@/lib/api/types";
 
@@ -10,23 +10,7 @@ export default async function Home() {
 
   return (
     <main className="page-shell">
-      <section className="home-hero relative overflow-hidden rounded-[32px] px-6 py-10 text-white sm:px-10 lg:px-12">
-        <div className="absolute -right-16 -bottom-28 size-72 rounded-full bg-[var(--herb)]/25 blur-3xl" />
-        <div className="relative max-w-3xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold text-white">
-            <Sparkles size={14} aria-hidden="true" />
-            Sistema operativo
-          </div>
-          <h1 className="text-balance text-4xl leading-[1.05] font-black tracking-[-0.045em] sm:text-5xl">
-            Gestión de colaciones
-          </h1>
-          <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-white/85 sm:text-lg">
-            Pedidos, producción y reportes en un solo lugar.
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-10">
+      <section>
         <div className="mb-5">
           <div>
             <p className="eyebrow">Acceso personalizado</p>

@@ -23,6 +23,8 @@ const domainErrors: Record<string, { status: number; message: string }> = {
   MENU_OPTION_NOT_FOUND: { status: 404, message: "No se encontró la alternativa de menú" },
   MENU_OPTION_NOT_AVAILABLE: { status: 409, message: "La alternativa seleccionada no está disponible" },
   MENU_OPTION_CAPACITY_EXCEEDED: { status: 409, message: "Ya no queda disponibilidad para esa alternativa" },
+  DESSERT_ONLY_WEDNESDAY: { status: 409, message: "El postre sólo está disponible los miércoles" },
+  INVALID_WORKER_SIDE: { status: 400, message: "Debes elegir ensalada, fruta o postre" },
   MENU_DAY_WITHOUT_OPTIONS: { status: 422, message: "Cada día habilitado necesita al menos una alternativa" },
   MENU_WEEK_LOCKED: { status: 409, message: "El borrador ya tiene operaciones asociadas y no se puede reemplazar" },
   MENU_WEEK_NOT_FOUND: { status: 404, message: "No se encontró la semana de menú" },
@@ -46,6 +48,13 @@ export function throwSupabaseError(
   error: PostgrestError,
   fallbackMessage = "No fue posible completar la operación en la base de datos",
 ): never {
+  console.error("[supabase] operación rechazada", {
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+  });
+
   const domainError = domainErrors[error.message];
   if (domainError) {
     throw new AppError(domainError.message, domainError.status, error.message);

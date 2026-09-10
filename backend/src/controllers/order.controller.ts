@@ -7,9 +7,16 @@ import type {
 } from "../schemas/order.schema.js";
 import {
   cancelRegularOrder,
+  listAvailableWorkerMenuWeeks,
   listWorkerOrders,
   saveRegularOrder,
 } from "../services/order.service.js";
+
+export const getAvailableMenuWeeks: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const weeks = await listAvailableWorkerMenuWeeks(supabase);
+  response.status(200).json({ data: weeks });
+};
 
 export const getMyOrders: RequestHandler = async (request, response) => {
   const { supabase, user } = getRequestAuth(request);

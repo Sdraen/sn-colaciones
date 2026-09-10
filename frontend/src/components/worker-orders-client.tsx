@@ -12,11 +12,13 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
+import { WorkerWeekSelector } from "@/components/worker-week-selector";
 import type {
   MenuOptionDto,
   OrderDto,
   ServiceDayDto,
   SideChoice,
+  WorkerMenuWeekSummaryDto,
   WorkerOrdersDto,
 } from "@/lib/api/contracts";
 import {
@@ -44,18 +46,28 @@ interface WorkerOrdersClientProps {
   userName: string;
   initialData: WorkerOrdersDto;
   nowIso: string;
+  currentStartsOn: string;
+  publishedWeeks: WorkerMenuWeekSummaryDto[];
 }
 
 export function WorkerOrdersClient({
   userName,
   initialData,
   nowIso,
+  currentStartsOn,
+  publishedWeeks,
 }: WorkerOrdersClientProps) {
   const initialDayId = getInitialDayId(initialData, nowIso);
   const [orders, setOrders] = useState(initialData.orders);
+  const [remainingByOption, setRemainingByOption] = useState<Record<string, number | null>>(
+    () => availabilityFromMenu(initialData),
+  );
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [draft, setDraft] = useState<Draft>(() =>
-    draftForDay(initialData.orders, initialDayId),
+    draftForDay(
+      initialData.orders,
+      initialData.menuWeek.days.find((day) => day.id === initialDayId),
+    ),
   );
   const [currentTime, setCurrentTime] = useState(() => new Date(nowIso).getTime());
   const [message, setMessage] = useState("");
@@ -63,9 +75,26 @@ export function WorkerOrdersClient({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    let active = true;
+    const refresh = async () => {
+      setCurrentTime(Date.now());
+      try {
+        const latest = await browserApiRequest<WorkerOrdersDto>(
+          `/api/v1/orders/me?startsOn=${initialData.menuWeek.startsOn}`,
+        );
+        if (!active) return;
+        setOrders(latest.orders);
+        setRemainingByOption(availabilityFromMenu(latest));
+      } catch {
+        // La validación final de cupos permanece en la base de datos.
+      }
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [initialData.menuWeek.startsOn]);
 
   const activeDay = initialData.menuWeek.days.find((day) => day.id === activeDayId);
   const existingOrder = getConfirmedOrder(orders, activeDayId);
@@ -73,6 +102,13 @@ export function WorkerOrdersClient({
     (option) => option.visible && option.availableForWorkers,
   ) ?? [];
   const selectedOption = workerOptions.find((option) => option.id === draft.menuOptionId);
+  const selectedOptionAvailable = Boolean(
+    selectedOption &&
+      isOptionSelectable(
+        remainingByOption[selectedOption.id] ?? selectedOption.remainingQuantity,
+        existingOrder?.menuOptionId === selectedOption.id,
+      ),
+  );
   const canReserve = Boolean(
     activeDay &&
       !activeDay.disabled &&
@@ -80,14 +116,19 @@ export function WorkerOrdersClient({
       currentTime <= new Date(activeDay.preorderDeadline).getTime(),
   );
   const formComplete = Boolean(
-    draft.menuOptionId && draft.side && draft.bread !== draft.tea,
+    draft.menuOptionId && draft.side && draft.bread !== draft.tea && selectedOptionAvailable,
   );
   const serviceDays = initialData.menuWeek.days.filter((day) => !day.disabled);
   const reservedDays = serviceDays.filter((day) => getConfirmedOrder(orders, day.id)).length;
 
   function openDay(dayId: string) {
     setActiveDayId(dayId);
-    setDraft(draftForDay(orders, dayId));
+    setDraft(
+      draftForDay(
+        orders,
+        initialData.menuWeek.days.find((day) => day.id === dayId),
+      ),
+    );
     setMessage("");
     setError("");
   }
@@ -121,6 +162,18 @@ export function WorkerOrdersClient({
         ...current.filter((order) => order.serviceDayId !== activeDay.id),
         saved,
       ]);
+      setRemainingByOption((current) => {
+        const next = { ...current };
+        if (existingOrder?.menuOptionId !== saved.menuOptionId) {
+          if (existingOrder) {
+            next[existingOrder.menuOptionId] = incrementRemaining(
+              next[existingOrder.menuOptionId],
+            );
+          }
+          next[saved.menuOptionId] = decrementRemaining(next[saved.menuOptionId]);
+        }
+        return next;
+      });
       setMessage(
         existingOrder
           ? `Tu almuerzo del ${formatChileanDate(activeDay.serviceDate)} fue actualizado.`
@@ -154,6 +207,12 @@ export function WorkerOrdersClient({
         { method: "DELETE" },
       );
       setOrders((current) => current.filter((order) => order.id !== existingOrder.id));
+      setRemainingByOption((current) => ({
+        ...current,
+        [existingOrder.menuOptionId]: incrementRemaining(
+          current[existingOrder.menuOptionId],
+        ),
+      }));
       setDraft(emptyDraft);
       setMessage(`Tu almuerzo del ${formatChileanDate(activeDay.serviceDate)} fue eliminado.`);
     } catch (caught) {
@@ -186,7 +245,15 @@ export function WorkerOrdersClient({
         </span>
       </header>
 
-      <section className="mt-7 rounded-2xl border border-[var(--line)] bg-white/75 p-4 shadow-sm">
+      <div className="mt-7">
+        <WorkerWeekSelector
+          currentStartsOn={currentStartsOn}
+          selectedStartsOn={initialData.menuWeek.startsOn}
+          publishedWeeks={publishedWeeks}
+        />
+      </div>
+
+      <section className="mt-5 rounded-2xl border border-[var(--line)] bg-white/75 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-extrabold">Tu semana</p>
@@ -259,6 +326,10 @@ export function WorkerOrdersClient({
       >
         <BookingNotice day={activeDay} canReserve={canReserve} />
 
+        {!activeDay.disabled && workerOptions.length > 0 ? (
+          <OrderProgress draft={draft} existingOrder={Boolean(existingOrder)} />
+        ) : null}
+
         <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="card p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -287,7 +358,17 @@ export function WorkerOrdersClient({
                     key={option.id}
                     option={option}
                     selected={draft.menuOptionId === option.id}
-                    disabled={!canReserve}
+                    remainingQuantity={
+                      remainingByOption[option.id] ?? option.remainingQuantity
+                    }
+                    hasOwnReservation={existingOrder?.menuOptionId === option.id}
+                    disabled={
+                      !canReserve ||
+                      !isOptionSelectable(
+                        remainingByOption[option.id] ?? option.remainingQuantity,
+                        existingOrder?.menuOptionId === option.id,
+                      )
+                    }
                     onSelect={() => updateDraft({ menuOptionId: option.id })}
                   />
                 ))}
@@ -301,14 +382,11 @@ export function WorkerOrdersClient({
               <h2 className="mt-1 flex items-center gap-2 font-extrabold">
                 <Salad size={20} aria-hidden="true" /> Acompañamiento
               </h2>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {(
-                  [
-                    ["ensalada", "Ensalada"],
-                    ["postre", "Postre"],
-                    ["ninguno", "Ninguno"],
-                  ] as const
-                ).map(([value, label]) => (
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Elige sólo una opción. La fruta reemplaza a la ensalada.
+              </p>
+              <div className={`mt-4 grid gap-2 ${isWednesday(activeDay.serviceDate) ? "grid-cols-3" : "grid-cols-2"}`}>
+                {getSideChoices(activeDay.serviceDate).map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
@@ -424,6 +502,89 @@ export function WorkerOrdersClient({
   );
 }
 
+function OrderProgress({
+  draft,
+  existingOrder,
+}: {
+  draft: Draft;
+  existingOrder: boolean;
+}) {
+  const steps = [
+    { label: "Preparación", complete: Boolean(draft.menuOptionId) },
+    { label: "Acompañamiento", complete: Boolean(draft.side) },
+    { label: "Pan o té", complete: draft.bread !== draft.tea },
+  ];
+  const completedSteps = steps.filter((step) => step.complete).length;
+  const percentage = Math.round((completedSteps / steps.length) * 100);
+  const guidance = getProgressGuidance(steps, existingOrder);
+
+  return (
+    <section className="mt-5 rounded-2xl border border-[var(--line)] bg-white/80 p-4 shadow-sm sm:p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-extrabold">Progreso de tu solicitud</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">{guidance}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-extrabold text-[var(--brand)]">
+          {completedSteps} de {steps.length}
+        </span>
+      </div>
+
+      <div
+        className="mt-4 h-2.5 overflow-hidden rounded-full bg-[var(--line)]"
+        role="progressbar"
+        aria-label="Progreso de la solicitud de colación"
+        aria-valuemin={0}
+        aria-valuemax={steps.length}
+        aria-valuenow={completedSteps}
+        aria-valuetext={`${completedSteps} de ${steps.length} pasos completados`}
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--accent)] transition-[width] duration-500 ease-out motion-reduce:transition-none"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+
+      <ol className="mt-4 grid grid-cols-3 gap-2" aria-label="Pasos de la solicitud">
+        {steps.map((step, index) => (
+          <li
+            key={step.label}
+            className={`flex min-w-0 items-center gap-2 text-[0.68rem] font-bold sm:text-xs ${
+              step.complete ? "text-[var(--herb-strong)]" : "text-[var(--muted)]"
+            }`}
+          >
+            <span
+              className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[0.65rem] font-black transition-colors duration-300 ${
+                step.complete
+                  ? "border-[var(--herb)] bg-[var(--herb)] text-white"
+                  : "border-[var(--line)] bg-white"
+              }`}
+              aria-hidden="true"
+            >
+              {step.complete ? <Check size={12} strokeWidth={3} /> : index + 1}
+            </span>
+            <span className="truncate">{step.label}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function getProgressGuidance(
+  steps: Array<{ label: string; complete: boolean }>,
+  existingOrder: boolean,
+) {
+  if (steps.every((step) => step.complete)) {
+    return existingOrder
+      ? "Tu almuerzo está completo. Puedes modificarlo y guardar los cambios."
+      : "Todo listo. Confirma tu almuerzo para reservarlo.";
+  }
+
+  const nextStep = steps.find((step) => !step.complete);
+  return `Siguiente: elige ${nextStep?.label.toLocaleLowerCase("es-CL")}.`;
+}
+
 function BookingNotice({ day, canReserve }: { day: ServiceDayDto; canReserve: boolean }) {
   return (
     <div
@@ -455,11 +616,15 @@ function BookingNotice({ day, canReserve }: { day: ServiceDayDto; canReserve: bo
 function MenuOptionCard({
   option,
   selected,
+  remainingQuantity,
+  hasOwnReservation,
   disabled,
   onSelect,
 }: {
   option: MenuOptionDto;
   selected: boolean;
+  remainingQuantity: number | null;
+  hasOwnReservation: boolean;
   disabled: boolean;
   onSelect: () => void;
 }) {
@@ -479,21 +644,63 @@ function MenuOptionCard({
         onChange={onSelect}
         className="mt-1 size-4 shrink-0 accent-[var(--brand)]"
       />
-      <span className="min-w-0">
-        <span className="block text-xs font-extrabold uppercase tracking-wide text-[var(--brand)]">
-          {option.label}
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center justify-between gap-2">
+          <span className="block text-xs font-extrabold uppercase tracking-wide text-[var(--brand)]">
+            {option.label}
+          </span>
+          <AvailabilityBadge
+            remainingQuantity={remainingQuantity}
+            hasOwnReservation={hasOwnReservation}
+          />
         </span>
         <span className="mt-1 block text-base font-bold">{option.description}</span>
-        {option.dessert || option.beverage ? (
-          <span className="mt-2 block text-sm text-[var(--muted)]">
-            {[option.dessert, option.beverage].filter(Boolean).join(" · ")}
+        {remainingQuantity === 0 && !hasOwnReservation ? (
+          <span className="mt-2 block text-sm font-bold text-[var(--danger)]">
+            Selecciona otra opción disponible.
           </span>
-        ) : null}
-        {option.notes ? (
-          <span className="mt-1 block text-xs text-[var(--muted)]">{option.notes}</span>
         ) : null}
       </span>
     </label>
+  );
+}
+
+function AvailabilityBadge({
+  remainingQuantity,
+  hasOwnReservation,
+}: {
+  remainingQuantity: number | null;
+  hasOwnReservation: boolean;
+}) {
+  if (remainingQuantity === null) {
+    return (
+      <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold text-[var(--muted)]">
+        Disponibilidad por confirmar
+      </span>
+    );
+  }
+  if (remainingQuantity === 0 && !hasOwnReservation) {
+    return (
+      <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-extrabold text-[var(--danger)]">
+        Agotado
+      </span>
+    );
+  }
+  if (hasOwnReservation) {
+    return (
+      <span className="rounded-full bg-[var(--herb-soft)] px-2.5 py-1 text-xs font-extrabold text-[var(--herb-strong)]">
+        Tu reserva · {remainingQuantity} libres
+      </span>
+    );
+  }
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${
+      remainingQuantity <= 5
+        ? "bg-[var(--accent-soft)] text-[var(--warning)]"
+        : "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
+    }`}>
+      {remainingQuantity} disponibles
+    </span>
   );
 }
 
@@ -509,6 +716,7 @@ function OrderReview({
   const side = draft.side
     ? {
         ensalada: "Ensalada",
+        fruta: "Fruta",
         postre: "Postre",
         ninguno: "Sin acompañamiento",
       }[draft.side]
@@ -549,15 +757,53 @@ function EmptyMenu({ message }: { message: string }) {
   );
 }
 
-function draftForDay(orders: OrderDto[], dayId: string): Draft {
-  const order = getConfirmedOrder(orders, dayId);
+function draftForDay(orders: OrderDto[], day: ServiceDayDto | undefined): Draft {
+  if (!day) return emptyDraft;
+  const order = getConfirmedOrder(orders, day.id);
   if (!order) return emptyDraft;
+  const validSide =
+    order.side === "ensalada" ||
+    order.side === "fruta" ||
+    (order.side === "postre" && isWednesday(day.serviceDate));
   return {
     menuOptionId: order.menuOptionId,
-    side: order.side,
+    side: validSide ? order.side : "",
     bread: order.bread,
     tea: order.tea,
   };
+}
+
+function getSideChoices(serviceDate: string) {
+  const choices: Array<[Extract<SideChoice, "ensalada" | "fruta" | "postre">, string]> = [
+    ["ensalada", "Ensalada"],
+    ["fruta", "Fruta"],
+  ];
+  if (isWednesday(serviceDate)) choices.push(["postre", "Postre"]);
+  return choices;
+}
+
+function isWednesday(serviceDate: string) {
+  return new Date(`${serviceDate}T12:00:00.000Z`).getUTCDay() === 3;
+}
+
+function availabilityFromMenu(data: WorkerOrdersDto) {
+  return Object.fromEntries(
+    data.menuWeek.days.flatMap((day) =>
+      day.options.map((option) => [option.id, option.remainingQuantity] as const),
+    ),
+  );
+}
+
+function isOptionSelectable(remaining: number | null, hasOwnReservation: boolean) {
+  return remaining === null || remaining > 0 || hasOwnReservation;
+}
+
+function decrementRemaining(value: number | null | undefined) {
+  return typeof value === "number" ? Math.max(0, value - 1) : null;
+}
+
+function incrementRemaining(value: number | null | undefined) {
+  return typeof value === "number" ? value + 1 : null;
 }
 
 function getConfirmedOrder(orders: OrderDto[], dayId: string) {

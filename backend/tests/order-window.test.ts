@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCurrentWeekStartsOn,
   getOrderWindow,
   isTrainingDateAllowed,
   isTrainingWindowOpen,
@@ -60,5 +61,14 @@ describe("reglas horarias de colaciones", () => {
     expect(isTrainingDateAllowed("2026-08-24")).toBe(true);
     expect(isTrainingDateAllowed("2026-08-29")).toBe(false);
     expect(isTrainingDateAllowed("2026-08-24", true)).toBe(false);
+  });
+
+  it("calcula el lunes vigente usando la fecha de Chile", () => {
+    expect(getCurrentWeekStartsOn(new Date("2026-09-10T12:00:00-03:00"))).toBe(
+      "2026-09-07",
+    );
+    expect(getCurrentWeekStartsOn(new Date("2026-09-14T02:30:00.000Z"))).toBe(
+      "2026-09-07",
+    );
   });
 });

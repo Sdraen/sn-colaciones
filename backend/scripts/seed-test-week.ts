@@ -46,7 +46,7 @@ if (existingWeek) {
 
 console.log(`Organización: ${organization.name}`);
 console.log(`Semana de prueba: ${startsOn}`);
-console.log("Contenido: cinco días hábiles, alternativas caseras y menú separado de capacitación.");
+console.log("Contenido: siete días de colaciones y menú separado de capacitación en días hábiles.");
 if (!apply) {
   console.log("Vista previa terminada. Agrega --apply para crear la semana.");
   process.exit(0);
@@ -144,41 +144,23 @@ type SeedOption = {
 };
 
 function dailyMenuTemplates(): Array<Omit<SeedOption, "training">[]> {
-  return [
-  [
-    meal("Menú casero", "Espirales con salsa boloñesa", "principal", 45),
-    meal("Vegetariano", "Espirales con salsa de verduras", "vegetariano", 15),
-    meal("Hipocalórico", "Pechuga de pollo con verduras salteadas", "hipocalorico", 15),
-  ],
-  [
-    meal("Menú casero", "Pollo al jugo con arroz", "principal", 50),
-    meal("Vegetariano", "Tortilla de verduras con arroz", "vegetariano", 15),
-    meal("Hipocalórico", "Pollo grillado con ensalada surtida", "hipocalorico", 15),
-  ],
-  [
-    meal("Menú casero", "Porotos con riendas", "principal", 50),
-    meal("Vegetariano", "Guiso de lentejas con verduras", "vegetariano", 15),
-    meal("Hipocalórico", "Pavo al horno con ensalada", "hipocalorico", 15),
-  ],
-  [
-    meal("Menú casero", "Carne mechada con puré", "principal", 45),
-    meal("Vegetariano", "Croquetas de legumbres con puré", "vegetariano", 15),
-    meal("Hipocalórico", "Carne magra con verduras", "hipocalorico", 15),
-  ],
-  [
-    meal("Handroll", "Handroll de pollo con queso crema", "handroll", 40),
-    meal("Vegetariano", "Handroll de verduras con queso crema", "vegetariano", 20),
-    meal("Hipocalórico", "Ensalada de pollo y vegetales", "hipocalorico", 15),
-  ],
+  const dailyMenu = [
+    meal("Pechuga", "Pechuga con papas mayo", "principal", 13),
+    meal("Pulpa", "Pulpa con puré", "principal", 17),
+    meal("Sándwich", "Sándwich", "sandwich", 6),
+    meal("Hipocalórico", "Menú hipocalórico", "hipocalorico", 9),
+    meal("Vegetariano", "Menú vegetariano", "vegetariano", 1),
   ];
+
+  return Array.from({ length: 7 }, () => dailyMenu.map((option) => ({ ...option })));
 }
 
 function buildWeek(weekStart: string) {
   const dailyMenus = dailyMenuTemplates();
   return Array.from({ length: 7 }, (_, index) => {
-    const disabled = index >= 5;
-    const regular = disabled ? [] : dailyMenus[index]!;
-    const training: SeedOption[] = disabled
+    const disabled = false;
+    const regular = dailyMenus[index]!;
+    const training: SeedOption[] = index >= 5
       ? []
       : [{
           label: "Menú capacitación",
@@ -209,7 +191,7 @@ function meal(
     description,
     category,
     dessert: "Fruta de estación",
-    beverage: "Jugo en caja",
+    beverage: null,
     notes: null,
     capacity,
   };

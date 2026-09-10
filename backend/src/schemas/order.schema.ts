@@ -6,7 +6,7 @@ export const saveRegularOrderRequestSchema = z.object({
     .object({
       serviceDayId: uuidSchema,
       menuOptionId: uuidSchema,
-      side: z.enum(["ensalada", "postre", "ninguno"]),
+      side: z.enum(["ensalada", "fruta", "postre"]),
       bread: z.boolean().default(false),
       tea: z.boolean().default(false),
     })
@@ -26,6 +26,12 @@ export const listMyOrdersRequestSchema = z.object({
   }),
 });
 
+export const listAvailableWeeksRequestSchema = z.object({
+  body: z.unknown(),
+  params: z.object({}),
+  query: z.object({}),
+});
+
 export const cancelOrderRequestSchema = z.object({
   body: z.unknown(),
   params: z.object({ orderId: uuidSchema }),
@@ -34,4 +40,5 @@ export const cancelOrderRequestSchema = z.object({
 
 export type SaveRegularOrderRequest = z.infer<typeof saveRegularOrderRequestSchema>;
 export type ListMyOrdersRequest = z.infer<typeof listMyOrdersRequestSchema>;
+export type ListAvailableWeeksRequest = z.infer<typeof listAvailableWeeksRequestSchema>;
 export type CancelOrderRequest = z.infer<typeof cancelOrderRequestSchema>;

@@ -5,14 +5,12 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
-  ChevronUp,
   Copy,
   Pencil,
   Plus,
   Save,
   Send,
   Trash2,
-  X,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import type { MenuWeekDto } from "@/lib/api/contracts";
@@ -40,6 +38,20 @@ type DraftDay = {
 
 type Feedback = { kind: "success" | "error"; text: string } | null;
 
+const MENU_ALTERNATIVES = [
+  { label: "Principal 1", category: "principal" },
+  { label: "Principal 2", category: "principal" },
+  { label: "Vegetariano", category: "vegetariano" },
+  { label: "Hipocalórico", category: "hipocalorico" },
+  { label: "Sándwich", category: "sandwich" },
+  { label: "Sándwich vegetariano", category: "vegetariano" },
+  { label: "Burger", category: "especial" },
+  { label: "Burger vegetariana", category: "vegetariano" },
+  { label: "Empanadas", category: "especial" },
+  { label: "Handroll", category: "handroll" },
+  { label: "Handroll vegetariano", category: "vegetariano" },
+] as const;
+
 export function ProviderMenuEditor({
   initialMenu,
   startsOn,
@@ -58,7 +70,6 @@ export function ProviderMenuEditor({
     initialMenu ? toDraftDays(initialMenu) : createEmptyWeek(startsOn),
   );
   const [editingDay, setEditingDay] = useState<number | null>(0);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -292,7 +303,6 @@ export function ProviderMenuEditor({
                 type="button"
                 onClick={() => {
                   setEditingDay(expanded ? null : dayIndex);
-                  setAdvancedOpen(false);
                 }}
                 aria-expanded={expanded}
                 aria-controls={`menu-day-${day.serviceDate}`}
@@ -341,8 +351,6 @@ export function ProviderMenuEditor({
                   <DayEditor
                     day={day}
                     dayIndex={dayIndex}
-                    advancedOpen={advancedOpen}
-                    onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
                     onUpdateDay={updateDay}
                     onUpdateOption={updateOption}
                     onDone={() => setEditingDay(null)}
@@ -431,44 +439,79 @@ function TrainingMenuEditor({
   onDisable: () => void;
   onChange: (patch: Partial<DraftOption>) => void;
 }) {
+  const [expanded, setExpanded] = useState(Boolean(option));
+
   return (
     <section className="provider-card-motion card overflow-hidden">
       <div className="grid gap-4 p-5 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="eyebrow">Apartado independiente</p>
-          <h3 className="mt-1 text-lg font-black">Menú de capacitaciones</h3>
-          <p className="mt-1 text-sm text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
+          <h3 className="mt-1 text-xl font-black">Menú de capacitaciones</h3>
+          <p className="mt-1 text-base text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
         </div>
         {!published ? (
-          <button type="button" onClick={option ? onDisable : onEnable} className={`menu-action min-h-11 w-full rounded-xl px-4 text-sm font-extrabold sm:min-h-10 sm:w-auto ${option ? "bg-red-50 text-[var(--danger)]" : "bg-[var(--herb)] text-white"}`}>
-            {option ? "Quitar menú" : "Agregar menú"}
-          </button>
+          option ? (
+            <div className="grid w-full grid-cols-[1fr_auto] gap-2 sm:flex sm:w-auto">
+              <button
+                type="button"
+                onClick={onDisable}
+                className="menu-action min-h-11 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)]"
+              >
+                Quitar menú
+              </button>
+              <button
+                type="button"
+                onClick={() => setExpanded((current) => !current)}
+                aria-expanded={expanded}
+                aria-controls="training-menu-form"
+                aria-label={expanded ? "Cerrar menú de capacitaciones" : "Abrir menú de capacitaciones"}
+                className="menu-action inline-flex size-11 items-center justify-center rounded-xl bg-[var(--herb-soft)] text-[var(--herb-strong)]"
+              >
+                <ChevronDown
+                  size={20}
+                  aria-hidden="true"
+                  className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                onEnable();
+                setExpanded(true);
+              }}
+              className="menu-action min-h-11 w-full rounded-xl bg-[var(--herb)] px-4 text-sm font-extrabold text-white sm:min-h-10 sm:w-auto"
+            >
+              Agregar menú
+            </button>
+          )
         ) : null}
       </div>
-      {option ? (
-        <div className="grid gap-4 border-t border-[var(--line)] bg-[var(--cream)] p-5 md:grid-cols-2">
-          <label className="text-sm font-extrabold">Nombre visible
-            <input disabled={published} value={option.label} onChange={(event) => onChange({ label: event.target.value })} placeholder="Ej.: Menú capacitación" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
-          </label>
-          <label className="text-sm font-extrabold">Disponibilidad estimada
-            <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value ? Number(event.target.value) : null })} placeholder="Ej.: 30" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
-          </label>
-          <label className="text-sm font-extrabold md:col-span-2">Preparación
-            <textarea disabled={published} required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={2} placeholder="Ej.: Espirales con salsa, ensalada y pan" className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white p-3 font-normal" />
-          </label>
-          <label className="text-sm font-extrabold">Postre o fruta
-            <input disabled={published} value={option.dessert ?? ""} onChange={(event) => onChange({ dessert: event.target.value || null })} placeholder="Ej.: Fruta" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
-          </label>
-          <label className="text-sm font-extrabold">Bebida
-            <input disabled={published} value={option.beverage ?? ""} onChange={(event) => onChange({ beverage: event.target.value || null })} placeholder="Ej.: Jugo en caja" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
-          </label>
-          <label className="text-sm font-extrabold md:col-span-2">Observaciones (opcional)
-            <input disabled={published} value={option.notes ?? ""} onChange={(event) => onChange({ notes: event.target.value || null })} placeholder="Indicaciones para cocina" className="mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 font-normal" />
-          </label>
+      <div
+        id="training-menu-form"
+        className={`menu-collapsible grid ${
+          option && expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+        aria-hidden={!option || !expanded}
+        inert={!option || !expanded}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {option ? (
+            <div className="grid gap-5 border-t border-[var(--line)] bg-[var(--cream)] p-5 md:grid-cols-2">
+              <label className="text-base font-extrabold md:col-span-2">Preparación
+                <textarea disabled={published} required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={3} placeholder="Ej.: Espirales con salsa" className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white p-4 text-base font-normal" />
+              </label>
+              <label className="text-base font-extrabold">Disponibilidad estimada
+                <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-base font-normal" />
+              </label>
+            </div>
+          ) : null}
         </div>
-      ) : (
+      </div>
+      {!option ? (
         <p className="border-t border-[var(--line)] p-5 text-sm text-[var(--muted)]">Si no se agrega, Securitas no podrá registrar capacitaciones para esa semana.</p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -476,28 +519,25 @@ function TrainingMenuEditor({
 function DayEditor({
   day,
   dayIndex,
-  advancedOpen,
-  onToggleAdvanced,
   onUpdateDay,
   onUpdateOption,
   onDone,
 }: {
   day: DraftDay;
   dayIndex: number;
-  advancedOpen: boolean;
-  onToggleAdvanced: () => void;
   onUpdateDay: (index: number, patch: Partial<DraftDay>) => void;
   onUpdateOption: (dayIndex: number, optionIndex: number, patch: Partial<DraftOption>) => void;
   onDone: () => void;
 }) {
-  const primary = day.options.find((option) => option.availableForWorkers) ?? emptyOption(0);
+  const workerOptions = day.options.filter((option) => option.availableForWorkers);
+  const usedLabels = new Set(workerOptions.map((option) => option.label));
 
   return (
     <div className="border-t border-[var(--line)] bg-[var(--cream)] px-4 py-5 sm:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-black">Preparación del día</p>
-          <p className="text-xs text-[var(--muted)]">Escribe el plato tal como lo verá el trabajador.</p>
+          <p className="text-lg font-black">Alternativas del día</p>
+          <p className="text-sm text-[var(--muted)]">Sólo ingresa el plato y su disponibilidad estimada.</p>
         </div>
         <label className="inline-flex items-center gap-2 text-sm font-extrabold">
           <input
@@ -511,115 +551,82 @@ function DayEditor({
       </div>
 
       {!day.disabled ? (
-        <>
-          <label className="mt-4 block text-sm font-extrabold" htmlFor={`preparation-${dayIndex}`}>
-            Preparación principal
-          </label>
-          <textarea
-            id={`preparation-${dayIndex}`}
-            value={primary.description}
-            onChange={(event) => {
-              if (day.options.length === 0) {
-                onUpdateDay(dayIndex, {
-                  options: [{ ...primary, description: event.target.value }],
-                });
-              } else {
-                onUpdateOption(dayIndex, 0, { description: event.target.value });
-              }
-            }}
-            placeholder="Ej.: Pollo al jugo con arroz y ensalada"
-            rows={3}
-            className="mt-2 w-full resize-y rounded-xl border border-[var(--line)] bg-white px-4 py-3 outline-none transition duration-200 focus:-translate-y-px focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
-          />
-
-          <button
-            type="button"
-            onClick={onToggleAdvanced}
-            className="menu-action mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-[var(--brand)]"
-          >
-            {advancedOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-            Opciones avanzadas
-          </button>
-
-          <div
-            className={`menu-collapsible grid ${
-              advancedOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-            }`}
-            aria-hidden={!advancedOpen}
-            inert={!advancedOpen}
-          >
-            <div className="min-h-0 overflow-hidden">
-              <div className="mt-3 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
-              {day.options.filter((option) => option.availableForWorkers).map((option, optionIndex) => (
-                <div
-                  key={`${day.serviceDate}-${optionIndex}`}
-                  className="grid gap-3 border-b border-[var(--line)] pb-4 last:border-0 last:pb-0 lg:grid-cols-2"
-                >
-                  <label className="text-xs font-extrabold text-[var(--muted)]">
-                    Nombre visible
-                    <input
-                      value={option.label}
-                      onChange={(event) =>
-                        onUpdateOption(dayIndex, optionIndex, { label: event.target.value })
+        <div className="mt-5 space-y-4">
+          {day.options.map((option, optionIndex) => {
+            if (!option.availableForWorkers) return null;
+            const knownAlternative = MENU_ALTERNATIVES.some(
+              (alternative) => alternative.label === option.label,
+            );
+            return (
+              <article
+                key={`${day.serviceDate}-${optionIndex}`}
+                className="rounded-2xl border-2 border-[var(--line)] bg-white p-4 shadow-sm sm:p-5"
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">
+                      Alternativa {workerOptions.indexOf(option) + 1}
+                    </p>
+                    <p className="mt-1 text-lg font-black">{option.label}</p>
+                  </div>
+                  {workerOptions.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateDay(dayIndex, {
+                          options: day.options
+                            .filter((_, index) => index !== optionIndex)
+                            .map((item, index) => ({ ...item, sortOrder: index })),
+                        })
                       }
-                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
-                    />
-                  </label>
-                  <label className="text-xs font-extrabold text-[var(--muted)]">
-                    Categoría
-                    <select
-                      value={option.category}
-                      onChange={(event) =>
-                        onUpdateOption(dayIndex, optionIndex, { category: event.target.value })
-                      }
-                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] bg-white px-3 text-sm text-[var(--ink)]"
+                      className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)]"
                     >
-                      <option value="principal">Principal</option>
-                      <option value="vegetariano">Vegetariano</option>
-                      <option value="hipocalorico">Hipocalórico</option>
-                      <option value="sandwich">Sándwich</option>
-                      <option value="handroll">Handroll</option>
-                      <option value="especial">Especial</option>
+                      <Trash2 size={16} /> Eliminar
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="text-base font-extrabold">
+                    Tipo de alternativa
+                    <select
+                      value={option.label}
+                      onChange={(event) => {
+                        const alternative = MENU_ALTERNATIVES.find(
+                          (item) => item.label === event.target.value,
+                        );
+                        if (alternative) {
+                          onUpdateOption(dayIndex, optionIndex, {
+                            label: alternative.label,
+                            category: alternative.category,
+                            dessert: null,
+                            beverage: null,
+                            notes: null,
+                            visible: true,
+                          });
+                        }
+                      }}
+                      className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-base font-normal text-[var(--ink)]"
+                    >
+                      {!knownAlternative ? <option value={option.label}>{option.label}</option> : null}
+                      {MENU_ALTERNATIVES.map((alternative) => (
+                        <option
+                          key={alternative.label}
+                          value={alternative.label}
+                          disabled={usedLabels.has(alternative.label) && alternative.label !== option.label}
+                        >
+                          {alternative.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
-                  {optionIndex > 0 ? (
-                    <label className="text-xs font-extrabold text-[var(--muted)] lg:col-span-2">
-                      Preparación
-                      <textarea
-                        value={option.description}
-                        onChange={(event) =>
-                          onUpdateOption(dayIndex, optionIndex, {
-                            description: event.target.value,
-                          })
-                        }
-                        rows={2}
-                        className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm text-[var(--ink)]"
-                      />
-                    </label>
-                  ) : null}
-                  <label className="text-xs font-extrabold text-[var(--muted)]">
-                    Postre o fruta (opcional)
-                    <input
-                      value={option.dessert ?? ""}
-                      onChange={(event) => onUpdateOption(dayIndex, optionIndex, { dessert: event.target.value || null })}
-                      placeholder="Ej.: Fruta de estación"
-                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
-                    />
-                  </label>
-                  <label className="text-xs font-extrabold text-[var(--muted)]">
-                    Bebida (opcional)
-                    <input
-                      value={option.beverage ?? ""}
-                      onChange={(event) => onUpdateOption(dayIndex, optionIndex, { beverage: event.target.value || null })}
-                      placeholder="Ej.: Jugo en caja"
-                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
-                    />
-                  </label>
-                  <label className="text-xs font-extrabold text-[var(--muted)]">
+
+                  <label className="text-base font-extrabold">
                     Disponibilidad estimada
                     <input
                       type="number"
                       min="0"
+                      required
                       value={option.capacity ?? ""}
                       onChange={(event) =>
                         onUpdateOption(dayIndex, optionIndex, {
@@ -627,58 +634,46 @@ function DayEditor({
                         })
                       }
                       placeholder="Ej.: 50"
-                      className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] px-3 text-sm text-[var(--ink)]"
+                      className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] px-4 text-base font-normal text-[var(--ink)]"
                     />
                   </label>
-                  <div className="flex flex-wrap items-end gap-4 pb-2 text-xs font-extrabold">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={option.visible}
-                        onChange={(event) =>
-                          onUpdateOption(dayIndex, optionIndex, { visible: event.target.checked })
-                        }
-                        className="mr-2 accent-[var(--herb)]"
-                      />
-                      Visible
-                    </label>
-                    {day.options.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateDay(dayIndex, {
-                            options: day.options
-                              .filter((_, index) => index !== optionIndex)
-                              .map((item, index) => ({ ...item, sortOrder: index })),
-                          })
-                        }
-                        className="menu-action inline-flex items-center gap-1 text-[var(--danger)]"
-                      >
-                        <X size={15} /> Eliminar alternativa
-                      </button>
-                    ) : null}
-                  </div>
+
+                  <label className="text-base font-extrabold lg:col-span-2">
+                    Plato o preparación
+                    <textarea
+                      value={option.description}
+                      onChange={(event) =>
+                        onUpdateOption(dayIndex, optionIndex, {
+                          description: event.target.value,
+                        })
+                      }
+                      rows={3}
+                      placeholder="Ej.: Pollo al jugo con arroz"
+                      className="mt-2 w-full rounded-xl border border-[var(--line)] px-4 py-3 text-base font-normal text-[var(--ink)]"
+                    />
+                  </label>
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateDay(dayIndex, {
-                    options: [
-                      ...day.options.filter((option) => option.availableForWorkers),
-                      emptyOption(day.options.filter((option) => option.availableForWorkers).length),
-                      ...day.options.filter((option) => !option.availableForWorkers),
-                    ],
-                  })
-                }
-                className="menu-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--brand)] px-3 text-sm font-extrabold text-[var(--brand)]"
-              >
-                <Plus size={16} /> Agregar alternativa
-              </button>
-              </div>
-            </div>
-          </div>
-        </>
+              </article>
+            );
+          })}
+
+          <button
+            type="button"
+            disabled={workerOptions.length >= MENU_ALTERNATIVES.length}
+            onClick={() =>
+              onUpdateDay(dayIndex, {
+                options: [
+                  ...day.options.filter((option) => option.availableForWorkers),
+                  emptyOption(workerOptions.length, usedLabels),
+                  ...day.options.filter((option) => !option.availableForWorkers),
+                ],
+              })
+            }
+            className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--brand)] px-4 text-base font-extrabold text-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+          >
+            <Plus size={18} /> Agregar otra alternativa
+          </button>
+        </div>
       ) : (
         <p className="mt-4 rounded-xl bg-white p-4 text-sm text-[var(--muted)]">
           Este día no aparecerá disponible para pedidos.
@@ -726,15 +721,19 @@ function isDayComplete(day: DraftDay) {
     visibleOptions.length > 0 &&
     visibleOptions.every(
       (option) =>
-        option.label.trim().length >= 2 && option.description.trim().length >= 3,
+        option.label.trim().length >= 2 &&
+        option.description.trim().length >= 3 &&
+        option.capacity !== null,
     )
   );
 }
 
-function emptyOption(sortOrder: number): DraftOption {
+function emptyOption(sortOrder: number, usedLabels = new Set<string>()): DraftOption {
+  const alternative = MENU_ALTERNATIVES.find((item) => !usedLabels.has(item.label))
+    ?? MENU_ALTERNATIVES[0];
   return {
-    category: "principal",
-    label: sortOrder === 0 ? "Menú principal" : `Alternativa ${sortOrder + 1}`,
+    category: alternative.category,
+    label: alternative.label,
     description: "",
     dessert: null,
     beverage: null,

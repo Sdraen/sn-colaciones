@@ -3,8 +3,30 @@ import { AppError } from "../errors/app-error.js";
 import { throwSupabaseError } from "../lib/supabase-error.js";
 import type { Database, SideChoice } from "../types/database.js";
 import { getMenuWeek } from "./menu.service.js";
+import { getCurrentWeekStartsOn } from "./order-window.service.js";
 
 type UserDatabaseClient = SupabaseClient<Database>;
+
+export async function listAvailableWorkerMenuWeeks(
+  supabase: UserDatabaseClient,
+  currentStartsOn = getCurrentWeekStartsOn(),
+) {
+  const { data, error } = await supabase
+    .from("menu_weeks")
+    .select("id, starts_on, published_at")
+    .gte("starts_on", currentStartsOn)
+    .not("published_at", "is", null)
+    .order("starts_on", { ascending: true });
+  if (error) {
+    throwSupabaseError(error, "No fue posible consultar las semanas disponibles");
+  }
+
+  return (data ?? []).map((week) => ({
+    id: week.id,
+    startsOn: week.starts_on,
+    publishedAt: week.published_at!,
+  }));
+}
 
 export async function saveRegularOrder(
   supabase: UserDatabaseClient,

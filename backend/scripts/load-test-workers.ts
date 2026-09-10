@@ -152,7 +152,7 @@ try {
         body: JSON.stringify({
           serviceDayId: day.id,
           menuOptionId: option.id,
-          side: ["ensalada", "postre", "ninguno"][(bot.index + dayIndex) % 3],
+          side: workerSideFor(day.serviceDate, bot.index + dayIndex),
           bread: (bot.index + dayIndex) % 2 === 0,
           tea: (bot.index + dayIndex) % 2 !== 0,
         }),
@@ -256,6 +256,13 @@ try {
       );
     }
   }
+}
+
+function workerSideFor(serviceDate: string, index: number) {
+  const choices = new Date(`${serviceDate}T12:00:00.000Z`).getUTCDay() === 3
+    ? ["ensalada", "fruta", "postre"]
+    : ["ensalada", "fruta"];
+  return choices[index % choices.length];
 }
 
 if (testFailed) process.exitCode = 1;

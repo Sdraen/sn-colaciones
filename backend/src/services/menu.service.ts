@@ -70,6 +70,28 @@ export async function getMenuWeek(
   }
 
   const optionRows: MenuOptionSummary[] = optionsResult.data ?? [];
+  const availabilityByOption = new Map<
+    string,
+    { reservedQuantity: number; remainingQuantity: number | null }
+  >();
+  if (options.availableForWorkersOnly) {
+    const { data: availability, error: availabilityError } = await supabase.rpc(
+      "get_menu_option_availability",
+      { target_menu_week_id: week.id },
+    );
+    if (availabilityError) {
+      throwSupabaseError(
+        availabilityError,
+        "No fue posible consultar la disponibilidad del menú",
+      );
+    }
+    for (const item of availability ?? []) {
+      availabilityByOption.set(item.menu_option_id, {
+        reservedQuantity: item.reserved_quantity,
+        remainingQuantity: item.remaining_quantity,
+      });
+    }
+  }
   const optionsByDay = new Map<string, MenuOptionSummary[]>();
   for (const menuOption of optionRows) {
     const current = optionsByDay.get(menuOption.service_day_id) ?? [];
@@ -92,21 +114,27 @@ export async function getMenuWeek(
       deliveryClosesAt: day.delivery_closes_at,
       availabilityPublishedAt: day.availability_published_at,
       disabled: day.disabled,
-      options: (optionsByDay.get(day.id) ?? []).map((menuOption) => ({
-        id: menuOption.id,
-        category: menuOption.category,
-        label: menuOption.label,
-        description: menuOption.description,
-        dessert: menuOption.dessert,
-        beverage: menuOption.beverage,
-        notes: menuOption.notes,
-        capacity: menuOption.capacity,
-        capacityUpdatedAt: menuOption.capacity_updated_at,
-        trainingMenu: menuOption.available_for_training,
-        availableForWorkers: menuOption.available_for_workers,
-        visible: menuOption.visible,
-        sortOrder: menuOption.sort_order,
-      })),
+      options: (optionsByDay.get(day.id) ?? []).map((menuOption) => {
+        const availability = availabilityByOption.get(menuOption.id);
+        return {
+          id: menuOption.id,
+          category: menuOption.category,
+          label: menuOption.label,
+          description: menuOption.description,
+          dessert: menuOption.dessert,
+          beverage: menuOption.beverage,
+          notes: menuOption.notes,
+          capacity: menuOption.capacity,
+          capacityUpdatedAt: menuOption.capacity_updated_at,
+          reservedQuantity: availability?.reservedQuantity ?? 0,
+          remainingQuantity:
+            availability?.remainingQuantity ?? menuOption.capacity,
+          trainingMenu: menuOption.available_for_training,
+          availableForWorkers: menuOption.available_for_workers,
+          visible: menuOption.visible,
+          sortOrder: menuOption.sort_order,
+        };
+      }),
     })),
   };
 }
@@ -283,13 +311,15 @@ export async function publishMenuWeek(
       visibleOptions.length === 0 ||
       visibleOptions.some(
         (option) =>
-          option.label.trim().length < 2 || option.description.trim().length < 3,
+          option.label.trim().length < 2 ||
+          option.description.trim().length < 3 ||
+          option.capacity === null,
       )
     );
   });
   if (incompleteDays.length > 0) {
     throw new AppError(
-      "Completa la preparación de todos los días antes de publicar",
+      "Completa la preparación y disponibilidad de todos los días antes de publicar",
       422,
       "MENU_WEEK_INCOMPLETE",
       { serviceDates: incompleteDays.map((day) => day.serviceDate) },

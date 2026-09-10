@@ -544,6 +544,7 @@ export function CompanyOperationsClient({
                       className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-3"
                     >
                       <option value="ensalada">Ensalada</option>
+                      <option value="fruta">Fruta</option>
                       <option value="postre">Postre</option>
                       <option value="ninguno">Ninguno</option>
                     </select>

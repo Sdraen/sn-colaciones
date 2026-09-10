@@ -337,7 +337,7 @@ type ReportTotals = {
   cancelled: number;
   fulfilled: number;
   byKind: Record<OrderKind, number>;
-  sides: { salad: number; dessert: number; none: number };
+  sides: { salad: number; fruit: number; dessert: number; none: number };
   bread: number;
   tea: number;
 };
@@ -354,7 +354,7 @@ function createEmptyTotals(): ReportTotals {
     cancelled: 0,
     fulfilled: 0,
     byKind: { regular: 0, training: 0, extra: 0, exceptional: 0 },
-    sides: { salad: 0, dessert: 0, none: 0 },
+    sides: { salad: 0, fruit: 0, dessert: 0, none: 0 },
     bread: 0,
     tea: 0,
   };
@@ -371,6 +371,7 @@ function addOrderToTotals(totals: ReportTotals, order: ReportOrder) {
   totals.byKind[order.kind === "exceptional" ? "extra" : order.kind] += order.quantity;
   if (order.fulfilled_at) totals.fulfilled += order.quantity;
   if (order.side === "ensalada") totals.sides.salad += order.quantity;
+  if (order.side === "fruta") totals.sides.fruit += order.quantity;
   if (order.side === "postre") totals.sides.dessert += order.quantity;
   if (order.side === "ninguno") totals.sides.none += order.quantity;
   if (order.bread) totals.bread += order.quantity;

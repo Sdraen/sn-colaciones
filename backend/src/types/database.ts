@@ -16,7 +16,7 @@ export type MenuCategory =
   | "especial";
 export type OrderKind = "regular" | "training" | "extra" | "exceptional";
 export type OrderStatus = "confirmed" | "cancelled";
-export type SideChoice = "ensalada" | "postre" | "ninguno";
+export type SideChoice = "ensalada" | "fruta" | "postre" | "ninguno";
 
 type Relationship = {
   foreignKeyName: string;
@@ -480,6 +480,14 @@ export interface Database {
       save_menu_week_draft: {
         Args: { target_starts_on: string; week_days: Json };
         Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
+      };
+      get_menu_option_availability: {
+        Args: { target_menu_week_id: string };
+        Returns: Array<{
+          menu_option_id: string;
+          reserved_quantity: number;
+          remaining_quantity: number | null;
+        }>;
       };
       set_menu_option_availability: {
         Args: {

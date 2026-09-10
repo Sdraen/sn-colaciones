@@ -57,6 +57,8 @@ Ejecutar en orden:
 7. `0007_training_registration_windows.sql`
 8. `0008_delivery_tracking_and_receipt.sql`
 9. `0009_allow_late_current_week_menus.sql`
+10. `0010_fix_atomic_menu_rls.sql`
+11. `0011_worker_menu_choices_and_availability.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas desde `0004` y actualizadas por las migraciones
@@ -76,6 +78,7 @@ Authorization: Bearer <supabase-access-token>
 | GET | `/api/v1/auth/me` | Cualquier usuario activo |
 | GET | `/api/v1/menus/current` | Cualquier usuario activo |
 | GET | `/api/v1/orders/me` | Trabajador |
+| GET | `/api/v1/orders/me/weeks` | Trabajador |
 | PUT | `/api/v1/orders/me` | Trabajador |
 | DELETE | `/api/v1/orders/me/:orderId` | Trabajador propietario |
 | GET | `/api/v1/notifications` | Cualquier usuario activo |

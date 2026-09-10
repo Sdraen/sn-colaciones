@@ -72,9 +72,18 @@ Esta migración permite que la proveedora cargue la semana actual aunque ya
 haya comenzado, además de semanas futuras, sin reabrir los plazos vencidos de
 pedidos.
 
+Luego ejecutar `supabase/migrations/0010_fix_atomic_menu_rls.sql`. Esta
+migración permite que las políticas RLS reconozcan la semana y los días recién
+creados dentro de la misma operación atómica de guardado.
+
+Luego ejecutar `supabase/migrations/0011_worker_menu_choices_and_availability.sql`.
+Esta migración incorpora fruta como acompañamiento, limita el postre de los
+trabajadores a los miércoles, publica los cupos restantes sin revelar pedidos
+ajenos y serializa reservas simultáneas para impedir sobrecupos.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0009` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0011` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa

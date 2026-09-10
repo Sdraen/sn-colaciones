@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   deleteMyOrder,
+  getAvailableMenuWeeks,
   getMyOrders,
   putMyOrder,
 } from "../controllers/order.controller.js";
@@ -8,6 +9,7 @@ import { requireRole } from "../middleware/require-role.js";
 import { validateRequest } from "../middleware/validate-request.js";
 import {
   cancelOrderRequestSchema,
+  listAvailableWeeksRequestSchema,
   listMyOrdersRequestSchema,
   saveRegularOrderRequestSchema,
 } from "../schemas/order.schema.js";
@@ -15,6 +17,11 @@ import {
 export const orderRouter = Router();
 
 orderRouter.use(requireRole("worker"));
+orderRouter.get(
+  "/me/weeks",
+  validateRequest(listAvailableWeeksRequestSchema),
+  getAvailableMenuWeeks,
+);
 orderRouter.get("/me", validateRequest(listMyOrdersRequestSchema), getMyOrders);
 orderRouter.put("/me", validateRequest(saveRegularOrderRequestSchema), putMyOrder);
 orderRouter.delete(

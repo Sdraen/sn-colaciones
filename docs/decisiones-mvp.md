@@ -1,12 +1,24 @@
 # Decisiones del MVP
 
-Última actualización: 3 de septiembre de 2026.
+Última actualización: 10 de septiembre de 2026.
 
 ## Reglas confirmadas
 
 - Existen cuatro roles: trabajador, administradora Securitas, administradora proveedora y despacho.
 - El trabajador puede reservar cualquier día publicado de la semana, modificarlo o eliminarlo hasta las 22:00 del día anterior. No puede ingresar pedidos el mismo día.
-- Cada colación elige ensalada, postre o ninguno, y exactamente una opción entre pan y té.
+- La vista del trabajador abre siempre en la semana actual. Puede cambiar a una
+  semana futura únicamente cuando la proveedora ya publicó su menú; los
+  borradores y las semanas pasadas no aparecen en el selector.
+- La proveedora ingresa únicamente cada plato y su disponibilidad estimada. Las
+  alternativas disponibles son Principal 1, Principal 2, Vegetariano,
+  Hipocalórico, Sándwich y su opción vegetariana, Burger y su opción
+  vegetariana, Empanadas, Handroll y su opción vegetariana.
+- Cada trabajador elige exactamente un acompañamiento entre ensalada y fruta.
+  Los miércoles también puede elegir postre; elegir fruta o postre reemplaza la
+  ensalada. Además elige exactamente una opción entre pan y té.
+- El trabajador ve los cupos restantes de cada plato. Una alternativa agotada
+  queda deshabilitada y la base de datos impide sobrecupos incluso cuando dos
+  personas intentan reservar al mismo tiempo.
 - Entre las 08:00 y las 11:00 del mismo día solamente la administradora Securitas puede agregar colaciones, sujetas a la disponibilidad informada por la proveedora.
 - Entre las 11:00 y las 13:00 Securitas puede solicitar una colación extra tardía. La proveedora debe aprobarla o rechazarla e indicar un motivo claro al rechazar.
 - A las 13:00 se cierran por completo las nuevas colaciones del día.

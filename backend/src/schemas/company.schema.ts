@@ -4,7 +4,7 @@ import { isoDateSchema, uuidSchema } from "./common.schema.js";
 const mealSelectionSchema = z.object({
   serviceDayId: uuidSchema,
   menuOptionId: uuidSchema,
-  side: z.enum(["ensalada", "postre", "ninguno"]),
+  side: z.enum(["ensalada", "fruta", "postre", "ninguno"]),
   bread: z.boolean().default(false),
   tea: z.boolean().default(false),
 });

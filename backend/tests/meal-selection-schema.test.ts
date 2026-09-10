@@ -38,4 +38,19 @@ describe("selección de pan o té", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("acepta fruta y rechaza la antigua opción sin acompañamiento para trabajadores", () => {
+    expect(
+      saveRegularOrderRequestSchema.safeParse({
+        ...request,
+        body: { ...request.body, side: "fruta" },
+      }).success,
+    ).toBe(true);
+    expect(
+      saveRegularOrderRequestSchema.safeParse({
+        ...request,
+        body: { ...request.body, side: "ninguno" },
+      }).success,
+    ).toBe(false);
+  });
 });

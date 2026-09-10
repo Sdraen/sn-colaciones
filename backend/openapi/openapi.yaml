@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SN Colaciones API
-  version: 0.5.0
+  version: 0.6.0
   description: API autenticada para menús, reservas y operación de colaciones.
 servers:
   - url: http://localhost:4000
@@ -89,6 +89,31 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/orders/me/weeks:
+    get:
+      tags: [Pedidos del trabajador]
+      summary: Lista las semanas publicadas disponibles desde la semana actual
+      description: No devuelve semanas pasadas ni borradores de la proveedora.
+      responses:
+        "200":
+          description: Semanas actuales y futuras publicadas, ordenadas cronológicamente
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, startsOn, publishedAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        startsOn: { type: string, format: date }
+                        publishedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /api/v1/orders/me/{orderId}:
     delete:
       tags: [Pedidos del trabajador]
@@ -635,17 +660,17 @@ components:
       properties:
         serviceDayId: { type: string, format: uuid }
         menuOptionId: { type: string, format: uuid }
-        side: { enum: [ensalada, postre, ninguno] }
+        side: { enum: [ensalada, fruta, postre] }
         bread: { type: boolean, default: false }
         tea: { type: boolean, default: false }
-      description: Debe elegirse exactamente una alternativa entre pan y té.
+      description: El trabajador elige ensalada o fruta; los miércoles también puede elegir postre. Debe elegir exactamente una alternativa entre pan y té.
     MealSelectionInput:
       type: object
       required: [serviceDayId, menuOptionId, side]
       properties:
         serviceDayId: { type: string, format: uuid }
         menuOptionId: { type: string, format: uuid }
-        side: { enum: [ensalada, postre, ninguno] }
+        side: { enum: [ensalada, fruta, postre, ninguno] }
         bread: { type: boolean, default: false }
         tea: { type: boolean, default: false }
       description: Debe elegirse exactamente una alternativa entre pan y té.
@@ -692,7 +717,7 @@ components:
         menuOptionId: { type: string, format: uuid }
         beneficiaryLabel: { type: string }
         reason: { type: string }
-        side: { enum: [ensalada, postre, ninguno] }
+        side: { enum: [ensalada, fruta, postre, ninguno] }
         bread: { type: boolean }
         tea: { type: boolean }
         status: { enum: [pending, approved, rejected] }
@@ -709,7 +734,7 @@ components:
         menuOptionId: { type: string, format: uuid }
         kind: { enum: [regular, training, extra, exceptional] }
         quantity: { type: integer, minimum: 1 }
-        side: { enum: [ensalada, postre, ninguno] }
+        side: { enum: [ensalada, fruta, postre, ninguno] }
         bread: { type: boolean }
         tea: { type: boolean }
         status: { enum: [confirmed, cancelled] }
@@ -719,7 +744,7 @@ components:
             - { type: "null" }
     MenuOption:
       type: object
-      required: [id, category, label, description, capacity, trainingMenu, visible, sortOrder]
+      required: [id, category, label, description, capacity, reservedQuantity, remainingQuantity, trainingMenu, visible, sortOrder]
       properties:
         id: { type: string, format: uuid }
         category: { enum: [principal, vegetariano, hipocalorico, sandwich, handroll, especial] }
@@ -729,6 +754,11 @@ components:
         beverage: { type: [string, "null"] }
         notes: { type: [string, "null"] }
         capacity:
+          oneOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        reservedQuantity: { type: integer, minimum: 0 }
+        remainingQuantity:
           oneOf:
             - { type: integer, minimum: 0 }
             - { type: "null" }

@@ -88,7 +88,7 @@ for (const [dayIndex, day] of reservableDays.entries()) {
       body: JSON.stringify({
         serviceDayId: day.id,
         menuOptionId: workerOption.id,
-        side: ["ensalada", "postre", "ninguno"][dayIndex % 3],
+        side: workerSideFor(day.serviceDate, dayIndex),
         bread: dayIndex % 2 === 0,
         tea: dayIndex % 2 !== 0,
       }),
@@ -195,6 +195,13 @@ function apiResponse(role: AppRole, path: string, init: RequestInit = {}) {
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+function workerSideFor(serviceDate: string, index: number) {
+  const choices = new Date(`${serviceDate}T12:00:00.000Z`).getUTCDay() === 3
+    ? ["ensalada", "fruta", "postre"]
+    : ["ensalada", "fruta"];
+  return choices[index % choices.length];
 }
 
 function chileDate(date: Date) {

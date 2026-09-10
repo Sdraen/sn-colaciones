@@ -34,6 +34,14 @@ function dateTimeInChile(now: Date) {
   };
 }
 
+export function getCurrentWeekStartsOn(now = new Date()) {
+  const currentDate = dateTimeInChile(now).date;
+  const monday = new Date(`${currentDate}T12:00:00.000Z`);
+  const weekday = monday.getUTCDay() || 7;
+  monday.setUTCDate(monday.getUTCDate() - weekday + 1);
+  return monday.toISOString().slice(0, 10);
+}
+
 export function getOrderWindow(serviceDate: string, now = new Date()): OrderWindow {
   const current = dateTimeInChile(now);
   const previousDate = previousCalendarDate(serviceDate);

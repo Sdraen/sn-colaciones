@@ -107,6 +107,7 @@ export function DailySummary({
             <Breakdown title="Preparaciones" rows={summary.menuBreakdown.map((item) => ({ label: `${item.label} · ${item.description}`, quantity: item.quantity }))} />
             <Breakdown title="Complementos y componentes" rows={[
               { label: "Ensaladas", quantity: summary.totals.sides.ensalada },
+              { label: "Frutas", quantity: summary.totals.sides.fruta },
               { label: "Postres elegidos", quantity: summary.totals.sides.postre },
               { label: "Panes", quantity: summary.totals.bread },
               { label: "Tés", quantity: summary.totals.tea },
@@ -147,7 +148,12 @@ function Breakdown({ title, rows }: { title: string; rows: Array<{ label: string
 
 function chileToday() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("es-CL", { timeZone: "UTC", weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T12:00:00Z`)); }
-function sideLabel(value: string) { return value === "ensalada" ? "Ensalada" : value === "postre" ? "Postre" : "Sin acompañamiento"; }
+function sideLabel(value: string) {
+  if (value === "ensalada") return "Ensalada";
+  if (value === "fruta") return "Fruta";
+  if (value === "postre") return "Postre";
+  return "Sin acompañamiento";
+}
 function kindLabel(value: string) { return value === "regular" ? "Trabajador" : value === "training" ? "Capacitación" : "Extra"; }
 
 const printPageStyle = `

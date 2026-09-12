@@ -28,6 +28,14 @@ import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 type View = "production" | "summary" | "menu" | "reports";
 
+const DEFAULT_TAB_ORDER: View[] = ["menu", "production", "summary", "reports"];
+const PROVIDER_TABS = {
+  production: { label: "Producción", icon: LayoutDashboard },
+  summary: { label: "Resumen diario", icon: ListChecks },
+  menu: { label: "Menús", icon: ChefHat },
+  reports: { label: "Reportes", icon: BarChart3 },
+} satisfies Record<View, { label: string; icon: typeof ChefHat }>;
+
 export function ProviderOperationsClient({
   initialOperations,
   initialCurrentMenu,
@@ -54,7 +62,7 @@ export function ProviderOperationsClient({
     initialCurrentMenu ? "next" : "current",
   );
   const [liveNotifications, setLiveNotifications] = useState(notifications);
-  const [view, setView] = useState<View>(initialOperations ? "production" : "menu");
+  const [view, setView] = useState<View>("menu");
   const [activeDayId, setActiveDayId] = useState(initialOperations?.menu.days[0]?.id ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -193,33 +201,29 @@ export function ProviderOperationsClient({
         role="tablist"
         aria-label="Secciones de administración proveedora"
       >
-        {(
-          [
-            ["production", "Producción", LayoutDashboard],
-            ["summary", "Resumen diario", ListChecks],
-            ["menu", "Menús", ChefHat],
-            ["reports", "Reportes", BarChart3],
-          ] as const
-        ).map(([value, label, Icon]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={view === value}
-            onClick={() => {
-              setView(value);
-              setMessage("");
-              setError("");
-            }}
-            className={`provider-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
-              view === value
-                ? "bg-white text-[var(--brand)] shadow-sm"
-                : "text-[var(--muted)]"
-            }`}
-          >
-            <Icon size={17} /> {label}
-          </button>
-        ))}
+        {DEFAULT_TAB_ORDER.map((value) => {
+          const { label, icon: Icon } = PROVIDER_TABS[value];
+          return (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={view === value}
+              onClick={() => {
+                setView(value);
+                setMessage("");
+                setError("");
+              }}
+              className={`provider-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
+                view === value
+                  ? "bg-white text-[var(--brand)] shadow-sm"
+                  : "text-[var(--muted)]"
+              }`}
+            >
+              <Icon size={17} /> {label}
+            </button>
+          );
+        })}
       </div>
 
       {message ? (

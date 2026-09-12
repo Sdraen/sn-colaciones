@@ -75,6 +75,17 @@ El esquema y las políticas de los tres roles están en `supabase/migrations/`.
 La aplicación continúa usando datos ficticios hasta implementar Auth y conectar
 los servicios del frontend con la API.
 
+Para validar las migraciones locales y comprobar de forma segura el contrato de
+la base remota configurada en `backend/.env.local`:
+
+```bash
+npm run test:database
+```
+
+GitHub ejecuta automáticamente los tests locales y el lint en cada cambio que
+llega a `main` y en cada pull request. La prueba remota se mantiene manual para
+no exponer las credenciales de producción.
+
 ## Seguridad de datos
 
 El Excel original contiene nombres reales y no debe copiarse al repositorio.

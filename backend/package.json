@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:database": "vitest run tests/database-contract.test.ts && tsx scripts/verify-supabase.ts",
     "verify:supabase": "tsx scripts/verify-supabase.ts",
     "notifications:email": "tsx scripts/dispatch-email-notifications.ts",
     "notifications:morning": "tsx scripts/send-morning-summaries.ts",

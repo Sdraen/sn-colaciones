@@ -167,6 +167,7 @@ npm run dev -w backend
 npm run typecheck -w backend
 npm run lint -w backend
 npm run test -w backend
+npm run test:database -w backend
 npm run build -w backend
 npm run verify:supabase -w backend
 npm run verify:worker-provisioning -w backend
@@ -200,6 +201,11 @@ prueba:
 ```bash
 npm run load:test-workers -w backend
 ```
+
+`npm run test` valida localmente el contrato y la secuencia de las migraciones.
+`npm run test:database` agrega una prueba de humo de solo lectura contra el
+proyecto configurado en `backend/.env.local`: comprueba tablas, horarios y las
+funciones de disponibilidad y reserva sin crear ni modificar registros.
 
 La carga se puede ajustar sin editar el script:
 

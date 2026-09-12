@@ -1,6 +1,7 @@
 import { createAdminSupabaseClient } from "../src/lib/supabase.js";
 
 const supabase = createAdminSupabaseClient();
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 const checks = await Promise.all([
   runCheck("organizations", () =>
     supabase.from("organizations").select("id", { count: "exact", head: true }),
@@ -47,6 +48,37 @@ const checks = await Promise.all([
   ),
 ]);
 
+// Estas llamadas comprueban que PostgREST reconoce las funciones y sus tipos.
+// Usan un usuario administrativo sin perfil y UUID inexistentes, por lo que
+// deben terminar antes de cualquier escritura.
+await Promise.all([
+  runExpectedRpcRejection(
+    "migration 0011 availability RPC",
+    () =>
+      supabase.rpc("get_menu_option_availability", {
+        target_menu_week_id: NIL_UUID,
+      }),
+    ["AUTH_REQUIRED", "permission denied for function"],
+  ),
+  runExpectedRpcRejection(
+    "migration 0011 regular order RPC and fruit enum",
+    () =>
+      supabase.rpc("save_regular_order", {
+        target_service_day_id: NIL_UUID,
+        target_menu_option_id: NIL_UUID,
+        selected_side: "fruta",
+        include_bread: false,
+        include_tea: false,
+      }),
+    [
+      "AUTH_REQUIRED",
+      "WORKER_ROLE_REQUIRED",
+      "DINER_NOT_FOUND",
+      "permission denied for function",
+    ],
+  ),
+]);
+
 const [organizations, profiles, diners] = checks.map((check) => check.result);
 
 const { data: serviceDays, error: serviceDaysError } = await supabase
@@ -70,7 +102,7 @@ const { data: roleProfiles, error: roleError } = await supabase
 if (roleError) throw roleError;
 const roles = Object.groupBy(roleProfiles ?? [], (profile) => profile.role);
 
-console.log("Supabase administrativo: conexión y migraciones hasta 0008 verificadas.");
+console.log("Supabase administrativo: conexión y migraciones hasta 0011 verificadas.");
 console.log(
   `Datos actuales: ${organizations.count ?? 0} organizaciones, ${profiles.count ?? 0} perfiles, ${diners.count ?? 0} comensales.`,
 );
@@ -99,4 +131,28 @@ async function runCheck(
     throw new Error(`Falló la verificación ${label}: ${detail}`);
   }
   return { label, result };
+}
+
+async function runExpectedRpcRejection(
+  label: string,
+  query: () => PromiseLike<{
+    error: { code?: string; message: string } | null;
+  }>,
+  expectedMessages: string[],
+) {
+  const result = await query();
+
+  if (!result.error) {
+    throw new Error(
+      `Falló la verificación ${label}: la llamada de prueba no fue rechazada`,
+    );
+  }
+
+  const expectedRejection = expectedMessages.some((message) =>
+    result.error?.message.toLowerCase().includes(message.toLowerCase()),
+  );
+  if (!expectedRejection) {
+    const detail = result.error.message || result.error.code || "error sin detalle";
+    throw new Error(`Falló la verificación ${label}: ${detail}`);
+  }
 }

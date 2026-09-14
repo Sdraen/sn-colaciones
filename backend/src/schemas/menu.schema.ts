@@ -11,6 +11,7 @@ const menuCategorySchema = z.enum([
 ]);
 
 const menuOptionDraftSchema = z.object({
+  id: uuidSchema.optional(),
   category: menuCategorySchema,
   label: z.string().trim().min(2).max(80),
   description: z.string().trim().max(300),
@@ -51,7 +52,9 @@ export const createMenuWeekRequestSchema = validateMenuWeekDraft(
 
 export const updateMenuWeekRequestSchema = validateMenuWeekDraft(
   z.object({
-    body: menuWeekDraftBodySchema,
+    body: menuWeekDraftBodySchema.extend({
+      confirmImpact: z.boolean().default(false),
+    }),
     params: z.object({ weekId: uuidSchema }),
     query: z.object({}),
   }),
@@ -134,7 +137,10 @@ function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
     }
 
     days.forEach((day, index) => {
-      if (!day.disabled && day.options.length === 0) {
+      if (
+        !day.disabled &&
+        !day.options.some((option) => option.availableForWorkers && option.visible)
+      ) {
         context.addIssue({
           code: "custom",
           path: ["body", "days", index, "options"],
@@ -149,6 +155,17 @@ function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
         });
       }
     });
+
+    const optionIds = days.flatMap((day) =>
+      day.options.flatMap((option) => (option.id ? [option.id] : [])),
+    );
+    if (new Set(optionIds).size !== optionIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["body", "days"],
+        message: "Una alternativa existente no puede repetirse en la semana",
+      });
+    }
   });
 }
 

@@ -5,7 +5,7 @@ import {
 } from "../src/services/report.service.js";
 
 describe("reportes por período", () => {
-  it("calcula día, semana y mes hasta la fecha solicitada", () => {
+  it("calcula el día, la semana y el mes calendario solicitados", () => {
     expect(resolveReportRange("daily", "2026-08-26")).toEqual({
       from: "2026-08-26",
       to: "2026-08-26",
@@ -16,7 +16,7 @@ describe("reportes por período", () => {
     });
     expect(resolveReportRange("monthly", "2026-08-26")).toEqual({
       from: "2026-08-01",
-      to: "2026-08-26",
+      to: "2026-08-31",
     });
   });
 

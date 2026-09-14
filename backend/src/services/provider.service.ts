@@ -66,7 +66,7 @@ export async function deleteCalendarBlock(
 
 export async function setMenuOptionAvailability(
   supabase: UserDatabaseClient,
-  input: { menuOptionId: string; capacity: number | null; visible?: boolean },
+  input: { menuOptionId: string; capacity: number; visible?: boolean },
 ) {
   const { data, error } = await supabase.rpc("set_menu_option_availability", {
     target_menu_option_id: input.menuOptionId,

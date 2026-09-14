@@ -29,3 +29,26 @@ export async function browserApiRequest<T>(path: string, init: RequestInit = {})
   if (!("data" in payload)) throw new Error("La API devolvió una respuesta inesperada");
   return payload.data as T;
 }
+
+export async function browserApiDownload(path: string) {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Debes iniciar sesión");
+
+  const response = await fetch(`${getApiUrl()}${path}`, {
+    headers: {
+      accept: "application/pdf",
+      authorization: `Bearer ${session.access_token}`,
+    },
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    throw new Error(payload.error?.message ?? "No fue posible descargar el archivo");
+  }
+
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  return { blob: await response.blob(), fileName };
+}

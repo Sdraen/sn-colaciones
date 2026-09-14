@@ -34,7 +34,8 @@ import {
   updateMenuWeekDraft,
 } from "../services/menu.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
-import { getOrdersReport } from "../services/report.service.js";
+import { getNominalOrdersReport, getOrdersReport } from "../services/report.service.js";
+import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
 
 export const patchMenuOptionAvailability: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -59,6 +60,23 @@ export const getProviderReport: RequestHandler = async (request, response) => {
   const { query } = getValidatedRequest<ReportRequest>(request);
   const report = await getOrdersReport(supabase, query);
   response.status(200).json({ data: report });
+};
+
+export const getProviderReportPdf: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { query } = getValidatedRequest<ReportRequest>(request);
+  const report = await getNominalOrdersReport(supabase, query);
+  const pdf = await createNominalOrdersPdf(report);
+  const fileName = `reporte-nominal-colaciones-${query.period}-${report.range.from}-${report.range.to}.pdf`;
+
+  response.set({
+    "Cache-Control": "private, no-store",
+    "Content-Disposition": `attachment; filename="${fileName}"`,
+    "Content-Length": String(pdf.length),
+    "Content-Type": "application/pdf",
+    "X-Content-Type-Options": "nosniff",
+  });
+  response.status(200).send(pdf);
 };
 
 export const getOperationalDetail: RequestHandler = async (request, response) => {
@@ -96,6 +114,7 @@ export const putMenuWeek: RequestHandler = async (request, response) => {
     menuWeekId: params.weekId,
     startsOn: body.startsOn,
     days: body.days,
+    confirmImpact: body.confirmImpact,
   });
   response.status(200).json({ data: menu });
 };

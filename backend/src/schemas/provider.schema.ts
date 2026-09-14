@@ -3,7 +3,7 @@ import { isoDateSchema, uuidSchema } from "./common.schema.js";
 
 export const updateAvailabilityRequestSchema = z.object({
   body: z.object({
-    capacity: z.number().int().min(0).max(10_000).nullable(),
+    capacity: z.number().int().min(0).max(10_000),
     visible: z.boolean().optional(),
   }),
   params: z.object({ menuOptionId: uuidSchema }),

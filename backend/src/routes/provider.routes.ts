@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getProviderReport,
+  getProviderReportPdf,
   getWeeklyReport,
   getOperationalDetail,
   getCalendarBlocks,
@@ -38,6 +39,11 @@ import { reportRequestSchema } from "../schemas/report.schema.js";
 export const providerRouter = Router();
 
 providerRouter.use(requireRole("provider_admin"));
+providerRouter.get(
+  "/reports/pdf",
+  validateRequest(reportRequestSchema),
+  getProviderReportPdf,
+);
 providerRouter.get(
   "/reports",
   validateRequest(reportRequestSchema),

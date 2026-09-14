@@ -48,11 +48,20 @@ describe("CRUD de borradores semanales", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("protege una semana publicada contra ediciones", async () => {
+  it("deriva una semana publicada a la corrección controlada", async () => {
     const { client, rpc } = menuWeekClient({
       id: "11111111-1111-4111-8111-111111111111",
       starts_on: "2026-08-31",
       published_at: "2026-08-28T12:00:00.000Z",
+    });
+    rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: "P0001",
+        message: "MENU_EDIT_CONFIRMATION_REQUIRED",
+        details: null,
+        hint: null,
+      },
     });
 
     await expect(
@@ -61,8 +70,14 @@ describe("CRUD de borradores semanales", () => {
         startsOn: "2026-08-31",
         days: draftDays,
       }),
-    ).rejects.toMatchObject({ code: "MENU_WEEK_PUBLISHED", statusCode: 409 });
-    expect(rpc).not.toHaveBeenCalled();
+    ).rejects.toMatchObject({ code: "MENU_EDIT_CONFIRMATION_REQUIRED", statusCode: 409 });
+    expect(rpc).toHaveBeenCalledWith(
+      "update_published_menu_week",
+      expect.objectContaining({
+        target_menu_week_id: "11111111-1111-4111-8111-111111111111",
+        confirm_impact: false,
+      }),
+    );
   });
 
   it("elimina un borrador por identificador", async () => {

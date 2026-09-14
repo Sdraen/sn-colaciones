@@ -9,8 +9,10 @@ import {
   LayoutDashboard,
   ListChecks,
   RefreshCw,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import { ProviderMenuEditor } from "@/components/provider-menu-editor";
 import { OperationsReports } from "@/components/provider-reports";
 import { DailySummary } from "@/components/daily-summary";
@@ -111,17 +113,29 @@ export function ProviderOperationsClient({
 
   async function updateAvailability(
     optionId: string,
-    capacity: number | null,
-    visible: boolean,
+    capacity: number,
   ) {
     setSaving(true);
     setError("");
     try {
-      await browserApiRequest(`/api/v1/provider/menu-options/${optionId}/availability`, {
-        method: "PATCH",
-        body: JSON.stringify({ capacity, visible }),
-      });
-      setMessage("Disponibilidad actualizada.");
+      const updated = await browserApiRequest<{
+        id: string;
+        capacity: number;
+        capacityUpdatedAt: string;
+        visible: boolean;
+      }>(`/api/v1/provider/menu-options/${optionId}/availability`, {
+          method: "PATCH",
+          body: JSON.stringify({ capacity }),
+        });
+      setOperations((current) =>
+        current
+          ? { ...current, menu: updateMenuCapacity(current.menu, updated) }
+          : current,
+      );
+      setCurrentMenu((current) =>
+        current ? updateMenuCapacity(current, updated) : current,
+      );
+      setMessage("Cupo total actualizado.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible actualizar");
     } finally {
@@ -334,7 +348,7 @@ function ProductionView({
   saving: boolean;
   rejectionNotes: Record<string, string>;
   onSelectDay: (id: string) => void;
-  onUpdateAvailability: (id: string, capacity: number | null, visible: boolean) => Promise<void>;
+  onUpdateAvailability: (id: string, capacity: number) => Promise<void>;
   onResolve: (request: ExceptionDto, status: "approved" | "rejected") => Promise<void>;
   onChangeRejectionNote: (requestId: string, value: string) => void;
 }) {
@@ -374,16 +388,24 @@ function ProductionView({
       </div>
       <div className="provider-stagger-grid mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[1fr_.9fr]">
         <div className="provider-card-motion card min-w-0 p-5">
-          <h2 className="text-xl font-black">Disponibilidad del día</h2>
+          <div>
+            <p className="eyebrow">Control operativo</p>
+            <h2 className="mt-1 text-xl font-black">Cupos del día</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Consulta las reservas reales. Ajusta el cupo total solamente ante un cambio de producción.
+            </p>
+          </div>
           <div className="provider-list-enter mt-4 space-y-3">
-            {activeDay?.options.map((option) => (
-              <AvailabilityRow
-                key={option.id}
-                option={option}
-                disabled={saving}
-                onSave={onUpdateAvailability}
-              />
-            ))}
+            {activeDay?.options
+              .filter((option) => option.availableForWorkers && option.visible)
+              .map((option) => (
+                <AvailabilityRow
+                  key={option.id}
+                  option={option}
+                  disabled={saving}
+                  onSave={onUpdateAvailability}
+                />
+              ))}
           </div>
         </div>
         <div className="provider-card-motion card min-w-0 p-5">
@@ -429,6 +451,37 @@ function ProductionView({
   );
 }
 
+function updateMenuCapacity(
+  menu: MenuWeekDto,
+  updated: {
+    id: string;
+    capacity: number;
+    capacityUpdatedAt: string;
+    visible: boolean;
+  },
+) {
+  return {
+    ...menu,
+    days: menu.days.map((day) => ({
+      ...day,
+      options: day.options.map((option) =>
+        option.id === updated.id
+          ? {
+              ...option,
+              capacity: updated.capacity,
+              capacityUpdatedAt: updated.capacityUpdatedAt,
+              remainingQuantity: Math.max(
+                updated.capacity - option.reservedQuantity,
+                0,
+              ),
+              visible: updated.visible,
+            }
+          : option,
+      ),
+    })),
+  };
+}
+
 function AvailabilityRow({
   option,
   disabled,
@@ -436,41 +489,135 @@ function AvailabilityRow({
 }: {
   option: ProviderOperationsDto["menu"]["days"][number]["options"][number];
   disabled: boolean;
-  onSave: (id: string, capacity: number | null, visible: boolean) => Promise<void>;
+  onSave: (id: string, capacity: number) => Promise<void>;
 }) {
+  const [open, setOpen] = useState(false);
   const [capacity, setCapacity] = useState(option.capacity?.toString() ?? "");
-  const [visible, setVisible] = useState(option.visible);
+  const parsedCapacity = Number(capacity);
+  const validCapacity =
+    capacity !== "" &&
+    Number.isInteger(parsedCapacity) &&
+    parsedCapacity >= option.reservedQuantity;
+
+  async function saveCapacity() {
+    if (!validCapacity) return;
+    await onSave(option.id, parsedCapacity);
+    setOpen(false);
+  }
 
   return (
-    <div className="provider-list-item grid min-w-0 gap-3 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-[1fr_.6fr_auto]">
-      <div className="min-w-0">
-        <strong>{option.label}</strong>
-        <p className="text-xs text-[var(--muted)]">{option.description}</p>
+    <article className="provider-list-item rounded-2xl border border-[var(--line)] bg-white p-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <strong className="text-base">{option.label}</strong>
+          <p className="mt-1 text-sm text-[var(--muted)]">{option.description}</p>
+        </div>
+        <dl className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
+          <AvailabilityMetric label="Cupo total" value={option.capacity ?? "—"} />
+          <AvailabilityMetric label="Reservadas" value={option.reservedQuantity} />
+          <AvailabilityMetric
+            label="Disponibles"
+            value={option.remainingQuantity ?? "—"}
+            highlight
+          />
+        </dl>
       </div>
-      <input
-        type="number"
-        min="0"
-        value={capacity}
-        onChange={(event) => setCapacity(event.target.value)}
-        className="form-control min-h-10 min-w-0 px-3"
-      />
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onSave(option.id, capacity === "" ? null : Number(capacity), visible)}
-        className="provider-action rounded-xl bg-[var(--brand)] px-3 font-bold text-white disabled:opacity-40"
+      <div className="mt-4 flex justify-end border-t border-[var(--line)] pt-3">
+        <DialogPrimitive.Root
+          open={open}
+          onOpenChange={(nextOpen) => {
+            setOpen(nextOpen);
+            if (nextOpen) setCapacity(option.capacity?.toString() ?? "");
+          }}
+        >
+          <DialogPrimitive.Trigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              className="provider-action inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 text-sm font-extrabold text-[var(--ink)] disabled:opacity-40 sm:w-auto"
+            >
+              <SlidersHorizontal size={16} /> Ajustar cupo total
+            </button>
+          </DialogPrimitive.Trigger>
+          <DialogPrimitive.Portal>
+            <DialogPrimitive.Overlay className="app-dialog-overlay" />
+            <DialogPrimitive.Content className="app-dialog-content">
+              <p className="eyebrow">Ajuste excepcional</p>
+              <DialogPrimitive.Title className="mt-1 text-xl font-black">
+                Ajustar cupo total
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Modifica la capacidad de {option.label} solamente si cambió la producción real. Ya existen {option.reservedQuantity} reservas protegidas.
+              </DialogPrimitive.Description>
+
+              <label className="mt-5 block text-sm font-extrabold">
+                Nuevo cupo total
+                <input
+                  type="number"
+                  min={option.reservedQuantity}
+                  step="1"
+                  value={capacity}
+                  onChange={(event) => setCapacity(event.target.value)}
+                  className="form-control mt-2 px-4 text-base"
+                />
+              </label>
+              {!validCapacity ? (
+                <p role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+                  El cupo debe ser un número entero igual o superior a {option.reservedQuantity}.
+                </p>
+              ) : null}
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <DialogPrimitive.Close asChild>
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-4 font-extrabold"
+                  >
+                    Volver
+                  </button>
+                </DialogPrimitive.Close>
+                <button
+                  type="button"
+                  onClick={() => void saveCapacity()}
+                  disabled={disabled || !validCapacity}
+                  className="min-h-11 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white disabled:opacity-40"
+                >
+                  Guardar ajuste
+                </button>
+              </div>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+      </div>
+    </article>
+  );
+}
+
+function AvailabilityMetric({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: number | string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl px-2 py-3 ${
+        highlight ? "bg-[var(--herb-soft)]" : "bg-[var(--surface-muted)]"
+      }`}
+    >
+      <dt className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+        {label}
+      </dt>
+      <dd
+        className={`mt-1 text-xl font-black ${
+          highlight ? "text-[var(--herb-strong)]" : "text-[var(--ink)]"
+        }`}
       >
-        Guardar
-      </button>
-      <label className="text-xs font-bold">
-        <input
-          type="checkbox"
-          checked={visible}
-          onChange={(event) => setVisible(event.target.checked)}
-          className="mr-2"
-        />
-        Visible
-      </label>
+        {value}
+      </dd>
     </div>
   );
 }

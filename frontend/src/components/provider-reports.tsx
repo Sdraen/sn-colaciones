@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { CheckCircle2, Download, RefreshCw, XCircle } from "lucide-react";
-import { browserApiRequest } from "@/lib/api/client";
+import { CheckCircle2, Download, FileText, RefreshCw, XCircle } from "lucide-react";
+import { browserApiDownload, browserApiRequest } from "@/lib/api/client";
 import type { OrdersReportDto } from "@/lib/api/contracts";
 import { DatePickerField } from "@/components/date-picker-field";
 import { FormSelect } from "@/components/ui/form-select";
@@ -20,6 +20,8 @@ export function OperationsReports({
   const [period, setPeriod] = useState<OrdersReportDto["period"]>(initialReport.period);
   const [selectedDate, setSelectedDate] = useState(initialReport.range.to);
   const [validationError, setValidationError] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const supportsNominalPdf = endpoint === "/api/v1/provider/reports";
 
   const refreshReport = useCallback(async () => {
     if (!selectedDate) return;
@@ -72,6 +74,37 @@ export function OperationsReports({
     URL.revokeObjectURL(url);
   }
 
+  async function downloadPdf() {
+    if (!selectedDate) {
+      setValidationError("Ingresa una fecha válida con formato dd/mm/aaaa.");
+      return;
+    }
+
+    setValidationError("");
+    setDownloadingPdf(true);
+    try {
+      const { blob, fileName } = await browserApiDownload(
+        `${endpoint}/pdf?period=${period}&date=${selectedDate}`,
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName ?? `reporte-nominal-colaciones-${period}-${selectedDate}.pdf`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (downloadError) {
+      setValidationError(
+        downloadError instanceof Error
+          ? downloadError.message
+          : "No fue posible descargar el reporte PDF.",
+      );
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   return (
     <section className="provider-panel-enter mt-6 space-y-5">
       <div className="provider-report-header flex flex-wrap items-end justify-between gap-3">
@@ -122,6 +155,17 @@ export function OperationsReports({
           >
             <Download size={17} /> CSV
           </button>
+          {supportsNominalPdf ? (
+            <button
+              type="button"
+              onClick={() => void downloadPdf()}
+              disabled={downloadingPdf}
+              className="provider-action col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 font-extrabold text-[var(--ink)] disabled:cursor-wait disabled:opacity-60 sm:col-span-1 sm:px-4"
+            >
+              <FileText size={17} className={downloadingPdf ? "animate-pulse" : ""} />
+              {downloadingPdf ? "Generando…" : "PDF nominal"}
+            </button>
+          ) : null}
         </div>
       </div>
 

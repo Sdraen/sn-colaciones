@@ -435,8 +435,8 @@ paths:
   /api/v1/provider/menu-weeks/{weekId}:
     put:
       tags: [Proveedora]
-      summary: Reemplaza atómicamente un borrador semanal
-      description: Una semana publicada no se puede modificar.
+      summary: Guarda un borrador o corrige controladamente un menú publicado
+      description: En semanas publicadas conserva las reservas, exige confirmación para cambios de preparación y bloquea días pasados o entregados.
       parameters:
         - name: weekId
           in: path
@@ -561,7 +561,8 @@ paths:
   /api/v1/provider/menu-options/{menuOptionId}/availability:
     patch:
       tags: [Proveedora]
-      summary: Informa disponibilidad y visibilidad de una alternativa
+      summary: Ajusta excepcionalmente el cupo total de una alternativa
+      description: Usa el mismo cupo definido en Menús, nunca permite bajarlo de las reservas confirmadas y bloquea días pasados o entregados.
       parameters:
         - name: menuOptionId
           in: path
@@ -576,9 +577,9 @@ paths:
               required: [capacity]
               properties:
                 capacity:
-                  oneOf:
-                    - { type: integer, minimum: 0, maximum: 10000 }
-                    - { type: "null" }
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
                 visible: { type: boolean }
       responses:
         "200":
@@ -644,6 +645,25 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/OrdersReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/provider/reports/pdf:
+    get:
+      tags: [Proveedora]
+      summary: Descarga el reporte nominal diario, semanal o mensual en PDF
+      description: Incluye trabajador o beneficiario, preparación, acompañamiento, pan o té, cantidad y estado. Disponible únicamente para la proveedora.
+      parameters:
+        - $ref: "#/components/parameters/ReportPeriod"
+        - $ref: "#/components/parameters/ReportDate"
+      responses:
+        "200":
+          description: Reporte nominal generado
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
   /api/v1/provider/operations:
@@ -904,6 +924,10 @@ components:
       required: [category, label, description]
       additionalProperties: false
       properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador requerido para conservar una alternativa ya publicada y sus reservas.
         category: { enum: [principal, vegetariano, hipocalorico, sandwich, handroll, especial] }
         label: { type: string, minLength: 2, maxLength: 80 }
         description: { type: string, minLength: 3, maxLength: 300 }
@@ -940,6 +964,10 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: "#/components/schemas/MenuDayDraftInput" }
+        confirmImpact:
+          type: boolean
+          default: false
+          description: Confirma cambios de preparación que afectan reservas existentes; se notifican sin perder el cupo.
     CalendarBlockInput:
       type: object
       required: [startsOn, endsOn, kind, reason]

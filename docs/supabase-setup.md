@@ -97,9 +97,19 @@ capacitaciones, colaciones extra y solicitudes tardías antes de finalizar la
 entrega. Los cambios son atómicos, respetan la organización y disponibilidad,
 y quedan registrados en auditoría.
 
+Luego ejecutar `supabase/migrations/0015_controlled_published_menu_edits.sql`.
+Esta migración permite corregir menús publicados en fechas actuales o futuras,
+conserva los cupos reservados, notifica los cambios de preparación y bloquea la
+eliminación de alternativas reservadas y la modificación de días ya entregados.
+
+Luego ejecutar `supabase/migrations/0016_safe_operational_capacity_adjustments.sql`.
+Esta migración convierte el ajuste de Producción en una corrección excepcional
+del mismo cupo definido inicialmente en Menús. Impide reducirlo bajo las reservas
+confirmadas y bloquea modificaciones sobre días pasados o entregados.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0014` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0016` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa

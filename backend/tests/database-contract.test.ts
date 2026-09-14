@@ -116,6 +116,45 @@ describe("contrato de migraciones de Supabase", () => {
     expect(migration).toContain("company.operation_deleted");
     expect(migration).toContain("revoke delete on table public.orders from authenticated");
   });
+
+  it("protege la edición de menús publicados y sus reservas", () => {
+    const migration = readMigration("0015_controlled_published_menu_edits.sql");
+
+    expect(migration).toContain("function public.update_published_menu_week");
+    expect(migration).toContain("security definer set search_path = ''");
+    expect(migration).toMatch(/profile\.role = 'provider_admin'/i);
+    expect(migration).toMatch(/select menu_week\.\* into target_week/i);
+    expect(migration).not.toMatch(/into target_week,\s*target_timezone/i);
+    expect(migration).toContain("MENU_EDIT_CONFIRMATION_REQUIRED");
+    expect(migration).toContain("MENU_OPTION_HAS_RESERVATIONS");
+    expect(migration).toContain("MENU_DAY_HAS_RESERVATIONS");
+    expect(migration).toContain("OPERATION_HISTORY_LOCKED");
+    expect(migration).toContain("DELIVERY_ALREADY_COMPLETED");
+    expect(migration).toContain("published_menu_changed");
+    expect(migration).toContain("menu_week.published_corrected");
+    expect(migration).toContain(
+      "grant execute on function public.update_published_menu_week(uuid, jsonb, boolean) to authenticated",
+    );
+  });
+
+  it("protege los ajustes operativos de cupo", () => {
+    const migration = readMigration(
+      "0016_safe_operational_capacity_adjustments.sql",
+    );
+
+    expect(migration).toContain(
+      "function public.set_menu_option_availability",
+    );
+    expect(migration).toContain("security definer set search_path = ''");
+    expect(migration).toContain("MENU_CAPACITY_BELOW_RESERVATIONS");
+    expect(migration).toContain("MENU_OPTION_HAS_RESERVATIONS");
+    expect(migration).toContain("OPERATION_HISTORY_LOCKED");
+    expect(migration).toContain("DELIVERY_ALREADY_COMPLETED");
+    expect(migration).toContain("order_record.status = 'confirmed'");
+    expect(migration).toContain(
+      "grant execute on function public.set_menu_option_availability(uuid, integer, boolean) to authenticated",
+    );
+  });
 });
 
 function readMigration(fileName: string) {

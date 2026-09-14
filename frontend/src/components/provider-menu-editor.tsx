@@ -20,6 +20,7 @@ import type { MenuWeekDto } from "@/lib/api/contracts";
 import { formatChileanDate, formatChileanDateWithWeekday } from "@/lib/date-format";
 
 type DraftOption = {
+  id?: string;
   category: string;
   label: string;
   description: string;
@@ -31,6 +32,7 @@ type DraftOption = {
   availableForWorkers: boolean;
   visible: boolean;
   sortOrder: number;
+  reservedQuantity: number;
 };
 
 type DraftDay = {
@@ -72,7 +74,7 @@ export function ProviderMenuEditor({
   const [days, setDays] = useState<DraftDay[]>(() =>
     initialMenu ? toDraftDays(initialMenu) : createEmptyWeek(startsOn),
   );
-  const [editingDay, setEditingDay] = useState<number | null>(0);
+  const [editingDay, setEditingDay] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -138,19 +140,42 @@ export function ProviderMenuEditor({
     setFeedback(null);
   }
 
-  async function persistDraft() {
+  async function persistDraft(confirmImpact = false) {
     const endpoint = menu
       ? `/api/v1/provider/menu-weeks/${menu.id}`
       : "/api/v1/provider/menu-weeks";
     const saved = await browserApiRequest<MenuWeekDto>(endpoint, {
       method: menu ? "PUT" : "POST",
-      body: JSON.stringify({ startsOn, days }),
+      body: JSON.stringify({ startsOn, days, ...(published ? { confirmImpact } : {}) }),
     });
     setMenu(saved);
     onMenuChange?.(saved);
     setDays(toDraftDays(saved));
     setDirty(false);
     return saved;
+  }
+
+  async function savePublishedMenu(confirmImpact: boolean) {
+    if (!menu || !published || !dirty) return;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      await persistDraft(confirmImpact);
+      setEditingDay(null);
+      setFeedback({
+        kind: "success",
+        text: confirmImpact
+          ? "Menú actualizado. Las reservas conservaron su cupo y las personas afectadas fueron notificadas."
+          : "Menú publicado actualizado correctamente.",
+      });
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        text: errorMessage(error, "No fue posible actualizar el menú publicado"),
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveDraft() {
@@ -276,7 +301,7 @@ export function ProviderMenuEditor({
           <h2 className="mt-1 text-2xl font-black">Menú de la {periodLabel}</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
             {published
-              ? "Los platos publicados están protegidos. El menú de capacitación aún puede agregarse o actualizarse."
+              ? "Puedes corregir fechas actuales o futuras. Las reservas y los días ya entregados permanecen protegidos."
               : currentWeek
                 ? `${readyDays} de 7 días preparados. Puedes cargarla aunque la semana ya haya comenzado.`
                 : `${readyDays} de 7 días preparados. Completa cada día y luego publica.`}
@@ -328,7 +353,7 @@ export function ProviderMenuEditor({
       <div className="menu-week-list card divide-y divide-[var(--line)] overflow-hidden">
         {serviceDays.map((day, dayIndex) => {
           const complete = day.disabled || isDayComplete(day);
-          const expanded = editingDay === dayIndex && !published;
+          const expanded = editingDay === dayIndex;
           const description = day.disabled
             ? "Sin servicio"
             : day.options.find((option) => option.visible && option.availableForWorkers)?.description.trim() ||
@@ -343,8 +368,7 @@ export function ProviderMenuEditor({
                 }}
                 aria-expanded={expanded}
                 aria-controls={`menu-day-${day.serviceDate}`}
-                disabled={published}
-                className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] disabled:cursor-default disabled:hover:bg-white sm:px-5"
+                className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-[var(--surface-muted)] sm:px-5"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-full transition-all duration-300 ${
@@ -363,17 +387,15 @@ export function ProviderMenuEditor({
                     {description}
                   </span>
                 </span>
-                {!published ? (
-                  <span className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-soft)] px-2.5 py-2 text-sm font-extrabold text-[var(--brand)] sm:px-3">
-                    <Pencil size={15} className="hidden sm:block" />
-                    <span className="hidden sm:inline">{complete ? "Editar" : "Agregar"}</span>
-                    <ChevronDown
-                      size={18}
-                      aria-hidden="true"
-                      className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
-                    />
-                  </span>
-                ) : null}
+                <span className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-soft)] px-2.5 py-2 text-sm font-extrabold text-[var(--brand)] sm:px-3">
+                  <Pencil size={15} className="hidden sm:block" />
+                  <span className="hidden sm:inline">{complete ? "Editar" : "Agregar"}</span>
+                  <ChevronDown
+                    size={18}
+                    aria-hidden="true"
+                    className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                  />
+                </span>
               </button>
 
               <div
@@ -388,6 +410,7 @@ export function ProviderMenuEditor({
                   <DayEditor
                     day={day}
                     dayIndex={dayIndex}
+                    published={published}
                     onUpdateDay={updateDay}
                     onUpdateOption={updateOption}
                     onDone={() => setEditingDay(null)}
@@ -446,8 +469,73 @@ export function ProviderMenuEditor({
             </button>
           </div>
         </div>
+      ) : menu ? (
+        <PublishedMenuActions
+          dirty={dirty}
+          saving={saving}
+          impactedReservations={countImpactedReservations(menu, days)}
+          onSave={savePublishedMenu}
+          onReset={() => {
+            setDays(toDraftDays(menu));
+            setDirty(false);
+            setEditingDay(null);
+            setFeedback(null);
+          }}
+        />
       ) : null}
     </section>
+  );
+}
+
+function PublishedMenuActions({
+  dirty,
+  saving,
+  impactedReservations,
+  onSave,
+  onReset,
+}: {
+  dirty: boolean;
+  saving: boolean;
+  impactedReservations: number;
+  onSave: (confirmImpact: boolean) => Promise<void>;
+  onReset: () => void;
+}) {
+  const saveButton = (
+    <button
+      type="button"
+      onClick={impactedReservations > 0 ? undefined : () => void onSave(false)}
+      disabled={saving || !dirty}
+      className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-5 text-base font-extrabold text-white disabled:opacity-40 sm:w-auto"
+    >
+      <Save size={18} /> {saving ? "Guardando..." : "Guardar cambios"}
+    </button>
+  );
+
+  return (
+    <div className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm">
+      <p className="text-sm font-bold text-[var(--muted)]">
+        Los cambios quedan auditados. No es posible editar días pasados, entregados ni eliminar alternativas reservadas.
+      </p>
+      <div className="mt-3 grid gap-2 sm:flex sm:justify-end">
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={saving || !dirty}
+          className="menu-action min-h-12 rounded-xl border border-[var(--line)] bg-white px-5 font-extrabold disabled:opacity-40"
+        >
+          Descartar cambios
+        </button>
+        {impactedReservations > 0 ? (
+          <ConfirmDialog
+            title="¿Actualizar una preparación reservada?"
+            description={`${impactedReservations} ${impactedReservations === 1 ? "reserva conservará" : "reservas conservarán"} su cupo. Las personas afectadas recibirán una notificación con la nueva preparación.`}
+            confirmLabel="Sí, actualizar y notificar"
+            onConfirm={() => onSave(true)}
+            trigger={saveButton}
+          />
+        ) : saveButton}
+      </div>
+    </div>
   );
 }
 
@@ -563,18 +651,24 @@ function TrainingMenuEditor({
 function DayEditor({
   day,
   dayIndex,
+  published,
   onUpdateDay,
   onUpdateOption,
   onDone,
 }: {
   day: DraftDay;
   dayIndex: number;
+  published: boolean;
   onUpdateDay: (index: number, patch: Partial<DraftDay>) => void;
   onUpdateOption: (dayIndex: number, optionIndex: number, patch: Partial<DraftOption>) => void;
   onDone: () => void;
 }) {
   const workerOptions = day.options.filter((option) => option.availableForWorkers);
   const usedLabels = new Set(workerOptions.map((option) => option.label));
+  const dayReservations = workerOptions.reduce(
+    (total, option) => total + option.reservedQuantity,
+    0,
+  );
 
   return (
     <div className="border-t border-[var(--line)] bg-[var(--cream)] px-4 py-5 sm:px-5">
@@ -587,12 +681,19 @@ function DayEditor({
           <input
             type="checkbox"
             checked={day.disabled}
+            disabled={published && dayReservations > 0 && !day.disabled}
             onChange={(event) => onUpdateDay(dayIndex, { disabled: event.target.checked })}
             className="size-4 accent-[var(--brand)]"
           />
           Sin servicio
         </label>
       </div>
+
+      {published && dayReservations > 0 ? (
+        <p className="mt-3 rounded-xl bg-[var(--herb-soft)] px-4 py-3 text-sm font-bold text-[var(--herb-strong)]">
+          {dayReservations} {dayReservations === 1 ? "reserva protegida" : "reservas protegidas"}. Puedes corregir las preparaciones, pero no quitar sus alternativas ni dejar el día sin servicio.
+        </p>
+      ) : null}
 
       {!day.disabled ? (
         <div className="mt-5 space-y-4">
@@ -612,10 +713,21 @@ function DayEditor({
                       Alternativa {workerOptions.indexOf(option) + 1}
                     </p>
                     <p className="mt-1 text-lg font-black">{option.label}</p>
+                    {published ? (
+                      <p className="mt-1 text-sm font-bold text-[var(--herb-strong)]">
+                        {option.reservedQuantity} {option.reservedQuantity === 1 ? "reserva" : "reservas"}
+                      </p>
+                    ) : null}
                   </div>
                   {workerOptions.length > 1 ? (
                     <button
                       type="button"
+                      disabled={published && option.reservedQuantity > 0}
+                      title={
+                        published && option.reservedQuantity > 0
+                          ? "Esta alternativa tiene reservas; corrige su preparación en lugar de eliminarla"
+                          : undefined
+                      }
                       onClick={() =>
                         onUpdateDay(dayIndex, {
                           options: day.options
@@ -623,7 +735,7 @@ function DayEditor({
                             .map((item, index) => ({ ...item, sortOrder: index })),
                         })
                       }
-                      className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)]"
+                      className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Trash2 size={16} /> Eliminar
                     </button>
@@ -668,10 +780,10 @@ function DayEditor({
                   </label>
 
                   <label className="text-base font-extrabold">
-                    Disponibilidad estimada
+                    Cupo inicial estimado
                     <input
                       type="number"
-                      min="0"
+                      min={option.reservedQuantity}
                       required
                       value={option.capacity ?? ""}
                       onChange={(event) =>
@@ -744,6 +856,7 @@ function toDraftDays(menu: MenuWeekDto): DraftDay[] {
     serviceDate: day.serviceDate,
     disabled: day.disabled,
     options: day.options.map((option) => ({
+      id: option.id,
       category: option.category,
       label: option.label,
       description: option.description,
@@ -755,8 +868,34 @@ function toDraftDays(menu: MenuWeekDto): DraftDay[] {
       availableForWorkers: option.availableForWorkers,
       visible: option.visible,
       sortOrder: option.sortOrder,
+      reservedQuantity: option.reservedQuantity,
     })),
   }));
+}
+
+function countImpactedReservations(menu: MenuWeekDto, days: DraftDay[]) {
+  const originalOptions = new Map(
+    menu.days.flatMap((day) => day.options).map((option) => [option.id, option]),
+  );
+
+  return days.reduce(
+    (weekTotal, day) =>
+      weekTotal +
+      day.options.reduce((dayTotal, option) => {
+        if (!option.id || option.reservedQuantity === 0) return dayTotal;
+        const original = originalOptions.get(option.id);
+        if (!original) return dayTotal;
+        const preparationChanged =
+          original.category !== option.category ||
+          original.label !== option.label ||
+          original.description !== option.description ||
+          original.dessert !== option.dessert ||
+          original.beverage !== option.beverage ||
+          original.notes !== option.notes;
+        return dayTotal + (preparationChanged ? option.reservedQuantity : 0);
+      }, 0),
+    0,
+  );
 }
 
 function isDayComplete(day: DraftDay) {
@@ -789,6 +928,7 @@ function emptyOption(sortOrder: number, usedLabels = new Set<string>()): DraftOp
     availableForWorkers: true,
     visible: true,
     sortOrder,
+    reservedQuantity: 0,
   };
 }
 
@@ -805,6 +945,7 @@ function trainingOption(): DraftOption {
     availableForWorkers: false,
     visible: true,
     sortOrder: 99,
+    reservedQuantity: 0,
   };
 }
 

@@ -20,6 +20,7 @@ function weeklyDraft(startsOn = "2026-08-24") {
           disabled: false,
           options: [
             {
+              id: undefined as string | undefined,
               category: "principal" as const,
               label: "Menú principal",
               description: "Pollo al jugo con arroz",
@@ -78,6 +79,7 @@ describe("contrato del menú semanal", () => {
     input.body.days[0]!.options = [
       { ...input.body.days[0]!.options[0]!, trainingMenu: true },
       {
+        id: undefined,
         category: "principal",
         label: "Menú vegetariano",
         description: "Guiso de lentejas",
@@ -104,6 +106,28 @@ describe("contrato del menú semanal", () => {
 
     expect(invalidUpdate.success).toBe(false);
     expect(validDelete.success).toBe(true);
+  });
+
+  it("acepta identificadores existentes y confirmación de impacto al editar", () => {
+    const input = weeklyDraft();
+    input.body.days[0]!.options[0] = {
+      ...input.body.days[0]!.options[0]!,
+      id: "44444444-4444-4444-8444-444444444444",
+    };
+
+    const result = updateMenuWeekRequestSchema.safeParse({
+      ...input,
+      body: { ...input.body, confirmImpact: true },
+      params: { weekId: "11111111-1111-4111-8111-111111111111" },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.body.confirmImpact).toBe(true);
+      expect(result.data.body.days[0]?.options[0]?.id).toBe(
+        "44444444-4444-4444-8444-444444444444",
+      );
+    }
   });
 
   it("solo permite copiar hacia una semana que comienza un lunes", () => {

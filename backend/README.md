@@ -62,6 +62,8 @@ Ejecutar en orden:
 12. `0012_secure_atomic_menu_save.sql`
 13. `0013_late_training_menu.sql`
 14. `0014_company_operational_corrections.sql`
+15. `0015_controlled_published_menu_edits.sql`
+16. `0016_safe_operational_capacity_adjustments.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas desde `0004` y actualizadas por las migraciones
@@ -110,6 +112,7 @@ Authorization: Bearer <supabase-access-token>
 | GET | `/api/v1/provider/operations` | Proveedora |
 | GET | `/api/v1/provider/reports/weekly` | Proveedora |
 | GET | `/api/v1/provider/reports` | Proveedora |
+| GET | `/api/v1/provider/reports/pdf` | Proveedora |
 
 Consultar `openapi/openapi.yaml` para los contratos completos.
 
@@ -117,7 +120,8 @@ Las reglas horarias se evalúan con la zona configurada en la organización y
 los instantes almacenados en cada `service_day`. No dependen del reloj del
 navegador. Las solicitudes tardías de colaciones extra se notifican dentro de la aplicación
 y dejan un correo pendiente. Los reportes genéricos aceptan
-`period=daily|weekly|monthly` y una fecha ISO opcional en `date`.
+`period=daily|weekly|monthly` y una fecha ISO opcional en `date`. La ruta PDF
+genera un reporte nominal con preparación, acompañamiento, pan o té y estado.
 
 Las capacitaciones pueden registrarse para fechas hábiles actuales o futuras de
 la semana hasta las 09:00 y nuevamente desde las 14:00. Entre las 09:00 y las

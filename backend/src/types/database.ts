@@ -513,6 +513,14 @@ export interface Database {
         Args: { target_starts_on: string; week_days: Json };
         Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
       };
+      update_published_menu_week: {
+        Args: {
+          target_menu_week_id: string;
+          week_days: Json;
+          confirm_impact?: boolean;
+        };
+        Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
+      };
       set_training_menu_for_week: {
         Args: {
           target_menu_week_id: string;
@@ -532,7 +540,7 @@ export interface Database {
       set_menu_option_availability: {
         Args: {
           target_menu_option_id: string;
-          informed_capacity: number | null;
+          informed_capacity: number;
           is_visible?: boolean | null;
         };
         Returns: Database["public"]["Tables"]["menu_options"]["Row"];

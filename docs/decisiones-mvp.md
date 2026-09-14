@@ -46,11 +46,12 @@
   término de la entrega. La administradora Securitas confirma la recepción
   completa; esa confirmación contabiliza los pedidos como entregados.
 - Las notificaciones se entregan dentro del sistema y por correo. Resend es el proveedor inicial.
-- Ambas administradoras disponen de reportes diarios, semanales y mensuales. El mensual comprende desde el día 1 hasta la fecha seleccionada.
+- Ambas administradoras disponen de reportes diarios, semanales y mensuales. El mensual comprende el mes calendario completo de la fecha seleccionada.
 - Toda fecha visible usa el formato chileno `dd/mm/aaaa`; las horas se calculan
   y presentan con la zona `America/Santiago`. La API y PostgreSQL conservan ISO
   `aaaa-mm-dd` para intercambio y cálculos.
 - Los reportes incluyen cantidades solicitadas, confirmadas, canceladas, entregadas, tipo de pedido, menú, acompañamiento, pan y té.
+- La proveedora puede descargar un PDF nominal de esos períodos. Incluye nombres de trabajadores; las capacitaciones aparecen como grupo y las colaciones extra con el beneficiario informado por Securitas.
 - El sistema no administra precios, pagos ni cobranzas.
 
 ## Acceso recomendado

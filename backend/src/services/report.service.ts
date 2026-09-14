@@ -17,6 +17,23 @@ type ReportOrder = Pick<
   | "fulfilled_at"
 >;
 
+type NominalReportOrder = Pick<
+  Database["public"]["Tables"]["orders"]["Row"],
+  | "id"
+  | "service_day_id"
+  | "menu_option_id"
+  | "diner_id"
+  | "training_session_id"
+  | "kind"
+  | "beneficiary_label"
+  | "quantity"
+  | "side"
+  | "bread"
+  | "tea"
+  | "status"
+  | "fulfilled_at"
+>;
+
 export type ReportTotals = {
   requested: number;
   confirmed: number;
@@ -115,6 +132,118 @@ export async function getOrdersReport(
   };
 }
 
+export async function getNominalOrdersReport(
+  supabase: UserDatabaseClient,
+  input: { period: ReportPeriod; date?: string },
+) {
+  const range = resolveReportRange(input.period, input.date);
+  const { data: serviceDays, error: serviceDaysError } = await supabase
+    .from("service_days")
+    .select("id, service_date")
+    .gte("service_date", range.from)
+    .lte("service_date", range.to)
+    .order("service_date", { ascending: true });
+  if (serviceDaysError) {
+    throwSupabaseError(serviceDaysError, "No fue posible consultar los días del reporte nominal");
+  }
+
+  const dayIds = (serviceDays ?? []).map((day) => day.id);
+  if (dayIds.length === 0) {
+    return {
+      period: input.period,
+      range,
+      totals: summarizeReportOrders([]),
+      rows: [] as NominalReportRow[],
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  const [ordersResult, optionsResult] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, service_day_id, menu_option_id, diner_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at",
+      )
+      .in("service_day_id", dayIds),
+    supabase
+      .from("menu_options")
+      .select("id, label, description")
+      .in("service_day_id", dayIds),
+  ]);
+  if (ordersResult.error) {
+    throwSupabaseError(ordersResult.error, "No fue posible consultar los pedidos del reporte nominal");
+  }
+  if (optionsResult.error) {
+    throwSupabaseError(optionsResult.error, "No fue posible consultar los menús del reporte nominal");
+  }
+
+  const orders = (ordersResult.data ?? []) as NominalReportOrder[];
+  const dinerIds = uniqueValues(orders.map((order) => order.diner_id));
+  const trainingIds = uniqueValues(orders.map((order) => order.training_session_id));
+  const [dinersResult, trainingResult] = await Promise.all([
+    dinerIds.length
+      ? supabase.from("diners").select("id, full_name, employee_code").in("id", dinerIds)
+      : Promise.resolve({
+          data: [] as Array<{ id: string; full_name: string; employee_code: string | null }>,
+          error: null,
+        }),
+    trainingIds.length
+      ? supabase.from("training_sessions").select("id, name").in("id", trainingIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string }>, error: null }),
+  ]);
+  if (dinersResult.error) {
+    throwSupabaseError(dinersResult.error, "No fue posible consultar los trabajadores del reporte");
+  }
+  if (trainingResult.error) {
+    throwSupabaseError(trainingResult.error, "No fue posible consultar las capacitaciones del reporte");
+  }
+
+  const datesByDay = new Map((serviceDays ?? []).map((day) => [day.id, day.service_date]));
+  const optionsById = new Map((optionsResult.data ?? []).map((option) => [option.id, option]));
+  const dinersById = new Map((dinersResult.data ?? []).map((diner) => [diner.id, diner]));
+  const trainingById = new Map(
+    (trainingResult.data ?? []).map((training) => [training.id, training]),
+  );
+
+  const rows: NominalReportRow[] = orders
+    .map((order) => {
+      const diner = order.diner_id ? dinersById.get(order.diner_id) : undefined;
+      const training = order.training_session_id
+        ? trainingById.get(order.training_session_id)
+        : undefined;
+      const option = optionsById.get(order.menu_option_id);
+      return {
+        orderId: order.id,
+        serviceDate: datesByDay.get(order.service_day_id) ?? range.from,
+        beneficiaryName: resolveBeneficiaryName(order, diner?.full_name, training?.name),
+        employeeCode: diner?.employee_code ?? "",
+        kind: order.kind,
+        menuLabel: option?.label ?? "Alternativa no disponible",
+        preparation: option?.description || option?.label || "Sin preparación informada",
+        quantity: order.quantity,
+        side: order.side,
+        bread: order.bread,
+        tea: order.tea,
+        status: order.status,
+        fulfilled: Boolean(order.fulfilled_at),
+      };
+    })
+    .sort((left, right) =>
+      `${left.serviceDate}-${left.beneficiaryName}`.localeCompare(
+        `${right.serviceDate}-${right.beneficiaryName}`,
+        "es",
+      ),
+    );
+
+  return {
+    period: input.period,
+    range,
+    totals: summarizeReportOrders(orders),
+    rows,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export function resolveReportRange(
   period: ReportPeriod,
   selectedDate = chileToday(),
@@ -132,7 +261,8 @@ export function resolveReportRange(
   }
 
   const firstDay = new Date(Date.UTC(selected.getUTCFullYear(), selected.getUTCMonth(), 1));
-  return { from: toIsoDate(firstDay), to: selectedDate };
+  const lastDay = new Date(Date.UTC(selected.getUTCFullYear(), selected.getUTCMonth() + 1, 0));
+  return { from: toIsoDate(firstDay), to: toIsoDate(lastDay) };
 }
 
 export function summarizeReportOrders(orders: ReportOrder[]): ReportTotals {
@@ -189,3 +319,37 @@ function parseIsoDate(value: string) {
 function toIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
+
+function uniqueValues(values: Array<string | null>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function resolveBeneficiaryName(
+  order: NominalReportOrder,
+  dinerName?: string,
+  trainingName?: string,
+) {
+  if (order.kind === "regular") return dinerName ?? "Trabajador no identificado";
+  if (order.kind === "training") {
+    return trainingName ? `Capacitación: ${trainingName}` : "Capacitación";
+  }
+  return order.beneficiary_label ?? (order.kind === "extra" ? "Colación extra" : "Solicitud excepcional");
+}
+
+export type NominalReportRow = {
+  orderId: string;
+  serviceDate: string;
+  beneficiaryName: string;
+  employeeCode: string;
+  kind: OrderKind;
+  menuLabel: string;
+  preparation: string;
+  quantity: number;
+  side: Database["public"]["Tables"]["orders"]["Row"]["side"];
+  bread: boolean;
+  tea: boolean;
+  status: Database["public"]["Tables"]["orders"]["Row"]["status"];
+  fulfilled: boolean;
+};
+
+export type NominalOrdersReport = Awaited<ReturnType<typeof getNominalOrdersReport>>;

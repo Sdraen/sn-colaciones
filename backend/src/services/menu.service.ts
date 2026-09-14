@@ -59,7 +59,7 @@ export async function getMenuWeek(
     .in("service_day_id", dayIds)
     .order("sort_order", { ascending: true });
   if (!options.includeDrafts) menuOptionsQuery = menuOptionsQuery.eq("visible", true);
-  if (options.availableForWorkersOnly) {
+  if (options.availableForWorkersOnly || Boolean(week.published_at)) {
     menuOptionsQuery = menuOptionsQuery.eq("available_for_workers", true);
   }
   const optionsResult = dayIds.length
@@ -145,6 +145,7 @@ type MenuWeekDraftInput = {
     serviceDate: string;
     disabled: boolean;
     options: Array<{
+      id?: string;
       category: MenuCategory;
       label: string;
       description: string;
@@ -183,16 +184,19 @@ export async function createMenuWeekDraft(
 
 export async function updateMenuWeekDraft(
   supabase: UserDatabaseClient,
-  input: MenuWeekDraftInput & { menuWeekId: string },
+  input: MenuWeekDraftInput & { menuWeekId: string; confirmImpact?: boolean },
 ) {
   const existing = await findMenuWeekById(supabase, input.menuWeekId);
-  assertEditableDraft(existing);
   if (existing.starts_on !== input.startsOn) {
     throw new AppError(
       "No puedes cambiar la fecha inicial de una semana existente",
       409,
       "MENU_WEEK_DATE_MISMATCH",
     );
+  }
+
+  if (existing.published_at) {
+    return updatePublishedMenuWeek(supabase, input);
   }
 
   return saveMenuWeekDraft(supabase, input);
@@ -244,6 +248,7 @@ export async function copyPreviousMenuWeek(
     serviceDate: addUtcDays(targetStartsOn, index),
     disabled: day.disabled,
     options: day.options.map((option) => ({
+      ...(option.id ? { id: option.id } : {}),
       category: option.category,
       label: option.label,
       description: option.description,
@@ -288,6 +293,43 @@ export async function saveMenuWeekDraft(
   });
   if (error) throwSupabaseError(error, "No fue posible guardar el borrador semanal");
   if (!data) throw new AppError("No se generó el borrador semanal", 503, "MENU_SAVE_EMPTY");
+
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+}
+
+async function updatePublishedMenuWeek(
+  supabase: UserDatabaseClient,
+  input: MenuWeekDraftInput & { menuWeekId: string; confirmImpact?: boolean },
+) {
+  const weekDays: Json = input.days.map((day) => ({
+    service_date: day.serviceDate,
+    disabled: day.disabled,
+    options: day.options.map((option) => ({
+      ...(option.id ? { id: option.id } : {}),
+      category: option.category,
+      label: option.label,
+      description: option.description,
+      dessert: option.dessert,
+      beverage: option.beverage,
+      notes: option.notes,
+      capacity: option.capacity,
+      training_menu: option.trainingMenu,
+      available_for_workers: option.availableForWorkers,
+      visible: option.visible,
+      sort_order: option.sortOrder,
+    })),
+  }));
+  const { data, error } = await supabase.rpc("update_published_menu_week", {
+    target_menu_week_id: input.menuWeekId,
+    week_days: weekDays,
+    confirm_impact: input.confirmImpact ?? false,
+  });
+  if (error) {
+    throwSupabaseError(error, "No fue posible actualizar el menú publicado");
+  }
+  if (!data) {
+    throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
+  }
 
   return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
 }

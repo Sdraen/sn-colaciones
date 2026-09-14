@@ -4,11 +4,19 @@ import type {
   CompanyOperationsRequest,
   CreateExtraRequest,
   CreateTrainingRequest,
+  DeleteExtraRequestRequest,
+  DeleteOperationalOrderRequest,
+  UpdateExtraRequestRequest,
+  UpdateOperationalOrderRequest,
 } from "../schemas/company.schema.js";
 import {
   createExtraOrder,
   createTrainingOrder,
+  deleteCompanyExtraRequest,
+  deleteCompanyOperationalOrder,
   getCompanyOperations,
+  updateCompanyExtraRequest,
+  updateCompanyOperationalOrder,
 } from "../services/company.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
 import { getOrdersReport } from "../services/report.service.js";
@@ -33,6 +41,40 @@ export const postExtraOrder: RequestHandler = async (request, response) => {
   const { body } = getValidatedRequest<CreateExtraRequest>(request);
   const result = await createExtraOrder(supabase, body);
   response.status(201).json({ data: result });
+};
+
+export const patchOperationalOrder: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateOperationalOrderRequest>(request);
+  const order = await updateCompanyOperationalOrder(supabase, {
+    orderId: params.orderId,
+    ...body,
+  });
+  response.status(200).json({ data: order });
+};
+
+export const deleteOperationalOrder: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params } = getValidatedRequest<DeleteOperationalOrderRequest>(request);
+  const result = await deleteCompanyOperationalOrder(supabase, params.orderId);
+  response.status(200).json({ data: result });
+};
+
+export const patchExtraRequest: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateExtraRequestRequest>(request);
+  const extraRequest = await updateCompanyExtraRequest(supabase, {
+    requestId: params.requestId,
+    ...body,
+  });
+  response.status(200).json({ data: extraRequest });
+};
+
+export const deleteExtraRequest: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params } = getValidatedRequest<DeleteExtraRequestRequest>(request);
+  const result = await deleteCompanyExtraRequest(supabase, params.requestId);
+  response.status(200).json({ data: result });
 };
 
 export const getOperations: RequestHandler = async (request, response) => {

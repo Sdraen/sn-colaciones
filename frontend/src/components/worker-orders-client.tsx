@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import { WorkerWeekSelector } from "@/components/worker-week-selector";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import type {
   MenuOptionDto,
   OrderDto,
@@ -192,11 +194,6 @@ export function WorkerOrdersClient({
 
   async function cancelOrder() {
     if (!existingOrder || !activeDay || !canReserve) return;
-    const confirmed = window.confirm(
-      `¿Eliminar tu almuerzo del ${formatChileanDate(activeDay.serviceDate)}?`,
-    );
-    if (!confirmed) return;
-
     setSaving(true);
     setMessage("");
     setError("");
@@ -467,25 +464,26 @@ export function WorkerOrdersClient({
             </button>
 
             {existingOrder ? (
-              <button
-                type="button"
-                onClick={cancelOrder}
-                disabled={saving || !canReserve}
-                className="focus-ring flex min-h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-[var(--danger)] transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Trash2 size={16} aria-hidden="true" /> Eliminar almuerzo
-              </button>
+              <ConfirmDialog
+                title="¿Eliminar este almuerzo?"
+                description={`Se eliminará tu reserva del ${formatChileanDate(activeDay.serviceDate)} y el cupo volverá a quedar disponible.`}
+                confirmLabel="Sí, eliminar"
+                tone="danger"
+                onConfirm={cancelOrder}
+                trigger={
+                  <button
+                    type="button"
+                    disabled={saving || !canReserve}
+                    className="focus-ring flex min-h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-[var(--danger)] transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Trash2 size={16} aria-hidden="true" /> Eliminar almuerzo
+                  </button>
+                }
+              />
             ) : null}
 
             <div aria-live="polite">
-              {message ? (
-                <p
-                  role="status"
-                  className="rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]"
-                >
-                  {message}
-                </p>
-              ) : null}
+              <SuccessDialog message={message || null} onClose={() => setMessage("")} />
               {error ? (
                 <p
                   role="alert"

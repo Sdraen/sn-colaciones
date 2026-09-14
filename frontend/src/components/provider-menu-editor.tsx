@@ -13,6 +13,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
+import { FormSelect } from "@/components/ui/form-select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import type { MenuWeekDto } from "@/lib/api/contracts";
 import { formatChileanDate, formatChileanDateWithWeekday } from "@/lib/date-format";
 
@@ -72,7 +75,6 @@ export function ProviderMenuEditor({
   const [editingDay, setEditingDay] = useState<number | null>(0);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const serviceDays = days;
@@ -188,6 +190,39 @@ export function ProviderMenuEditor({
     }
   }
 
+  async function savePublishedTrainingMenu() {
+    if (!menu || !published || !trainingMenu) return;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const saved = await browserApiRequest<MenuWeekDto>(
+        `/api/v1/provider/menu-weeks/${menu.id}/training-menu`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            description: trainingMenu.description,
+            capacity: trainingMenu.capacity,
+          }),
+        },
+      );
+      setMenu(saved);
+      onMenuChange?.(saved);
+      setDays(toDraftDays(saved));
+      setDirty(false);
+      setFeedback({
+        kind: "success",
+        text: "Menú de capacitación guardado. Securitas ya puede utilizarlo.",
+      });
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        text: errorMessage(error, "No fue posible guardar el menú de capacitación"),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function copyPreviousWeek() {
     setSaving(true);
     setFeedback(null);
@@ -225,7 +260,6 @@ export function ProviderMenuEditor({
       setDays(createEmptyWeek(startsOn));
       setDirty(false);
       setEditingDay(0);
-      setConfirmingDelete(false);
       setFeedback({ kind: "success", text: "Borrador eliminado." });
     } catch (error) {
       setFeedback({ kind: "error", text: errorMessage(error, "No fue posible eliminar") });
@@ -242,7 +276,7 @@ export function ProviderMenuEditor({
           <h2 className="mt-1 text-2xl font-black">Menú de la {periodLabel}</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
             {published
-              ? "Esta semana ya está publicada y quedó protegida contra cambios."
+              ? "Los platos publicados están protegidos. El menú de capacitación aún puede agregarse o actualizarse."
               : currentWeek
                 ? `${readyDays} de 7 días preparados. Puedes cargarla aunque la semana ya haya comenzado.`
                 : `${readyDays} de 7 días preparados. Completa cada día y luego publica.`}
@@ -267,14 +301,14 @@ export function ProviderMenuEditor({
         />
       </div>
 
-      {feedback ? (
+      <SuccessDialog
+        message={feedback?.kind === "success" ? feedback.text : null}
+        onClose={() => setFeedback(null)}
+      />
+      {feedback?.kind === "error" ? (
         <p
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`menu-feedback-enter rounded-xl p-3 text-sm font-bold ${
-            feedback.kind === "error"
-              ? "bg-red-50 text-[var(--danger)]"
-              : "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
-          }`}
+          role="alert"
+          className="menu-feedback-enter rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]"
         >
           {feedback.text}
         </p>
@@ -286,6 +320,9 @@ export function ProviderMenuEditor({
         onEnable={() => updateTrainingMenu(trainingOption())}
         onDisable={() => updateTrainingMenu(null)}
         onChange={(patch) => updateTrainingMenu(patch)}
+        onSave={savePublishedTrainingMenu}
+        saving={saving}
+        dirty={dirty}
       />
 
       <div className="menu-week-list card divide-y divide-[var(--line)] overflow-hidden">
@@ -365,35 +402,23 @@ export function ProviderMenuEditor({
       {!published ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="w-full sm:w-auto">
-            {menu && !confirmingDelete ? (
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(true)}
-                disabled={saving}
-                className="menu-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)] hover:bg-red-100 disabled:opacity-50 sm:w-auto"
-              >
-                <Trash2 size={17} /> Eliminar borrador
-              </button>
-            ) : null}
-            {confirmingDelete ? (
-              <div className="menu-feedback-enter flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-2">
-                <span className="px-2 text-sm font-bold text-[var(--danger)]">¿Eliminarlo?</span>
-                <button
-                  type="button"
-                  onClick={deleteDraft}
-                  disabled={saving}
-                  className="menu-action rounded-lg bg-[var(--danger)] px-3 py-2 text-sm font-extrabold text-white"
-                >
-                  Sí, eliminar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDelete(false)}
-                  className="menu-action rounded-lg bg-white px-3 py-2 text-sm font-bold"
-                >
-                  Cancelar
-                </button>
-              </div>
+            {menu ? (
+              <ConfirmDialog
+                title="¿Eliminar este borrador?"
+                description={`Se eliminará el menú de la semana del ${formatChileanDate(startsOn)}. Esta acción no se puede deshacer.`}
+                confirmLabel="Sí, eliminar"
+                tone="danger"
+                onConfirm={deleteDraft}
+                trigger={
+                  <button
+                    type="button"
+                    disabled={saving}
+                    className="menu-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)] hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+                  >
+                    <Trash2 size={17} /> Eliminar borrador
+                  </button>
+                }
+              />
             ) : null}
           </div>
           <div className="menu-save-actions grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-3">
@@ -432,12 +457,18 @@ function TrainingMenuEditor({
   onEnable,
   onDisable,
   onChange,
+  onSave,
+  saving,
+  dirty,
 }: {
   option: DraftOption | undefined;
   published: boolean;
   onEnable: () => void;
   onDisable: () => void;
   onChange: (patch: Partial<DraftOption>) => void;
+  onSave: () => void;
+  saving: boolean;
+  dirty: boolean;
 }) {
   const [expanded, setExpanded] = useState(Boolean(option));
 
@@ -449,9 +480,9 @@ function TrainingMenuEditor({
           <h3 className="mt-1 text-xl font-black">Menú de capacitaciones</h3>
           <p className="mt-1 text-base text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
         </div>
-        {!published ? (
-          option ? (
-            <div className="grid w-full grid-cols-[1fr_auto] gap-2 sm:flex sm:w-auto">
+        {option ? (
+          <div className={`grid w-full gap-2 sm:flex sm:w-auto ${published ? "grid-cols-1" : "grid-cols-[1fr_auto]"}`}>
+            {!published ? (
               <button
                 type="button"
                 onClick={onDisable}
@@ -459,34 +490,34 @@ function TrainingMenuEditor({
               >
                 Quitar menú
               </button>
-              <button
-                type="button"
-                onClick={() => setExpanded((current) => !current)}
-                aria-expanded={expanded}
-                aria-controls="training-menu-form"
-                aria-label={expanded ? "Cerrar menú de capacitaciones" : "Abrir menú de capacitaciones"}
-                className="menu-action inline-flex size-11 items-center justify-center rounded-xl bg-[var(--herb-soft)] text-[var(--herb-strong)]"
-              >
-                <ChevronDown
-                  size={20}
-                  aria-hidden="true"
-                  className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
-                />
-              </button>
-            </div>
-          ) : (
+            ) : null}
             <button
               type="button"
-              onClick={() => {
-                onEnable();
-                setExpanded(true);
-              }}
-              className="menu-action min-h-11 w-full rounded-xl bg-[var(--herb)] px-4 text-sm font-extrabold text-white sm:min-h-10 sm:w-auto"
+              onClick={() => setExpanded((current) => !current)}
+              aria-expanded={expanded}
+              aria-controls="training-menu-form"
+              aria-label={expanded ? "Cerrar menú de capacitaciones" : "Abrir menú de capacitaciones"}
+              className="menu-action inline-flex size-11 items-center justify-center rounded-xl bg-[var(--herb-soft)] text-[var(--herb-strong)]"
             >
-              Agregar menú
+              <ChevronDown
+                size={20}
+                aria-hidden="true"
+                className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+              />
             </button>
-          )
-        ) : null}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onEnable();
+              setExpanded(true);
+            }}
+            className="menu-action min-h-11 w-full rounded-xl bg-[var(--herb)] px-4 text-sm font-extrabold text-white sm:min-h-10 sm:w-auto"
+          >
+            Agregar menú
+          </button>
+        )}
       </div>
       <div
         id="training-menu-form"
@@ -500,11 +531,24 @@ function TrainingMenuEditor({
           {option ? (
             <div className="grid gap-5 border-t border-[var(--line)] bg-[var(--cream)] p-5 md:grid-cols-2">
               <label className="text-base font-extrabold md:col-span-2">Preparación
-                <textarea disabled={published} required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={3} placeholder="Ej.: Espirales con salsa" className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white p-4 text-base font-normal" />
+                <textarea required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={3} placeholder="Ej.: Espirales con salsa" className="form-control mt-2 p-4 text-base font-normal" />
               </label>
               <label className="text-base font-extrabold">Disponibilidad estimada
-                <input disabled={published} type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-base font-normal" />
+                <input type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="form-control mt-2 px-4 text-base font-normal" />
               </label>
+              {published ? (
+                <div className="flex items-end md:justify-end">
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    disabled={saving || !dirty || option.description.trim().length < 3}
+                    className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-5 text-sm font-extrabold text-white disabled:opacity-40 md:w-auto"
+                  >
+                    <Save size={18} />
+                    {saving ? "Guardando..." : "Guardar capacitación"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -589,11 +633,11 @@ function DayEditor({
                 <div className="grid gap-5 lg:grid-cols-2">
                   <label className="text-base font-extrabold">
                     Tipo de alternativa
-                    <select
+                    <FormSelect
                       value={option.label}
-                      onChange={(event) => {
+                      onValueChange={(value) => {
                         const alternative = MENU_ALTERNATIVES.find(
-                          (item) => item.label === event.target.value,
+                          (item) => item.label === value,
                         );
                         if (alternative) {
                           onUpdateOption(dayIndex, optionIndex, {
@@ -606,19 +650,21 @@ function DayEditor({
                           });
                         }
                       }}
-                      className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-base font-normal text-[var(--ink)]"
-                    >
-                      {!knownAlternative ? <option value={option.label}>{option.label}</option> : null}
-                      {MENU_ALTERNATIVES.map((alternative) => (
-                        <option
-                          key={alternative.label}
-                          value={alternative.label}
-                          disabled={usedLabels.has(alternative.label) && alternative.label !== option.label}
-                        >
-                          {alternative.label}
-                        </option>
-                      ))}
-                    </select>
+                      ariaLabel="Tipo de alternativa"
+                      options={[
+                        ...(!knownAlternative
+                          ? [{ value: option.label, label: option.label }]
+                          : []),
+                        ...MENU_ALTERNATIVES.map((alternative) => ({
+                          value: alternative.label,
+                          label: alternative.label,
+                          disabled:
+                            usedLabels.has(alternative.label) &&
+                            alternative.label !== option.label,
+                        })),
+                      ]}
+                      className="mt-2 text-base font-semibold"
+                    />
                   </label>
 
                   <label className="text-base font-extrabold">
@@ -634,7 +680,7 @@ function DayEditor({
                         })
                       }
                       placeholder="Ej.: 50"
-                      className="mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] px-4 text-base font-normal text-[var(--ink)]"
+                      className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
                     />
                   </label>
 
@@ -649,7 +695,7 @@ function DayEditor({
                       }
                       rows={3}
                       placeholder="Ej.: Pollo al jugo con arroz"
-                      className="mt-2 w-full rounded-xl border border-[var(--line)] px-4 py-3 text-base font-normal text-[var(--ink)]"
+                      className="form-control mt-2 px-4 py-3 text-base font-normal text-[var(--ink)]"
                     />
                   </label>
                 </div>

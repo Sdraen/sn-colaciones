@@ -22,6 +22,7 @@ import type {
   CreateMenuWeekRequest,
   DeleteMenuWeekRequest,
   PublishMenuWeekRequest,
+  UpdateTrainingMenuRequest,
   UpdateMenuWeekRequest,
 } from "../schemas/menu.schema.js";
 import {
@@ -29,6 +30,7 @@ import {
   createMenuWeekDraft,
   deleteMenuWeekDraft,
   publishMenuWeek,
+  upsertTrainingMenu,
   updateMenuWeekDraft,
 } from "../services/menu.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
@@ -94,6 +96,17 @@ export const putMenuWeek: RequestHandler = async (request, response) => {
     menuWeekId: params.weekId,
     startsOn: body.startsOn,
     days: body.days,
+  });
+  response.status(200).json({ data: menu });
+};
+
+export const putTrainingMenu: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateTrainingMenuRequest>(request);
+  const menu = await upsertTrainingMenu(supabase, {
+    menuWeekId: params.weekId,
+    description: body.description,
+    capacity: body.capacity,
   });
   response.status(200).json({ data: menu });
 };

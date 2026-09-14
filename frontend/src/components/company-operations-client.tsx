@@ -19,6 +19,12 @@ import {
 import { OperationsReports } from "@/components/provider-reports";
 import { DailySummary } from "@/components/daily-summary";
 import { WorkerManagement } from "@/components/worker-management";
+import {
+  ExtraRequestActions,
+  OperationalOrderActions,
+} from "@/components/company-operation-actions";
+import { FormSelect } from "@/components/ui/form-select";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import { browserApiRequest } from "@/lib/api/client";
 import type {
   CompanyOperationsDto,
@@ -132,6 +138,8 @@ export function CompanyOperationsClient({
   const activeExceptions = (operations?.extraRequests ?? []).filter(
     (item) => item.serviceDayId === activeDayId,
   );
+  const editableMenuOptions =
+    activeDay?.options.filter((option) => option.visible && option.availableForWorkers) ?? [];
   const trainingMenu = activeDay?.options.find(
     (option) => option.trainingMenu && option.visible,
   );
@@ -240,6 +248,20 @@ export function CompanyOperationsClient({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function refreshAfterCorrection() {
+    await refreshOperations();
+  }
+
+  function showCorrectionSuccess(successMessage: string) {
+    setError("");
+    setMessage(successMessage);
+  }
+
+  function showCorrectionError(errorMessage: string) {
+    setMessage("");
+    setError(errorMessage);
   }
 
   return (
@@ -491,7 +513,7 @@ export function CompanyOperationsClient({
                       placeholder={
                         mode === "training" ? "Ej.: Inducción nuevos guardias" : "Ej.: Visita externa"
                       }
-                      className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] px-3"
+                      className="company-input form-control px-4"
                     />
                   </Field>
 
@@ -505,7 +527,7 @@ export function CompanyOperationsClient({
                           max="500"
                           required
                           placeholder="Ej.: 30"
-                          className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] px-3"
+                          className="company-input form-control px-4"
                         />
                       </Field>
                       <div className="rounded-xl bg-[var(--surface-muted)] p-3">
@@ -521,33 +543,38 @@ export function CompanyOperationsClient({
                     </>
                   ) : (
                     <Field label="Menú solicitado">
-                      <select
+                      <FormSelect
                         name="menuOptionId"
                         required
-                        className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-3"
-                      >
-                        {activeDay?.options
+                        ariaLabel="Menú solicitado"
+                        defaultValue={activeDay?.options.find(
+                          (option) => option.visible && option.availableForWorkers,
+                        )?.id}
+                        options={(activeDay?.options
                           .filter((option) => option.visible && option.availableForWorkers)
-                          .map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.label} · {option.description}
-                            </option>
-                          ))}
-                      </select>
+                          .map((option) => ({
+                            value: option.id,
+                            label: `${option.label} · ${option.description}`,
+                          }))) ?? []}
+                        className="company-input text-sm font-semibold"
+                      />
                     </Field>
                   )}
 
                   <Field label="Acompañamiento">
-                    <select
+                    <FormSelect
                       name="side"
                       required
-                      className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-3"
-                    >
-                      <option value="ensalada">Ensalada</option>
-                      <option value="fruta">Fruta</option>
-                      <option value="postre">Postre</option>
-                      <option value="ninguno">Ninguno</option>
-                    </select>
+                      ariaLabel="Acompañamiento"
+                      defaultValue="ensalada"
+                      options={[
+                        { value: "ensalada", label: "Ensalada" },
+                        { value: "fruta", label: "Fruta" },
+                        { value: "postre", label: "Postre" },
+                        { value: "ninguno", label: "Ninguno" },
+                      ]}
+                      className="company-input text-sm font-semibold"
+                    />
                   </Field>
 
                   <fieldset>
@@ -582,7 +609,7 @@ export function CompanyOperationsClient({
                         minLength={5}
                         rows={3}
                         placeholder="Explica por qué se necesita después de las 11:00"
-                        className="company-input w-full rounded-xl border border-[var(--line)] p-3"
+                        className="company-input form-control p-4"
                       />
                     </Field>
                   ) : null}
@@ -601,14 +628,7 @@ export function CompanyOperationsClient({
                   </button>
                 </form>
 
-                {message ? (
-                  <p
-                    role="status"
-                    className="company-feedback-enter mt-3 rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]"
-                  >
-                    {message}
-                  </p>
-                ) : null}
+                <SuccessDialog message={message || null} onClose={() => setMessage("")} />
                 {error ? (
                   <p
                     role="alert"
@@ -621,6 +641,75 @@ export function CompanyOperationsClient({
             </section>
 
             <aside className="space-y-5">
+              <section className="company-card-motion card p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="eyebrow">Correcciones</p>
+                    <h2 className="mt-1 font-black">Registros creados</h2>
+                  </div>
+                  <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold">
+                    {activeOrders.length}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                  Puedes corregirlos o eliminarlos mientras la entrega del día no haya terminado.
+                </p>
+                <div className="company-list-enter mt-4 space-y-3">
+                  {activeOrders.length ? (
+                    activeOrders.map((order) => {
+                      const option = activeDay?.options.find(
+                        (item) => item.id === order.menuOptionId,
+                      );
+                      return (
+                        <article
+                          key={order.id}
+                          className="company-list-item rounded-xl border border-[var(--line)] p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="text-xs font-black uppercase tracking-wide text-[var(--brand)]">
+                                {order.kind === "training" ? "Capacitación" : "Colación extra"}
+                              </span>
+                              <strong className="mt-1 block break-words">
+                                {order.beneficiaryLabel || "Sin referencia"}
+                              </strong>
+                            </div>
+                            <OperationalOrderActions
+                              order={order}
+                              menuOptions={editableMenuOptions}
+                              onChanged={refreshAfterCorrection}
+                              onBusyChange={setSaving}
+                              onSuccess={showCorrectionSuccess}
+                              onError={showCorrectionError}
+                            />
+                          </div>
+                          <dl className="mt-3 grid gap-1.5 text-xs text-[var(--muted)]">
+                            <div className="flex justify-between gap-3">
+                              <dt>Menú</dt>
+                              <dd className="text-right font-bold text-[var(--ink)]">
+                                {option?.description ?? "Sin detalle"}
+                              </dd>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                              <dt>Cantidad</dt>
+                              <dd className="font-bold text-[var(--ink)]">{order.quantity}</dd>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                              <dt>Selección</dt>
+                              <dd className="text-right font-bold text-[var(--ink)]">
+                                {sideLabel(order.side)} · {order.bread ? "Pan" : "Té"}
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <EmptyState text="Todavía no hay capacitaciones ni extras para este día." />
+                  )}
+                </div>
+              </section>
+
               <section className="company-card-motion card p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-black">Solicitudes tardías de extras</h2>
@@ -646,6 +735,16 @@ export function CompanyOperationsClient({
                           <p className="mt-3 rounded-lg bg-[var(--surface-muted)] p-2 text-xs text-[var(--muted)]">
                             {item.resolutionNote}
                           </p>
+                        ) : null}
+                        {item.status !== "approved" ? (
+                          <ExtraRequestActions
+                            request={item}
+                            menuOptions={editableMenuOptions}
+                            onChanged={refreshAfterCorrection}
+                            onBusyChange={setSaving}
+                            onSuccess={showCorrectionSuccess}
+                            onError={showCorrectionError}
+                          />
                         ) : null}
                       </div>
                     ))
@@ -731,6 +830,15 @@ function EmptyState({ text }: { text: string }) {
       <p className="text-sm text-[var(--muted)]">{text}</p>
     </div>
   );
+}
+
+function sideLabel(side: SideChoice) {
+  return {
+    ensalada: "Ensalada",
+    fruta: "Fruta",
+    postre: "Postre",
+    ninguno: "Ninguno",
+  }[side];
 }
 
 function closedWindowMessage(mode: Mode, blocked: boolean) {

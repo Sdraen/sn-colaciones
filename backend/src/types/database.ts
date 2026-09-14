@@ -435,6 +435,38 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };
+      update_company_operational_order: {
+        Args: {
+          target_order_id: string;
+          target_menu_option_id: string;
+          record_name: string;
+          attendee_count: number | null;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
+      delete_company_operational_order: {
+        Args: { target_order_id: string };
+        Returns: Json;
+      };
+      update_company_extra_request: {
+        Args: {
+          target_request_id: string;
+          target_menu_option_id: string;
+          beneficiary_name: string;
+          request_reason: string;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["exception_requests"]["Row"];
+      };
+      delete_company_extra_request: {
+        Args: { target_request_id: string };
+        Returns: Json;
+      };
       mark_order_fulfilled: {
         Args: { target_order_id: string; delivered: boolean };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
@@ -479,6 +511,14 @@ export interface Database {
       };
       save_menu_week_draft: {
         Args: { target_starts_on: string; week_days: Json };
+        Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
+      };
+      set_training_menu_for_week: {
+        Args: {
+          target_menu_week_id: string;
+          preparation: string;
+          informed_capacity?: number | null;
+        };
         Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
       };
       get_menu_option_availability: {

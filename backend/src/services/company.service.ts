@@ -95,6 +95,74 @@ export async function createExceptionalRequest(
   return serializeException(data);
 }
 
+export async function updateCompanyOperationalOrder(
+  supabase: UserDatabaseClient,
+  input: Omit<MealSelection, "serviceDayId"> & {
+    orderId: string;
+    name: string;
+    attendeeCount: number | null;
+  },
+) {
+  const { data, error } = await supabase.rpc("update_company_operational_order", {
+    target_order_id: input.orderId,
+    target_menu_option_id: input.menuOptionId,
+    record_name: input.name,
+    attendee_count: input.attendeeCount,
+    selected_side: input.side,
+    include_bread: input.bread,
+    include_tea: input.tea,
+  });
+  if (error) throwSupabaseError(error, "No fue posible modificar el registro");
+  if (!data) throw new AppError("No se encontró el registro actualizado", 404, "OPERATION_NOT_FOUND");
+  return serializeOperationalOrder(data);
+}
+
+export async function deleteCompanyOperationalOrder(
+  supabase: UserDatabaseClient,
+  orderId: string,
+) {
+  const { data, error } = await supabase.rpc("delete_company_operational_order", {
+    target_order_id: orderId,
+  });
+  if (error) throwSupabaseError(error, "No fue posible eliminar el registro");
+  if (!data) throw new AppError("No se encontró el registro eliminado", 404, "OPERATION_NOT_FOUND");
+  return data;
+}
+
+export async function updateCompanyExtraRequest(
+  supabase: UserDatabaseClient,
+  input: Omit<MealSelection, "serviceDayId"> & {
+    requestId: string;
+    beneficiaryLabel: string;
+    reason: string;
+  },
+) {
+  const { data, error } = await supabase.rpc("update_company_extra_request", {
+    target_request_id: input.requestId,
+    target_menu_option_id: input.menuOptionId,
+    beneficiary_name: input.beneficiaryLabel,
+    request_reason: input.reason,
+    selected_side: input.side,
+    include_bread: input.bread,
+    include_tea: input.tea,
+  });
+  if (error) throwSupabaseError(error, "No fue posible modificar la solicitud");
+  if (!data) throw new AppError("No se encontró la solicitud actualizada", 404, "EXTRA_REQUEST_NOT_FOUND");
+  return serializeException(data);
+}
+
+export async function deleteCompanyExtraRequest(
+  supabase: UserDatabaseClient,
+  requestId: string,
+) {
+  const { data, error } = await supabase.rpc("delete_company_extra_request", {
+    target_request_id: requestId,
+  });
+  if (error) throwSupabaseError(error, "No fue posible eliminar la solicitud");
+  if (!data) throw new AppError("No se encontró la solicitud eliminada", 404, "EXTRA_REQUEST_NOT_FOUND");
+  return data;
+}
+
 export async function getCompanyOperations(
   supabase: UserDatabaseClient,
   startsOn?: string,
@@ -124,7 +192,7 @@ export async function getCompanyOperations(
       ? supabase
           .from("orders")
           .select(
-            "id, service_day_id, menu_option_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at, created_at",
+            "id, service_day_id, menu_option_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at, created_at",
           )
           .in("service_day_id", serviceDayIds)
           .in("kind", ["training", "extra", "exceptional"])
@@ -166,6 +234,7 @@ type OperationalOrder = Pick<
   | "service_day_id"
   | "menu_option_id"
   | "training_session_id"
+  | "exception_request_id"
   | "kind"
   | "beneficiary_label"
   | "quantity"
@@ -204,6 +273,7 @@ function serializeOperationalOrder(order: OperationalOrder) {
     serviceDayId: order.service_day_id,
     menuOptionId: order.menu_option_id,
     trainingSessionId: order.training_session_id,
+    exceptionRequestId: order.exception_request_id,
     kind: order.kind,
     beneficiaryLabel: order.beneficiary_label,
     quantity: order.quantity,

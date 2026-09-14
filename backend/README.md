@@ -59,6 +59,9 @@ Ejecutar en orden:
 9. `0009_allow_late_current_week_menus.sql`
 10. `0010_fix_atomic_menu_rls.sql`
 11. `0011_worker_menu_choices_and_availability.sql`
+12. `0012_secure_atomic_menu_save.sql`
+13. `0013_late_training_menu.sql`
+14. `0014_company_operational_corrections.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas desde `0004` y actualizadas por las migraciones
@@ -88,6 +91,8 @@ Authorization: Bearer <supabase-access-token>
 | GET | `/api/v1/company/operations` | Administradora Securitas |
 | POST | `/api/v1/company/training-sessions` | Administradora Securitas |
 | POST | `/api/v1/company/extras` | Administradora Securitas |
+| PATCH/DELETE | `/api/v1/company/orders/:orderId` | Administradora Securitas |
+| PATCH/DELETE | `/api/v1/company/extra-requests/:requestId` | Administradora Securitas |
 | PATCH | `/api/v1/company/service-days/:serviceDayId/receipt` | Administradora Securitas |
 | GET | `/api/v1/company/reports` | Administradora Securitas |
 | PATCH | `/api/v1/delivery/service-days/:serviceDayId/events` | Despacho |
@@ -96,6 +101,7 @@ Authorization: Bearer <supabase-access-token>
 | PUT | `/api/v1/provider/menu-weeks/:weekId` | Proveedora |
 | DELETE | `/api/v1/provider/menu-weeks/:weekId` | Proveedora |
 | POST | `/api/v1/provider/menu-weeks/:weekId/publish` | Proveedora |
+| PUT | `/api/v1/provider/menu-weeks/:weekId/training-menu` | Proveedora |
 | GET/POST | `/api/v1/provider/calendar-blocks` | Proveedora |
 | DELETE | `/api/v1/provider/calendar-blocks/:blockId` | Proveedora |
 | PATCH | `/api/v1/provider/menu-options/:menuOptionId/availability` | Proveedora |
@@ -116,6 +122,12 @@ y dejan un correo pendiente. Los reportes genéricos aceptan
 Las capacitaciones pueden registrarse para fechas hábiles actuales o futuras de
 la semana hasta las 09:00 y nuevamente desde las 14:00. Entre las 09:00 y las
 14:00 el ingreso permanece cerrado; los bloqueos de calendario siguen vigentes.
+
+La administradora Securitas puede corregir o eliminar capacitaciones y
+colaciones extra del día actual o de fechas futuras mientras despacho todavía
+no haya terminado la entrega. Las capacitaciones, pedidos y solicitudes
+vinculadas se actualizan o eliminan en una sola transacción y cada corrección
+queda registrada en auditoría.
 
 Despacho registra en orden la llegada a Securitas y el término de la entrega.
 Luego la administradora Securitas confirma la recepción completa. Cada hito usa

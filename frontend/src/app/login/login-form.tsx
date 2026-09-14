@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, KeyRound, Link2, LoaderCircle, LogIn, Mail } from "lucide-react";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import { createClient } from "@/lib/supabase/client";
 
 type LoginMode = "password" | "magic_link";
@@ -152,11 +153,11 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           {error}
         </p>
       ) : null}
-      {message ? (
-        <p role="status" className="login-feedback-enter rounded-xl bg-[var(--herb-soft)] px-3.5 py-2.5 text-sm font-semibold text-[var(--herb-strong)]">
-          {message}
-        </p>
-      ) : null}
+      <SuccessDialog
+        message={message}
+        title="Enlace de acceso enviado"
+        onClose={() => setMessage(null)}
+      />
 
       <button
         type="submit"

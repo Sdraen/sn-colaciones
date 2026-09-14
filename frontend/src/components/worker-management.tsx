@@ -10,6 +10,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
+import { FormSelect } from "@/components/ui/form-select";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import type { WorkerAccountDto } from "@/lib/api/contracts";
 
 export function WorkerManagement({
@@ -110,24 +112,24 @@ export function WorkerManagement({
             <label className="block text-sm font-extrabold" htmlFor="worker-record">
               Trabajador
             </label>
-            <select
+            <FormSelect
               id="worker-record"
               value={selectedDinerId}
-              onChange={(event) => {
-                setSelectedDinerId(event.target.value);
+              onValueChange={(value) => {
+                setSelectedDinerId(value);
                 setMessage("");
                 setError("");
               }}
-              className="company-input min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-3"
-            >
-              {availableWorkers.map((worker) => (
-                <option key={worker.id} value={worker.id}>
-                  {worker.fullName}
-                  {worker.employeeCode ? ` · ${worker.employeeCode}` : ""}
-                </option>
-              ))}
-              <option value="new">+ Registrar trabajador nuevo</option>
-            </select>
+              ariaLabel="Trabajador"
+              options={[
+                ...availableWorkers.map((worker) => ({
+                  value: worker.id,
+                  label: `${worker.fullName}${worker.employeeCode ? ` · ${worker.employeeCode}` : ""}`,
+                })),
+                { value: "new", label: "+ Registrar trabajador nuevo" },
+              ]}
+              className="company-input font-semibold"
+            />
 
             {creatingNewWorker ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -139,7 +141,7 @@ export function WorkerManagement({
                     minLength={3}
                     maxLength={120}
                     autoComplete="name"
-                    className="company-input mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] px-3"
+                    className="company-input form-control mt-2 px-4"
                     placeholder="Ej.: Camila González"
                   />
                 </label>
@@ -148,7 +150,7 @@ export function WorkerManagement({
                   <input
                     name="employeeCode"
                     maxLength={80}
-                    className="company-input mt-2 min-h-12 w-full rounded-xl border border-[var(--line)] px-3"
+                    className="company-input form-control mt-2 px-4"
                     placeholder="Ej.: SEC-105"
                   />
                 </label>
@@ -157,7 +159,7 @@ export function WorkerManagement({
 
             <label className="block text-sm font-extrabold">
               Correo de acceso
-              <span className="mt-2 flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+              <span className="form-control mt-2 flex items-center gap-3 px-3 focus-within:border-[var(--brand)]">
                 <Mail size={18} className="text-[var(--brand)]" aria-hidden="true" />
                 <input
                   name="email"
@@ -180,11 +182,7 @@ export function WorkerManagement({
             </button>
 
             <div aria-live="polite">
-              {message ? (
-                <p role="status" className="rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]">
-                  {message}
-                </p>
-              ) : null}
+              <SuccessDialog message={message || null} onClose={() => setMessage("")} />
               {error ? (
                 <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
                   {error}
@@ -206,7 +204,7 @@ export function WorkerManagement({
                 {accountsCreated} con acceso · {workers.length - accountsCreated} pendientes
               </span>
             </div>
-            <label className="mt-4 flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+            <label className="form-control mt-4 flex min-h-11 items-center gap-3 px-3 focus-within:border-[var(--brand)]">
               <Search size={18} className="text-[var(--muted)]" aria-hidden="true" />
               <span className="sr-only">Buscar trabajador</span>
               <input

@@ -51,6 +51,71 @@ describe("contrato de migraciones de Supabase", () => {
       "grant execute on function public.get_menu_option_availability(uuid) to authenticated",
     );
   });
+
+  it("mantiene seguro el guardado atómico del menú sin depender de RLS intermedio", () => {
+    const menuFunction = readMigration("0009_allow_late_current_week_menus.sql");
+    const securityFix = readMigration("0012_secure_atomic_menu_save.sql");
+
+    expect(menuFunction).toContain("actor_id uuid := auth.uid()");
+    expect(menuFunction).toContain("private.current_user_has_role('provider_admin')");
+    expect(menuFunction).toMatch(
+      /from public\.profiles as profile[\s\S]*?where profile\.id = actor_id[\s\S]*?profile\.role = 'provider_admin'/i,
+    );
+    expect(securityFix).toContain(
+      "alter function public.save_menu_week_draft(date, jsonb) security definer",
+    );
+    expect(securityFix).toContain(
+      "alter function public.save_menu_week_draft(date, jsonb) set search_path = ''",
+    );
+    expect(securityFix).toContain(
+      "revoke all on function public.save_menu_week_draft(date, jsonb) from public, anon",
+    );
+    expect(securityFix).toContain(
+      "grant execute on function public.save_menu_week_draft(date, jsonb) to authenticated",
+    );
+  });
+
+  it("permite completar el menú de capacitación sin desbloquear la semana publicada", () => {
+    const migration = readMigration("0013_late_training_menu.sql");
+
+    expect(migration).toContain(
+      "function public.set_training_menu_for_week( target_menu_week_id uuid",
+    );
+    expect(migration).toMatch(/language plpgsql security definer set search_path = ''/i);
+    expect(migration).toContain("private.current_user_has_role('provider_admin')");
+    expect(migration).toMatch(
+      /menu_week\.organization_id = target_organization_id[\s\S]*?for update/i,
+    );
+    expect(migration).toContain("available_for_training = true");
+    expect(migration).toContain("available_for_workers = false");
+    expect(migration).toContain("MENU_OPTION_CAPACITY_EXCEEDED");
+    expect(migration).toContain(
+      "revoke all on function public.set_training_menu_for_week(uuid, text, integer) from public, anon",
+    );
+    expect(migration).toContain(
+      "grant execute on function public.set_training_menu_for_week(uuid, text, integer) to authenticated",
+    );
+  });
+
+  it("protege las correcciones operacionales de Securitas", () => {
+    const migration = readMigration("0014_company_operational_corrections.sql");
+
+    for (const functionName of [
+      "update_company_operational_order",
+      "delete_company_operational_order",
+      "update_company_extra_request",
+      "delete_company_extra_request",
+    ]) {
+      expect(migration).toContain(`function public.${functionName}`);
+    }
+    expect(migration).toContain("security definer set search_path = ''");
+    expect(migration).toContain("private.current_user_has_role('company_admin')");
+    expect(migration).toContain("DELIVERY_ALREADY_COMPLETED");
+    expect(migration).toContain("OPERATION_HISTORY_LOCKED");
+    expect(migration).toContain("company.operation_corrected");
+    expect(migration).toContain("company.operation_deleted");
+    expect(migration).toContain("revoke delete on table public.orders from authenticated");
+  });
 });
 
 function readMigration(fileName: string) {

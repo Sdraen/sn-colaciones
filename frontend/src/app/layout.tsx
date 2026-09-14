@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { LegacyServiceWorkerCleanup } from "@/components/legacy-service-worker-cleanup";
 import { SiteHeader } from "@/components/site-header";
 import { getCurrentApiUser } from "@/lib/api/server";
 import "./globals.css";
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
+        <LegacyServiceWorkerCleanup />
         <SiteHeader currentUser={currentUser} />
         {children}
       </body>

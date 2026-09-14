@@ -33,7 +33,7 @@ export function DatePickerField({
     <label className={`grid gap-1 text-xs font-extrabold text-[var(--muted)] ${className}`}>
       {label}
       <span
-        className={`date-picker-control relative flex min-h-11 w-full items-center rounded-xl border border-[var(--line)] bg-white px-3 pr-10 text-sm font-bold text-[var(--foreground)] transition ${inputClassName}`}
+        className={`date-picker-control form-control relative flex min-h-11 items-center px-3 pr-10 text-sm font-bold text-[var(--foreground)] ${inputClassName}`}
       >
         <span aria-hidden="true">
           {value ? formatChileanDate(value) : "Seleccionar fecha"}

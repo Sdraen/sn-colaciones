@@ -4,6 +4,7 @@ import {
   createMenuWeekDraft,
   deleteMenuWeekDraft,
   publishMenuWeek,
+  upsertTrainingMenu,
   updateMenuWeekDraft,
 } from "../src/services/menu.service.js";
 import type { Database } from "../src/types/database.js";
@@ -153,6 +154,32 @@ describe("CRUD de borradores semanales", () => {
       statusCode: 422,
     });
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("usa la operación aislada para capacitación sin reemplazar la semana publicada", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "P0001",
+        message: "MENU_WEEK_NOT_FOUND",
+        details: null,
+        hint: null,
+      },
+    });
+    const client = { rpc } as unknown as UserDatabaseClient;
+
+    await expect(
+      upsertTrainingMenu(client, {
+        menuWeekId: "11111111-1111-4111-8111-111111111111",
+        description: "Pollo al jugo con arroz",
+        capacity: 35,
+      }),
+    ).rejects.toMatchObject({ code: "MENU_WEEK_NOT_FOUND", statusCode: 404 });
+    expect(rpc).toHaveBeenCalledWith("set_training_menu_for_week", {
+      target_menu_week_id: "11111111-1111-4111-8111-111111111111",
+      preparation: "Pollo al jugo con arroz",
+      informed_capacity: 35,
+    });
   });
 });
 

@@ -14,6 +14,7 @@ import {
 import { ProviderMenuEditor } from "@/components/provider-menu-editor";
 import { OperationsReports } from "@/components/provider-reports";
 import { DailySummary } from "@/components/daily-summary";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import { browserApiRequest } from "@/lib/api/client";
 import type {
   ExceptionDto,
@@ -226,14 +227,7 @@ export function ProviderOperationsClient({
         })}
       </div>
 
-      {message ? (
-        <p
-          role="status"
-          className="provider-feedback-enter mt-4 rounded-xl bg-[var(--herb-soft)] p-3 text-sm font-bold text-[var(--herb-strong)]"
-        >
-          {message}
-        </p>
-      ) : null}
+      <SuccessDialog message={message || null} onClose={() => setMessage("")} />
       {error ? (
         <p role="alert" className="provider-feedback-enter mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">
           {error}
@@ -404,7 +398,7 @@ function ProductionView({
                     value={rejectionNotes[request.id] ?? ""}
                     onChange={(event) => onChangeRejectionNote(request.id, event.target.value)}
                     placeholder="Motivo de rechazo"
-                    className="mt-3 min-h-10 w-full rounded-xl border border-[var(--line)] px-3 text-sm"
+                    className="form-control mt-3 min-h-10 px-3 text-sm"
                   />
                   <div className="mt-3 flex gap-2">
                     <button
@@ -458,7 +452,7 @@ function AvailabilityRow({
         min="0"
         value={capacity}
         onChange={(event) => setCapacity(event.target.value)}
-        className="min-h-10 min-w-0 w-full rounded-xl border border-[var(--line)] px-3"
+        className="form-control min-h-10 min-w-0 px-3"
       />
       <button
         type="button"

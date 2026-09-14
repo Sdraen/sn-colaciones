@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays } from "lucide-react";
+import { FormSelect } from "@/components/ui/form-select";
 import type { WorkerMenuWeekSummaryDto } from "@/lib/api/contracts";
 import { formatChileanDate } from "@/lib/date-format";
 
@@ -52,22 +53,25 @@ export function WorkerWeekSelector({
 
       <label className="mt-4 block min-w-64 text-xs font-bold text-[var(--muted)] sm:mt-0">
         Seleccionar semana
-        <select
+        <FormSelect
           value={selectedStartsOn}
           disabled={isPending}
-          onChange={(event) => selectWeek(event.target.value)}
-          className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold text-[var(--ink)] disabled:cursor-wait disabled:opacity-60"
-        >
-          <option value={currentStartsOn}>
-            Semana actual · {formatChileanDate(currentStartsOn)}
-            {currentIsPublished ? "" : " · Sin menú"}
-          </option>
-          {futureWeeks.map((week) => (
-            <option key={week.id} value={week.startsOn}>
-              Semana del {formatChileanDate(week.startsOn)}
-            </option>
-          ))}
-        </select>
+          onValueChange={selectWeek}
+          ariaLabel="Seleccionar semana"
+          options={[
+            {
+              value: currentStartsOn,
+              label: `Semana actual · ${formatChileanDate(currentStartsOn)}${
+                currentIsPublished ? "" : " · Sin menú"
+              }`,
+            },
+            ...futureWeeks.map((week) => ({
+              value: week.startsOn,
+              label: `Semana del ${formatChileanDate(week.startsOn)}`,
+            })),
+          ]}
+          className="mt-2 min-h-11 text-sm font-bold"
+        />
       </label>
     </section>
   );

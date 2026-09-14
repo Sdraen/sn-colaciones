@@ -83,12 +83,22 @@ export const publishMenuWeekRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const updateTrainingMenuRequestSchema = z.object({
+  body: z.object({
+    description: z.string().trim().min(3).max(300),
+    capacity: z.number().int().min(0).max(10_000).nullable().default(null),
+  }),
+  params: z.object({ weekId: uuidSchema }),
+  query: z.object({}),
+});
+
 export type GetMenuWeekRequest = z.infer<typeof getMenuWeekRequestSchema>;
 export type CreateMenuWeekRequest = z.infer<typeof createMenuWeekRequestSchema>;
 export type UpdateMenuWeekRequest = z.infer<typeof updateMenuWeekRequestSchema>;
 export type DeleteMenuWeekRequest = z.infer<typeof deleteMenuWeekRequestSchema>;
 export type CopyMenuWeekRequest = z.infer<typeof copyMenuWeekRequestSchema>;
 export type PublishMenuWeekRequest = z.infer<typeof publishMenuWeekRequestSchema>;
+export type UpdateTrainingMenuRequest = z.infer<typeof updateTrainingMenuRequestSchema>;
 
 function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
   return schema.superRefine((request, context) => {

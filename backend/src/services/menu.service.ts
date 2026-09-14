@@ -335,6 +335,29 @@ export async function publishMenuWeek(
   return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
 }
 
+export async function upsertTrainingMenu(
+  supabase: UserDatabaseClient,
+  input: { menuWeekId: string; description: string; capacity: number | null },
+) {
+  const { data, error } = await supabase.rpc("set_training_menu_for_week", {
+    target_menu_week_id: input.menuWeekId,
+    preparation: input.description,
+    informed_capacity: input.capacity,
+  });
+  if (error) {
+    throwSupabaseError(error, "No fue posible guardar el menú de capacitación");
+  }
+  if (!data) {
+    throw new AppError(
+      "No se encontró la semana de menú",
+      404,
+      "MENU_WEEK_NOT_FOUND",
+    );
+  }
+
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+}
+
 async function findMenuWeekById(
   supabase: UserDatabaseClient,
   menuWeekId: string,

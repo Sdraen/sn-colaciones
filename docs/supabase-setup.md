@@ -81,9 +81,25 @@ Esta migración incorpora fruta como acompañamiento, limita el postre de los
 trabajadores a los miércoles, publica los cupos restantes sin revelar pedidos
 ajenos y serializa reservas simultáneas para impedir sobrecupos.
 
+Luego ejecutar `supabase/migrations/0012_secure_atomic_menu_save.sql`. Esta
+migración permite que la RPC de guardado semanal complete atómicamente los días
+y alternativas, manteniendo dentro de la función la validación de identidad,
+rol de proveedora y organización.
+
+Luego ejecutar `supabase/migrations/0013_late_training_menu.sql`. Esta migración
+permite que la proveedora agregue o actualice el menú común de capacitaciones
+aunque la semana ya esté publicada, sin desbloquear ni reemplazar los platos de
+los trabajadores.
+
+Luego ejecutar `supabase/migrations/0014_company_operational_corrections.sql`.
+Esta migración permite que la administradora Securitas corrija o elimine
+capacitaciones, colaciones extra y solicitudes tardías antes de finalizar la
+entrega. Los cambios son atómicos, respetan la organización y disponibilidad,
+y quedan registrados en auditoría.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0011` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0014` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa

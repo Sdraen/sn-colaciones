@@ -232,6 +232,78 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/orders/{orderId}:
+    patch:
+      tags: [Securitas]
+      summary: Corrige una capacitación o colación extra creada
+      description: Actualiza atómicamente el pedido y sus registros vinculados. Sólo admite el día actual o uno futuro antes de finalizar la entrega.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateOperationalOrderInput" }
+      responses:
+        "200": { description: Registro operacional actualizado }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Securitas]
+      summary: Elimina una capacitación o colación extra creada
+      description: Elimina atómicamente el pedido y su capacitación o solicitud vinculada antes de finalizar la entrega.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Registro operacional eliminado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/extra-requests/{requestId}:
+    patch:
+      tags: [Securitas]
+      summary: Corrige una solicitud tardía pendiente
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateExtraRequestInput" }
+      responses:
+        "200": { description: Solicitud tardía actualizada }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Securitas]
+      summary: Elimina una solicitud tardía y su pedido vinculado
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Solicitud tardía eliminada }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/company/service-days/{serviceDayId}/receipt:
     patch:
       tags: [Securitas]
@@ -413,6 +485,37 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/provider/menu-weeks/{weekId}/training-menu:
+    put:
+      tags: [Proveedora]
+      summary: Agrega o actualiza el menú semanal de capacitaciones
+      description: Puede utilizarse aunque la semana ya esté publicada; no modifica las alternativas de trabajadores.
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description]
+              additionalProperties: false
+              properties:
+                description: { type: string, minLength: 3, maxLength: 300 }
+                capacity:
+                  oneOf:
+                    - { type: integer, minimum: 0, maximum: 10000 }
+                    - { type: "null" }
+      responses:
+        "200": { description: Menú de capacitación guardado }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/provider/calendar-blocks:
     get:
       tags: [Proveedora]
@@ -690,6 +793,32 @@ components:
           properties:
             beneficiaryLabel: { type: string, minLength: 2, maxLength: 120 }
             reason: { type: string, minLength: 5, maxLength: 500, description: Obligatorio entre las 11:00 y las 13:00. }
+    UpdateOperationalOrderInput:
+      type: object
+      required: [menuOptionId, name, attendeeCount, side, bread, tea]
+      additionalProperties: false
+      properties:
+        menuOptionId: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        attendeeCount:
+          oneOf:
+            - { type: integer, minimum: 1, maximum: 500 }
+            - { type: "null" }
+          description: Obligatorio para capacitaciones y null para colaciones extra.
+        side: { enum: [ensalada, fruta, postre, ninguno] }
+        bread: { type: boolean }
+        tea: { type: boolean }
+    UpdateExtraRequestInput:
+      type: object
+      required: [menuOptionId, beneficiaryLabel, reason, side, bread, tea]
+      additionalProperties: false
+      properties:
+        menuOptionId: { type: string, format: uuid }
+        beneficiaryLabel: { type: string, minLength: 2, maxLength: 120 }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+        side: { enum: [ensalada, fruta, postre, ninguno] }
+        bread: { type: boolean }
+        tea: { type: boolean }
     CreateExceptionInput:
       allOf:
         - $ref: "#/components/schemas/CreateExtraInput"
@@ -732,6 +861,10 @@ components:
         id: { type: string, format: uuid }
         serviceDayId: { type: string, format: uuid }
         menuOptionId: { type: string, format: uuid }
+        exceptionRequestId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
         kind: { enum: [regular, training, extra, exceptional] }
         quantity: { type: integer, minimum: 1 }
         side: { enum: [ensalada, fruta, postre, ninguno] }

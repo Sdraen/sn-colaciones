@@ -3,6 +3,7 @@ import {
   copyMenuWeekRequestSchema,
   createMenuWeekRequestSchema,
   deleteMenuWeekRequestSchema,
+  updateTrainingMenuRequestSchema,
   updateMenuWeekRequestSchema,
 } from "../src/schemas/menu.schema.js";
 
@@ -119,5 +120,21 @@ describe("contrato del menú semanal", () => {
 
     expect(monday.success).toBe(true);
     expect(tuesday.success).toBe(false);
+  });
+
+  it("valida el menú de capacitación agregado después de publicar", () => {
+    const valid = updateTrainingMenuRequestSchema.safeParse({
+      body: { description: "Pollo al jugo con arroz", capacity: 35 },
+      params: { weekId: "11111111-1111-4111-8111-111111111111" },
+      query: {},
+    });
+    const invalid = updateTrainingMenuRequestSchema.safeParse({
+      body: { description: "  ", capacity: -1 },
+      params: { weekId: "11111111-1111-4111-8111-111111111111" },
+      query: {},
+    });
+
+    expect(valid.success).toBe(true);
+    expect(invalid.success).toBe(false);
   });
 });

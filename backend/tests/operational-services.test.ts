@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createExceptionalRequest,
   createTrainingOrder,
+  deleteCompanyExtraRequest,
+  deleteCompanyOperationalOrder,
+  updateCompanyExtraRequest,
+  updateCompanyOperationalOrder,
 } from "../src/services/company.service.js";
 import { resolveExceptionalRequest } from "../src/services/provider.service.js";
 import type { Database } from "../src/types/database.js";
@@ -124,5 +128,72 @@ describe("servicios operacionales atómicos", () => {
       rejection_note: "No queda disponibilidad para hoy",
     });
     expect(result).toMatchObject({ status: "rejected" });
+  });
+
+  it("actualiza capacitación y pedido mediante una sola RPC", async () => {
+    const updated = { ...orderRow, beneficiary_label: "Curso corregido", quantity: 22 };
+    const { rpc, client } = clientWithRpc(updated);
+
+    const result = await updateCompanyOperationalOrder(client, {
+      orderId: orderRow.id,
+      menuOptionId: orderRow.menu_option_id,
+      name: "Curso corregido",
+      attendeeCount: 22,
+      side: "fruta",
+      bread: false,
+      tea: true,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("update_company_operational_order", {
+      target_order_id: orderRow.id,
+      target_menu_option_id: orderRow.menu_option_id,
+      record_name: "Curso corregido",
+      attendee_count: 22,
+      selected_side: "fruta",
+      include_bread: false,
+      include_tea: true,
+    });
+    expect(result).toMatchObject({ beneficiaryLabel: "Curso corregido", quantity: 22 });
+  });
+
+  it("actualiza una solicitud tardía pendiente mediante RPC", async () => {
+    const updated = { ...exceptionRow, beneficiary_label: "Visita corregida" };
+    const { rpc, client } = clientWithRpc(updated);
+
+    const result = await updateCompanyExtraRequest(client, {
+      requestId: exceptionRow.id,
+      menuOptionId: exceptionRow.menu_option_id,
+      beneficiaryLabel: "Visita corregida",
+      reason: "Reunión extraordinaria",
+      side: "ensalada",
+      bread: true,
+      tea: false,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("update_company_extra_request", {
+      target_request_id: exceptionRow.id,
+      target_menu_option_id: exceptionRow.menu_option_id,
+      beneficiary_name: "Visita corregida",
+      request_reason: "Reunión extraordinaria",
+      selected_side: "ensalada",
+      include_bread: true,
+      include_tea: false,
+    });
+    expect(result.beneficiaryLabel).toBe("Visita corregida");
+  });
+
+  it("elimina pedidos y solicitudes mediante RPC protegidas", async () => {
+    const orderDelete = clientWithRpc({ orderId: orderRow.id });
+    const requestDelete = clientWithRpc({ requestId: exceptionRow.id });
+
+    await deleteCompanyOperationalOrder(orderDelete.client, orderRow.id);
+    await deleteCompanyExtraRequest(requestDelete.client, exceptionRow.id);
+
+    expect(orderDelete.rpc).toHaveBeenCalledWith("delete_company_operational_order", {
+      target_order_id: orderRow.id,
+    });
+    expect(requestDelete.rpc).toHaveBeenCalledWith("delete_company_extra_request", {
+      target_request_id: exceptionRow.id,
+    });
   });
 });

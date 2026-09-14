@@ -9,6 +9,8 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SuccessDialog } from "@/components/ui/success-dialog";
 import type { DeliveryTrackingDto } from "@/lib/api/contracts";
 import { formatChileanDateTime } from "@/lib/date-format";
 
@@ -44,13 +46,6 @@ export function DeliveryProgress({
 
   async function advance() {
     if (!nextAction) return;
-    if (
-      nextAction.confirmation &&
-      !window.confirm(nextAction.confirmation)
-    ) {
-      return;
-    }
-
     setSaving(true);
     setFeedback(null);
     try {
@@ -135,31 +130,68 @@ export function DeliveryProgress({
           isToday={isToday}
         />
         {nextAction ? (
-          <button
-            type="button"
-            onClick={advance}
-            disabled={saving}
-            className="company-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-          >
-            {saving ? <Clock3 className="animate-pulse" size={17} /> : <nextAction.icon size={17} />}
-            {saving ? "Guardando…" : nextAction.label}
-          </button>
+          nextAction.confirmation ? (
+            <ConfirmDialog
+              title={nextAction.label}
+              description={nextAction.confirmation}
+              confirmLabel="Sí, confirmar"
+              onConfirm={advance}
+              trigger={
+                <DeliveryActionButton
+                  saving={saving}
+                  label={nextAction.label}
+                  icon={nextAction.icon}
+                />
+              }
+            />
+          ) : (
+            <DeliveryActionButton
+              saving={saving}
+              label={nextAction.label}
+              icon={nextAction.icon}
+              onClick={advance}
+            />
+          )
         ) : null}
       </div>
 
-      {feedback ? (
+      <SuccessDialog
+        message={feedback?.kind === "success" ? feedback.text : null}
+        onClose={() => setFeedback(null)}
+      />
+      {feedback?.kind === "error" ? (
         <p
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`mx-5 mb-5 rounded-xl p-3 text-sm font-bold ${
-            feedback.kind === "error"
-              ? "bg-red-50 text-[var(--danger)]"
-              : "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
-          }`}
+          role="alert"
+          className="mx-5 mb-5 rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]"
         >
           {feedback.text}
         </p>
       ) : null}
     </section>
+  );
+}
+
+function DeliveryActionButton({
+  saving,
+  label,
+  icon: Icon,
+  onClick,
+}: {
+  saving: boolean;
+  label: string;
+  icon: typeof MapPinCheck;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={saving}
+      className="company-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+    >
+      {saving ? <Clock3 className="animate-pulse" size={17} /> : <Icon size={17} />}
+      {saving ? "Guardando…" : label}
+    </button>
   );
 }
 

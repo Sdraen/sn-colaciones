@@ -5,6 +5,7 @@ import { CheckCircle2, Download, RefreshCw, XCircle } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import type { OrdersReportDto } from "@/lib/api/contracts";
 import { DatePickerField } from "@/components/date-picker-field";
+import { FormSelect } from "@/components/ui/form-select";
 import { formatChileanDate } from "@/lib/date-format";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
@@ -84,15 +85,17 @@ export function OperationsReports({
         <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
             Período
-            <select
+            <FormSelect
               value={period}
-              onChange={(event) => setPeriod(event.target.value as OrdersReportDto["period"])}
-              className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold text-[var(--foreground)]"
-            >
-              <option value="daily">Diario</option>
-              <option value="weekly">Semanal</option>
-              <option value="monthly">Mensual</option>
-            </select>
+              onValueChange={(value) => setPeriod(value as OrdersReportDto["period"])}
+              ariaLabel="Período del reporte"
+              options={[
+                { value: "daily", label: "Diario" },
+                { value: "weekly", label: "Semanal" },
+                { value: "monthly", label: "Mensual" },
+              ]}
+              className="min-h-11 text-sm font-bold"
+            />
           </label>
           <DatePickerField
             label="Fecha de referencia"

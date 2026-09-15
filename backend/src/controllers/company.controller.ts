@@ -19,15 +19,21 @@ import {
   updateCompanyOperationalOrder,
 } from "../services/company.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
-import { getOrdersReport } from "../services/report.service.js";
-import type { CreateWorkerAccountRequest } from "../schemas/worker-admin.schema.js";
+import { getNominalOrdersReport, getOrdersReport } from "../services/report.service.js";
+import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
+import type {
+  CreateWorkerAccountRequest,
+  SendWorkerPasswordSetupRequest,
+} from "../schemas/worker-admin.schema.js";
 import { createAdminSupabaseClient } from "../lib/supabase.js";
 import {
   createWorkerAccount,
   listWorkerAccounts,
+  sendWorkerPasswordSetupEmail,
 } from "../services/worker-admin.service.js";
 import type { ConfirmServiceReceiptRequest } from "../schemas/delivery.schema.js";
 import { confirmServiceReceipt } from "../services/delivery.service.js";
+import { getAppUrlEnv } from "../config/env.js";
 
 export const postTrainingOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -91,6 +97,23 @@ export const getCompanyReport: RequestHandler = async (request, response) => {
   response.status(200).json({ data: report });
 };
 
+export const getCompanyReportPdf: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { query } = getValidatedRequest<ReportRequest>(request);
+  const report = await getNominalOrdersReport(supabase, query);
+  const pdf = await createNominalOrdersPdf(report);
+  const fileName = `reporte-nominal-colaciones-${query.period}-${report.range.from}-${report.range.to}.pdf`;
+
+  response.set({
+    "Cache-Control": "private, no-store",
+    "Content-Disposition": `attachment; filename="${fileName}"`,
+    "Content-Length": String(pdf.length),
+    "Content-Type": "application/pdf",
+    "X-Content-Type-Options": "nosniff",
+  });
+  response.status(200).send(pdf);
+};
+
 export const getWorkers: RequestHandler = async (request, response) => {
   const { profile } = getRequestAuth(request);
   const workers = await listWorkerAccounts(
@@ -106,9 +129,21 @@ export const postWorker: RequestHandler = async (request, response) => {
   const worker = await createWorkerAccount(
     createAdminSupabaseClient(),
     profile.organizationId,
-    body,
+    { ...body, passwordSetupRedirectTo: getPasswordSetupRedirectUrl() },
   );
   response.status(201).json({ data: worker });
+};
+
+export const postWorkerPasswordSetup: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const { params } = getValidatedRequest<SendWorkerPasswordSetupRequest>(request);
+  const result = await sendWorkerPasswordSetupEmail(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+    params.workerId,
+    getPasswordSetupRedirectUrl(),
+  );
+  response.status(200).json({ data: result });
 };
 
 export const patchServiceReceipt: RequestHandler = async (request, response) => {
@@ -117,3 +152,7 @@ export const patchServiceReceipt: RequestHandler = async (request, response) => 
   const tracking = await confirmServiceReceipt(supabase, params.serviceDayId);
   response.status(200).json({ data: tracking });
 };
+
+function getPasswordSetupRedirectUrl() {
+  return new URL("/auth/activar", getAppUrlEnv().APP_URL).toString();
+}

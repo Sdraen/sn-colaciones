@@ -31,8 +31,9 @@
 - El servicio regular y sus menús pueden estar disponibles de lunes a domingo.
   Sábado y domingo se configuran igual que los demás días y solo se marcan
   como `Sin servicio` cuando corresponda.
-- La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores.
-- Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana. El ingreso está habilitado hasta las 09:00 y vuelve a abrir desde las 14:00; entre ambos horarios permanece cerrado. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
+- La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores. Debe informar un cupo que se aplica y consume por separado en cada día hábil.
+- Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana, sin superar la disponibilidad restante de ese día. El ingreso está habilitado hasta las 09:00 y vuelve a abrir desde las 14:00; entre ambos horarios permanece cerrado. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
+- Al modificar una capacitación se valida la diferencia de cupos y al eliminarla se liberan automáticamente. La base de datos serializa registros simultáneos para impedir sobrecupos.
 - La forma de operar durante feriados y vacaciones sigue pendiente de
   confirmación. Es posible que exista servicio con una cantidad menor informada
   por Securitas, por lo que esos días no deben bloquearse automáticamente hasta
@@ -51,14 +52,15 @@
   y presentan con la zona `America/Santiago`. La API y PostgreSQL conservan ISO
   `aaaa-mm-dd` para intercambio y cálculos.
 - Los reportes incluyen cantidades solicitadas, confirmadas, canceladas, entregadas, tipo de pedido, menú, acompañamiento, pan y té.
-- La proveedora puede descargar un PDF nominal de esos períodos. Incluye nombres de trabajadores; las capacitaciones aparecen como grupo y las colaciones extra con el beneficiario informado por Securitas.
+- Ambas administradoras pueden descargar un PDF nominal de esos períodos. Incluye nombres de trabajadores; las capacitaciones aparecen como grupo y las colaciones extra con el beneficiario informado por Securitas.
 - El sistema no administra precios, pagos ni cobranzas.
 
 ## Acceso recomendado
 
 - Usar Supabase Auth y no almacenar contraseñas propias.
 - Aprovisionar previamente las cuentas autorizadas para impedir el registro público.
-- Usar enlaces mágicos u OTP con `shouldCreateUser: false`.
+- Cada trabajador recibe una invitación, crea su contraseña personal y luego ingresa con correo y contraseña. La administración nunca conoce la clave.
+- Mantener enlaces mágicos y recuperación por correo como mecanismos alternativos con `shouldCreateUser: false`.
 - Exigir MFA TOTP a las administradoras antes de producción.
 - Mantener la autorización por rol mediante perfiles y Row Level Security.
 

@@ -147,7 +147,7 @@ paths:
     post:
       tags: [Securitas]
       summary: Crea una cuenta de trabajador o la vincula a la nomina existente
-      description: La cuenta queda confirmada y accede mediante enlace magico; no se genera una contrasena compartida.
+      description: Envía una invitación para que el trabajador cree una contraseña personal; la administradora nunca conoce la clave.
       requestBody:
         required: true
         content:
@@ -168,6 +168,25 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/company/workers/{workerId}/password-setup:
+    post:
+      tags: [Securitas]
+      summary: Reenvía el correo para crear o recuperar la contraseña
+      parameters:
+        - name: workerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Correo solicitado a Supabase Auth
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429":
+          description: Límite temporal de correos alcanzado
   /api/v1/company/operations:
     get:
       tags: [Securitas]
@@ -196,6 +215,25 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/OrdersReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/company/reports/pdf:
+    get:
+      tags: [Securitas]
+      summary: Descarga el reporte nominal diario, semanal o mensual en PDF
+      description: Incluye trabajador o beneficiario, preparación, acompañamiento, pan o té, cantidad y estado. Disponible únicamente para la administradora Securitas.
+      parameters:
+        - $ref: "#/components/parameters/ReportPeriod"
+        - $ref: "#/components/parameters/ReportDate"
+      responses:
+        "200":
+          description: Reporte nominal generado
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
   /api/v1/company/training-sessions:
@@ -745,7 +783,7 @@ components:
           enum: [worker, company_admin, provider_admin, delivery]
     WorkerAccount:
       type: object
-      required: [id, fullName, employeeCode, email, accountCreated, active, createdAt]
+      required: [id, fullName, employeeCode, email, accountCreated, accessActivated, active, createdAt]
       properties:
         id: { type: string, format: uuid }
         fullName: { type: string }
@@ -758,6 +796,7 @@ components:
             - { type: string, format: email }
             - { type: "null" }
         accountCreated: { type: boolean }
+        accessActivated: { type: boolean }
         active: { type: boolean }
         createdAt: { type: string, format: date-time }
     CreateWorkerAccountInput:

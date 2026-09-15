@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getCompanyReport,
+  getCompanyReportPdf,
   getOperations,
   getWorkers,
   deleteExtraRequest,
@@ -8,6 +9,7 @@ import {
   postExtraOrder,
   postTrainingOrder,
   postWorker,
+  postWorkerPasswordSetup,
   patchServiceReceipt,
   patchExtraRequest,
   patchOperationalOrder,
@@ -27,6 +29,7 @@ import { reportRequestSchema } from "../schemas/report.schema.js";
 import {
   createWorkerAccountRequestSchema,
   listWorkerAccountsRequestSchema,
+  sendWorkerPasswordSetupRequestSchema,
 } from "../schemas/worker-admin.schema.js";
 import { confirmServiceReceiptRequestSchema } from "../schemas/delivery.schema.js";
 
@@ -42,6 +45,16 @@ companyRouter.post(
   "/workers",
   validateRequest(createWorkerAccountRequestSchema),
   postWorker,
+);
+companyRouter.post(
+  "/workers/:workerId/password-setup",
+  validateRequest(sendWorkerPasswordSetupRequestSchema),
+  postWorkerPasswordSetup,
+);
+companyRouter.get(
+  "/reports/pdf",
+  validateRequest(reportRequestSchema),
+  getCompanyReportPdf,
 );
 companyRouter.get(
   "/reports",

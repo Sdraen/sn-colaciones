@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Mail,
   Search,
+  Send,
   ShieldCheck,
   UserPlus,
   UsersRound,
@@ -25,6 +26,7 @@ export function WorkerManagement({
   );
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sendingWorkerId, setSendingWorkerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -40,7 +42,7 @@ export function WorkerManagement({
       ).includes(term),
     );
   }, [search, workers]);
-  const accountsCreated = workers.filter((worker) => worker.accountCreated).length;
+  const activatedAccounts = workers.filter((worker) => worker.accessActivated).length;
   const creatingNewWorker = selectedDinerId === "new";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -77,7 +79,7 @@ export function WorkerManagement({
       setSelectedDinerId(nextAvailable?.id ?? "new");
       form.reset();
       setMessage(
-        `${worker.fullName} ya puede solicitar su enlace de acceso usando ${worker.email}.`,
+        `Enviamos a ${worker.email} la invitación para que ${worker.fullName} cree su contraseña.`,
       );
     } catch (caught) {
       setError(
@@ -87,6 +89,29 @@ export function WorkerManagement({
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function sendPasswordSetup(worker: WorkerAccountDto) {
+    setSendingWorkerId(worker.id);
+    setMessage("");
+    setError("");
+    try {
+      await browserApiRequest<{ email: string }>(
+        `/api/v1/company/workers/${worker.id}/password-setup`,
+        { method: "POST" },
+      );
+      setMessage(
+        `Enviamos a ${worker.email} un enlace para crear o recuperar su contraseña.`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No fue posible enviar el correo de contraseña.",
+      );
+    } finally {
+      setSendingWorkerId(null);
     }
   }
 
@@ -103,8 +128,8 @@ export function WorkerManagement({
           <div className="mt-5 flex items-start gap-3 rounded-xl bg-[var(--herb-soft)] p-3 text-sm text-[var(--herb-strong)]">
             <ShieldCheck size={19} className="mt-0.5 shrink-0" aria-hidden="true" />
             <p>
-              <strong className="block">Acceso sin contraseña compartida</strong>
-              La persona solicitará un enlace de un solo uso desde el inicio de sesión.
+              <strong className="block">Contraseña personal y privada</strong>
+              La persona recibirá una invitación para crear su propia contraseña.
             </p>
           </div>
 
@@ -178,7 +203,7 @@ export function WorkerManagement({
               className="company-action focus-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
             >
               <UserPlus size={18} aria-hidden="true" />
-              {saving ? "Creando cuenta…" : "Crear acceso de trabajador"}
+              {saving ? "Enviando invitación…" : "Crear y enviar invitación"}
             </button>
 
             <div aria-live="polite">
@@ -201,7 +226,7 @@ export function WorkerManagement({
               </div>
               <span className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[var(--brand-strong)]">
                 <UsersRound size={16} aria-hidden="true" />
-                {accountsCreated} con acceso · {workers.length - accountsCreated} pendientes
+                {activatedAccounts} activados · {workers.length - activatedAccounts} pendientes
               </span>
             </div>
             <label className="form-control mt-4 flex min-h-11 items-center gap-3 px-3 focus-within:border-[var(--brand)]">
@@ -228,21 +253,36 @@ export function WorkerManagement({
                         {worker.email ?? worker.employeeCode ?? "Sin correo asignado"}
                       </p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${
-                        worker.accountCreated
-                          ? "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
-                          : "bg-[var(--accent-soft)] text-[var(--warning)]"
-                      }`}
-                    >
-                      {worker.accountCreated ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <CheckCircle2 size={14} aria-hidden="true" /> Con acceso
-                        </span>
-                      ) : (
-                        "Sin acceso"
-                      )}
-                    </span>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${
+                          worker.accessActivated
+                            ? "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
+                            : "bg-[var(--accent-soft)] text-[var(--warning)]"
+                        }`}
+                      >
+                        {worker.accessActivated ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <CheckCircle2 size={14} aria-hidden="true" /> Activo
+                          </span>
+                        ) : worker.accountCreated ? (
+                          "Invitación pendiente"
+                        ) : (
+                          "Sin acceso"
+                        )}
+                      </span>
+                      {worker.accountCreated && worker.email ? (
+                        <button
+                          type="button"
+                          onClick={() => void sendPasswordSetup(worker)}
+                          disabled={sendingWorkerId === worker.id}
+                          className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-white px-3 text-xs font-extrabold text-[var(--brand)] disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <Send size={14} aria-hidden="true" />
+                          {sendingWorkerId === worker.id ? "Enviando…" : "Reenviar clave"}
+                        </button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>

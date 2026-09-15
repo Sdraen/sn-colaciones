@@ -1,11 +1,21 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Eye, EyeOff, KeyRound, Link2, LoaderCircle, LogIn, Mail } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Link2,
+  LoaderCircle,
+  LogIn,
+  Mail,
+  Send,
+} from "lucide-react";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { createClient } from "@/lib/supabase/client";
 
-type LoginMode = "password" | "magic_link";
+type LoginMode = "password" | "magic_link" | "recovery";
 
 export function LoginForm({ nextPath }: { nextPath: string }) {
   const [mode, setMode] = useState<LoginMode>("password");
@@ -47,6 +57,25 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
       return;
     }
 
+    if (mode === "recovery") {
+      const callback = new URL("/auth/callback", window.location.origin);
+      callback.searchParams.set("next", "/crear-contrasena");
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(
+        normalizedEmail,
+        { redirectTo: callback.toString() },
+      );
+
+      if (authError) {
+        setError("No fue posible enviar el correo. Espera unos minutos e intenta nuevamente.");
+      } else {
+        setMessage(
+          "Si el correo pertenece a una cuenta autorizada, recibirás un enlace para crear una nueva contraseña.",
+        );
+      }
+      setPending(false);
+      return;
+    }
+
     const callback = new URL("/auth/callback", window.location.origin);
     callback.searchParams.set("next", nextPath);
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -64,7 +93,19 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-      <div className="login-mode-switch grid grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-1" aria-label="Método de acceso">
+      {mode === "recovery" ? (
+        <div className="login-fields-enter rounded-xl bg-[var(--surface-muted)] p-4">
+          <button
+            type="button"
+            onClick={() => selectMode("password")}
+            className="focus-ring inline-flex items-center gap-2 text-xs font-extrabold text-[var(--brand)]"
+          >
+            <ArrowLeft size={16} aria-hidden="true" /> Volver al ingreso
+          </button>
+          <h2 className="mt-3 text-lg font-black">Recuperar contraseña</h2>
+        </div>
+      ) : (
+        <div className="login-mode-switch grid grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-1" aria-label="Método de acceso">
         <button
           type="button"
           aria-pressed={mode === "password"}
@@ -85,13 +126,16 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         >
           Enlace por correo
         </button>
-      </div>
+        </div>
+      )}
 
       <div className="login-fields-enter" key={mode}>
         <p className="mb-3 text-xs leading-5 text-[var(--muted)]">
           {mode === "password"
-            ? "Usa la contraseña asignada a tu cuenta."
-            : "Te enviaremos un enlace seguro que podrás usar una sola vez."}
+            ? "Usa la contraseña personal que creaste al activar tu cuenta."
+            : mode === "magic_link"
+              ? "Te enviaremos un enlace seguro que podrás usar una sola vez."
+              : "Ingresa tu correo y te enviaremos instrucciones seguras."}
         </p>
         <label htmlFor="email" className="text-sm font-extrabold">
           Correo autorizado
@@ -146,6 +190,16 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
             </div>
           </div>
         ) : null}
+
+        {mode === "password" ? (
+          <button
+            type="button"
+            onClick={() => selectMode("recovery")}
+            className="focus-ring mt-3 text-sm font-extrabold text-[var(--brand)] hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        ) : null}
       </div>
 
       {error ? (
@@ -155,7 +209,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
       ) : null}
       <SuccessDialog
         message={message}
-        title="Enlace de acceso enviado"
+        title={mode === "recovery" ? "Revisa tu correo" : "Enlace de acceso enviado"}
         onClose={() => setMessage(null)}
       />
 
@@ -168,6 +222,8 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />
         ) : mode === "password" ? (
           <LogIn size={18} aria-hidden="true" />
+        ) : mode === "recovery" ? (
+          <Send size={18} aria-hidden="true" />
         ) : (
           <Link2 size={18} aria-hidden="true" />
         )}
@@ -177,7 +233,9 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
             : "Enviando..."
           : mode === "password"
             ? "Ingresar"
-            : "Enviar enlace de acceso"}
+            : mode === "recovery"
+              ? "Enviar recuperación"
+              : "Enviar enlace de acceso"}
       </button>
     </form>
   );

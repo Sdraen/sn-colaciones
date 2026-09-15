@@ -25,10 +25,12 @@ type MutationCallbacks = {
 export function OperationalOrderActions({
   order,
   menuOptions,
+  trainingMenu,
   ...callbacks
 }: {
   order: OrderDto;
   menuOptions: MenuOptionDto[];
+  trainingMenu?: MenuOptionDto;
 } & MutationCallbacks) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(order.beneficiaryLabel ?? "");
@@ -41,6 +43,10 @@ export function OperationalOrderActions({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const training = order.kind === "training";
+  const trainingMaximum =
+    training && typeof trainingMenu?.remainingQuantity === "number"
+      ? Math.min(500, trainingMenu.remainingQuantity + order.quantity)
+      : null;
 
   function resetForm() {
     setName(order.beneficiaryLabel ?? "");
@@ -147,18 +153,26 @@ export function OperationalOrderActions({
               </label>
 
               {training ? (
-                <label className="block text-sm font-extrabold">
-                  Cantidad de alumnos
-                  <input
-                    value={attendeeCount}
-                    onChange={(event) => setAttendeeCount(event.target.value)}
-                    type="number"
-                    min="1"
-                    max="500"
-                    required
-                    className="form-control mt-2 px-4 font-normal"
-                  />
-                </label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-extrabold">
+                    Cantidad de alumnos
+                    <input
+                      value={attendeeCount}
+                      onChange={(event) => setAttendeeCount(event.target.value)}
+                      type="number"
+                      min="1"
+                      max={trainingMaximum ?? 500}
+                      disabled={trainingMaximum === null}
+                      required
+                      className="form-control mt-2 px-4 font-normal"
+                    />
+                  </label>
+                  <p className="text-xs font-semibold text-[var(--muted)]">
+                    {trainingMaximum === null
+                      ? "La proveedora debe informar el cupo diario antes de modificar esta capacitación."
+                      : `Puedes dejar esta capacitación en hasta ${trainingMaximum} alumnos. Hay ${trainingMenu?.remainingQuantity ?? 0} cupos adicionales disponibles.`}
+                  </p>
+                </div>
               ) : (
                 <label className="block text-sm font-extrabold">
                   Menú solicitado
@@ -186,7 +200,7 @@ export function OperationalOrderActions({
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || (training && trainingMaximum === null)}
                 className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50"
               >
                 <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}
@@ -200,7 +214,7 @@ export function OperationalOrderActions({
         title={training ? "¿Eliminar esta capacitación?" : "¿Eliminar esta colación extra?"}
         description={
           training
-            ? `Se descontarán ${order.quantity} alumnos del conteo del día.`
+            ? `Se eliminará el registro y se liberarán ${order.quantity} cupos de capacitación para ese día.`
             : "La colación dejará de formar parte del conteo del día."
         }
         confirmLabel="Sí, eliminar"

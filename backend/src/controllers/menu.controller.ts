@@ -10,6 +10,7 @@ export const getCurrentMenuWeek: RequestHandler = async (request, response) => {
     startsOn: query.startsOn,
     includeDrafts: profile.role === "provider_admin",
     availableForWorkersOnly: profile.role === "worker",
+    includeAvailability: profile.role === "company_admin",
   });
   response.status(200).json({ data: menu });
 };

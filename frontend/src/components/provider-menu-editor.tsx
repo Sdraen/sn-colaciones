@@ -85,7 +85,9 @@ export function ProviderMenuEditor({
     .flatMap((day) => day.options)
     .find((option) => option.trainingMenu && !option.availableForWorkers);
   const trainingComplete = !trainingDraft || (
-    trainingDraft.label.trim().length >= 2 && trainingDraft.description.trim().length >= 3
+    trainingDraft.label.trim().length >= 2 &&
+    trainingDraft.description.trim().length >= 3 &&
+    trainingDraft.capacity !== null
   );
   const weekComplete = readyDays === serviceDays.length && trainingComplete;
   const published = Boolean(menu?.publishedAt);
@@ -217,6 +219,13 @@ export function ProviderMenuEditor({
 
   async function savePublishedTrainingMenu() {
     if (!menu || !published || !trainingMenu) return;
+    if (trainingMenu.capacity === null) {
+      setFeedback({
+        kind: "error",
+        text: "Ingresa la disponibilidad diaria antes de guardar el menú de capacitación.",
+      });
+      return;
+    }
     setSaving(true);
     setFeedback(null);
     try {
@@ -621,15 +630,18 @@ function TrainingMenuEditor({
               <label className="text-base font-extrabold md:col-span-2">Preparación
                 <textarea required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={3} placeholder="Ej.: Espirales con salsa" className="form-control mt-2 p-4 text-base font-normal" />
               </label>
-              <label className="text-base font-extrabold">Disponibilidad estimada
-                <input type="number" min="0" value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="form-control mt-2 px-4 text-base font-normal" />
+              <label className="text-base font-extrabold">Cupo diario para capacitaciones
+                <input type="number" min="0" required value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="form-control mt-2 px-4 text-base font-normal" />
+                <span className="mt-2 block text-sm font-semibold leading-5 text-[var(--muted)]">
+                  Se aplica por separado a cada día hábil; Securitas verá y consumirá este cupo.
+                </span>
               </label>
               {published ? (
                 <div className="flex items-end md:justify-end">
                   <button
                     type="button"
                     onClick={onSave}
-                    disabled={saving || !dirty || option.description.trim().length < 3}
+                    disabled={saving || !dirty || option.description.trim().length < 3 || option.capacity === null}
                     className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-5 text-sm font-extrabold text-white disabled:opacity-40 md:w-auto"
                   >
                     <Save size={18} />

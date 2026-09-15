@@ -64,6 +64,7 @@ Ejecutar en orden:
 14. `0014_company_operational_corrections.sql`
 15. `0015_controlled_published_menu_edits.sql`
 16. `0016_safe_operational_capacity_adjustments.sql`
+17. `0017_training_capacity_guard.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas desde `0004` y actualizadas por las migraciones
@@ -90,6 +91,7 @@ Authorization: Bearer <supabase-access-token>
 | PATCH | `/api/v1/notifications/:notificationId/read` | Destinatario |
 | GET | `/api/v1/company/workers` | Administradora Securitas |
 | POST | `/api/v1/company/workers` | Administradora Securitas |
+| POST | `/api/v1/company/workers/:workerId/password-setup` | Administradora Securitas |
 | GET | `/api/v1/company/operations` | Administradora Securitas |
 | POST | `/api/v1/company/training-sessions` | Administradora Securitas |
 | POST | `/api/v1/company/extras` | Administradora Securitas |
@@ -97,6 +99,7 @@ Authorization: Bearer <supabase-access-token>
 | PATCH/DELETE | `/api/v1/company/extra-requests/:requestId` | Administradora Securitas |
 | PATCH | `/api/v1/company/service-days/:serviceDayId/receipt` | Administradora Securitas |
 | GET | `/api/v1/company/reports` | Administradora Securitas |
+| GET | `/api/v1/company/reports/pdf` | Administradora Securitas |
 | PATCH | `/api/v1/delivery/service-days/:serviceDayId/events` | Despacho |
 | POST | `/api/v1/provider/menu-weeks` | Proveedora |
 | POST | `/api/v1/provider/menu-weeks/copy` | Proveedora |
@@ -120,8 +123,8 @@ Las reglas horarias se evalúan con la zona configurada en la organización y
 los instantes almacenados en cada `service_day`. No dependen del reloj del
 navegador. Las solicitudes tardías de colaciones extra se notifican dentro de la aplicación
 y dejan un correo pendiente. Los reportes genéricos aceptan
-`period=daily|weekly|monthly` y una fecha ISO opcional en `date`. La ruta PDF
-genera un reporte nominal con preparación, acompañamiento, pan o té y estado.
+`period=daily|weekly|monthly` y una fecha ISO opcional en `date`. Las rutas PDF
+generan un reporte nominal con preparación, acompañamiento, pan o té y estado.
 
 Las capacitaciones pueden registrarse para fechas hábiles actuales o futuras de
 la semana hasta las 09:00 y nuevamente desde las 14:00. Entre las 09:00 y las

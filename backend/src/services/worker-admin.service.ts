@@ -18,17 +18,21 @@ export async function listWorkerAccounts(
   if (error) throwSupabaseError(error, "No fue posible consultar los trabajadores");
 
   const users = await listAllAuthUsers(admin);
-  const emailById = new Map(users.map((user) => [user.id, user.email ?? null]));
+  const userById = new Map(users.map((user) => [user.id, user]));
 
-  return (diners ?? []).map((diner) => ({
-    id: diner.id,
-    fullName: diner.full_name,
-    employeeCode: diner.employee_code,
-    email: diner.auth_user_id ? emailById.get(diner.auth_user_id) ?? null : null,
-    accountCreated: Boolean(diner.auth_user_id),
-    active: diner.active,
-    createdAt: diner.created_at,
-  }));
+  return (diners ?? []).map((diner) => {
+    const authUser = diner.auth_user_id ? userById.get(diner.auth_user_id) : undefined;
+    return {
+      id: diner.id,
+      fullName: diner.full_name,
+      employeeCode: diner.employee_code,
+      email: authUser?.email ?? null,
+      accountCreated: Boolean(diner.auth_user_id),
+      accessActivated: Boolean(authUser?.email_confirmed_at),
+      active: diner.active,
+      createdAt: diner.created_at,
+    };
+  });
 }
 
 export async function createWorkerAccount(
@@ -39,6 +43,7 @@ export async function createWorkerAccount(
     dinerId?: string;
     fullName?: string;
     employeeCode?: string;
+    passwordSetupRedirectTo: string;
   },
 ) {
   const email = input.email.trim().toLocaleLowerCase("es-CL");
@@ -69,11 +74,13 @@ export async function createWorkerAccount(
   let existingDinerLinked = false;
 
   try {
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    const { data: authData, error: authError } = await admin.auth.admin.inviteUserByEmail(
       email,
-      email_confirm: true,
-      user_metadata: { full_name: fullName, role: "worker" },
-    });
+      {
+        data: { full_name: fullName, role: "worker" },
+        redirectTo: input.passwordSetupRedirectTo,
+      },
+    );
     if (authError) {
       throw new AppError(
         "No fue posible crear el acceso del trabajador",
@@ -133,6 +140,7 @@ export async function createWorkerAccount(
       employeeCode: existingDiner?.employee_code ?? input.employeeCode?.trim() ?? null,
       email,
       accountCreated: true,
+      accessActivated: false,
       active: true,
       createdAt: existingDiner?.created_at ?? new Date().toISOString(),
     };
@@ -151,6 +159,61 @@ export async function createWorkerAccount(
     }
     throw error;
   }
+}
+
+export async function sendWorkerPasswordSetupEmail(
+  admin: AdminClient,
+  organizationId: string,
+  workerId: string,
+  redirectTo: string,
+) {
+  const { data: diner, error: dinerError } = await admin
+    .from("diners")
+    .select("id, auth_user_id, active")
+    .eq("id", workerId)
+    .eq("organization_id", organizationId)
+    .eq("type", "worker")
+    .maybeSingle();
+  if (dinerError) {
+    throwSupabaseError(dinerError, "No fue posible consultar al trabajador");
+  }
+  if (!diner?.active) {
+    throw new AppError("No se encontró un trabajador activo", 404, "WORKER_NOT_FOUND");
+  }
+  if (!diner.auth_user_id) {
+    throw new AppError(
+      "El trabajador todavía no tiene una cuenta de acceso",
+      409,
+      "WORKER_ACCOUNT_REQUIRED",
+    );
+  }
+
+  const { data: authData, error: authUserError } = await admin.auth.admin.getUserById(
+    diner.auth_user_id,
+  );
+  if (authUserError || !authData.user?.email) {
+    throw new AppError(
+      "No fue posible consultar el correo de acceso",
+      503,
+      "AUTH_USER_READ_FAILED",
+    );
+  }
+
+  const email = authData.user.email;
+  const { error: emailError } = await admin.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+  if (emailError) {
+    throw new AppError(
+      emailError.status === 429
+        ? "Espera unos minutos antes de reenviar el correo"
+        : "No fue posible enviar el correo para crear la contraseña",
+      emailError.status === 429 ? 429 : 503,
+      emailError.status === 429 ? "AUTH_EMAIL_RATE_LIMITED" : "AUTH_EMAIL_SEND_FAILED",
+    );
+  }
+
+  return { email };
 }
 
 async function getAvailableDiner(

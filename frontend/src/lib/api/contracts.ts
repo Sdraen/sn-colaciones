@@ -7,7 +7,7 @@ export interface MenuWeekDto { id: string; organizationId: string; startsOn: str
 export interface OrderDto { id: string; serviceDayId: string; menuOptionId: string; dinerId?: string | null; trainingSessionId?: string | null; exceptionRequestId?: string | null; kind: OrderKind; beneficiaryLabel?: string | null; quantity: number; side: SideChoice; bread: boolean; tea: boolean; status: "confirmed" | "cancelled"; fulfilledAt: string | null; createdAt: string; updatedAt?: string; }
 export interface WorkerOrdersDto { menuWeek: MenuWeekDto; orders: OrderDto[]; }
 export interface WorkerMenuWeekSummaryDto { id: string; startsOn: string; publishedAt: string; }
-export interface WorkerAccountDto { id: string; fullName: string; employeeCode: string | null; email: string | null; accountCreated: boolean; active: boolean; createdAt: string; }
+export interface WorkerAccountDto { id: string; fullName: string; employeeCode: string | null; email: string | null; accountCreated: boolean; accessActivated: boolean; active: boolean; createdAt: string; }
 export interface ExceptionDto { id: string; serviceDayId: string; menuOptionId: string; beneficiaryLabel: string; reason: string; side: SideChoice; bread: boolean; tea: boolean; status: "pending" | "approved" | "rejected"; resolutionNote: string | null; requestedAt: string; resolvedAt: string | null; }
 export interface TrainingSessionDto { id: string; name: string; serviceDate: string; expectedAttendees: number; createdAt: string; }
 export interface CompanyOperationsDto { menuWeek: { id: string; startsOn: string }; trainingSessions: TrainingSessionDto[]; extraRequests: ExceptionDto[]; orders: OrderDto[]; calendarBlocks: Array<{ id: string; startsOn: string; endsOn: string; kind: string; reason: string }>; }

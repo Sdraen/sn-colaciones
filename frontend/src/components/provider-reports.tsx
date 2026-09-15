@@ -21,7 +21,10 @@ export function OperationsReports({
   const [selectedDate, setSelectedDate] = useState(initialReport.range.to);
   const [validationError, setValidationError] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const supportsNominalPdf = endpoint === "/api/v1/provider/reports";
+  const supportsNominalPdf = [
+    "/api/v1/provider/reports",
+    "/api/v1/company/reports",
+  ].includes(endpoint);
 
   const refreshReport = useCallback(async () => {
     if (!selectedDate) return;

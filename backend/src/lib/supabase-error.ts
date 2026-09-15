@@ -49,6 +49,8 @@ const domainErrors: Record<string, { status: number; message: string }> = {
   SERVICE_DAY_DISABLED: { status: 409, message: "El día seleccionado no tiene servicio" },
   SERVICE_DAY_NOT_FOUND: { status: 404, message: "No se encontró el día de servicio" },
   TRAINING_DATE_BLOCKED: { status: 409, message: "No se permiten capacitaciones en esta fecha" },
+  TRAINING_CAPACITY_REQUIRED: { status: 409, message: "La proveedora debe informar la disponibilidad de capacitación para ese día" },
+  TRAINING_CAPACITY_EXCEEDED: { status: 409, message: "La cantidad de alumnos supera los cupos de capacitación disponibles para ese día" },
   TRAINING_MENU_REQUIRED: { status: 409, message: "La proveedora todavía no ha definido el menú de capacitación para ese día" },
   TRAINING_SESSION_MISMATCH: { status: 409, message: "La capacitación no corresponde al día seleccionado" },
   TRAINING_WINDOW_CLOSED: { status: 409, message: "Las capacitaciones para fechas actuales o futuras se registran hasta las 09:00 y desde las 14:00" },

@@ -157,8 +157,14 @@ describe("contrato del menú semanal", () => {
       params: { weekId: "11111111-1111-4111-8111-111111111111" },
       query: {},
     });
+    const withoutCapacity = updateTrainingMenuRequestSchema.safeParse({
+      body: { description: "Pollo al jugo con arroz", capacity: null },
+      params: { weekId: "11111111-1111-4111-8111-111111111111" },
+      query: {},
+    });
 
     expect(valid.success).toBe(true);
     expect(invalid.success).toBe(false);
+    expect(withoutCapacity.success).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createMenuWeekDraft,
   deleteMenuWeekDraft,
+  getMenuWeek,
   publishMenuWeek,
   upsertTrainingMenu,
   updateMenuWeekDraft,
@@ -35,6 +36,98 @@ const draftDays = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe("CRUD de borradores semanales", () => {
+  it("entrega a Securitas el menú de capacitación con su disponibilidad real", async () => {
+    const week = {
+      id: "11111111-1111-4111-8111-111111111111",
+      organization_id: "22222222-2222-4222-8222-222222222222",
+      starts_on: "2026-09-14",
+      published_at: "2026-09-12T12:00:00.000Z",
+    };
+    const day = {
+      id: "33333333-3333-4333-8333-333333333333",
+      service_date: "2026-09-15",
+      phase: "preorder",
+      preorder_deadline: "2026-09-14T22:00:00.000Z",
+      same_day_opens_at: "2026-09-15T08:00:00.000Z",
+      same_day_closes_at: "2026-09-15T11:00:00.000Z",
+      delivery_closes_at: "2026-09-15T13:00:00.000Z",
+      availability_published_at: null,
+      disabled: false,
+    };
+    const trainingOption = {
+      id: "44444444-4444-4444-8444-444444444444",
+      service_day_id: day.id,
+      category: "especial" as const,
+      label: "Menú capacitación",
+      description: "Espirales con salsa",
+      dessert: null,
+      beverage: null,
+      notes: null,
+      capacity: 35,
+      capacity_updated_at: "2026-09-14T12:00:00.000Z",
+      available_for_training: true,
+      available_for_workers: false,
+      visible: true,
+      sort_order: 99,
+    };
+    const weekQuery = {
+      not: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: week, error: null }),
+    };
+    weekQuery.not.mockReturnValue(weekQuery);
+    const optionResult = { data: [trainingOption], error: null };
+    const optionQuery = {
+      eq: vi.fn(),
+      then: (
+        resolve: (value: typeof optionResult) => unknown,
+        reject: (reason: unknown) => unknown,
+      ) => Promise.resolve(optionResult).then(resolve, reject),
+    };
+    optionQuery.eq.mockReturnValue(optionQuery);
+    const from = vi.fn((table: string) => {
+      if (table === "menu_weeks") {
+        return { select: () => ({ order: () => ({ limit: () => weekQuery }) }) };
+      }
+      if (table === "service_days") {
+        return {
+          select: () => ({
+            eq: () => ({ order: vi.fn().mockResolvedValue({ data: [day], error: null }) }),
+          }),
+        };
+      }
+      return { select: () => ({ in: () => ({ order: () => optionQuery }) }) };
+    });
+    const rpc = vi.fn().mockResolvedValue({
+      data: [
+        {
+          menu_option_id: trainingOption.id,
+          reserved_quantity: 15,
+          remaining_quantity: 20,
+        },
+      ],
+      error: null,
+    });
+    const client = { from, rpc } as unknown as UserDatabaseClient;
+
+    const menu = await getMenuWeek(client, {
+      includeDrafts: false,
+      includeAvailability: true,
+    });
+
+    expect(menu.days[0]?.options[0]).toMatchObject({
+      trainingMenu: true,
+      availableForWorkers: false,
+      capacity: 35,
+      reservedQuantity: 15,
+      remainingQuantity: 20,
+    });
+    expect(optionQuery.eq).toHaveBeenCalledOnce();
+    expect(optionQuery.eq).toHaveBeenCalledWith("visible", true);
+    expect(rpc).toHaveBeenCalledWith("get_menu_option_availability", {
+      target_menu_week_id: week.id,
+    });
+  });
+
   it("no crea una segunda semana para el mismo lunes", async () => {
     const { client, rpc } = menuWeekClient({
       id: "11111111-1111-4111-8111-111111111111",

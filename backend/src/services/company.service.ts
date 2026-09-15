@@ -167,7 +167,11 @@ export async function getCompanyOperations(
   supabase: UserDatabaseClient,
   startsOn?: string,
 ) {
-  const menu = await getMenuWeek(supabase, { startsOn, includeDrafts: false });
+  const menu = await getMenuWeek(supabase, {
+    startsOn,
+    includeDrafts: false,
+    includeAvailability: true,
+  });
   const serviceDayIds = menu.days.map((day) => day.id);
   const serviceDates = menu.days.map((day) => day.serviceDate);
 

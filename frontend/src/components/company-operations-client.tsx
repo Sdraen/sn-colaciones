@@ -32,7 +32,6 @@ import type {
   ExceptionDto,
   MenuWeekDto,
   NotificationDto,
-  OrderDto,
   OrdersReportDto,
   SideChoice,
   WorkerAccountDto,
@@ -143,6 +142,9 @@ export function CompanyOperationsClient({
   const trainingMenu = activeDay?.options.find(
     (option) => option.trainingMenu && option.visible,
   );
+  const trainingRemaining = trainingMenu?.remainingQuantity;
+  const trainingHasAvailability =
+    typeof trainingRemaining === "number" && trainingRemaining > 0;
   const now = new Date(currentTime);
   const blocked =
     operations?.calendarBlocks.some(
@@ -156,7 +158,8 @@ export function CompanyOperationsClient({
     activeDay &&
       !activeDay.disabled &&
       isTrainingRegistrationOpen(activeDay.serviceDate, now, blocked) &&
-      trainingMenu,
+      trainingMenu &&
+      trainingHasAvailability,
   );
   const extraOpen = Boolean(
     activeDay &&
@@ -167,6 +170,14 @@ export function CompanyOperationsClient({
   );
   const lateExtra = Boolean(activeDay && now >= new Date(activeDay.sameDayClosesAt));
   const modeOpen = mode === "training" ? trainingOpen : extraOpen;
+  const modeClosedReason =
+    mode === "training"
+      ? trainingClosedMessage({
+          blocked: blocked || Boolean(activeDay?.disabled),
+          trainingMenu,
+          remainingQuantity: trainingRemaining,
+        })
+      : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled));
   const selectedMode = modes.find((item) => item.value === mode) ?? modes[0];
   const unreadNotifications = liveNotifications.filter((item) => !item.readAt).length;
 
@@ -192,36 +203,15 @@ export function CompanyOperationsClient({
       if (mode === "training") {
         const name = String(form.get("name"));
         const attendeeCount = Number(form.get("quantity"));
-        const order = await browserApiRequest<OrderDto>(
+        await browserApiRequest(
           "/api/v1/company/training-sessions",
           {
             method: "POST",
             body: JSON.stringify({ ...common, name, attendeeCount }),
           },
         );
-        setOperations((current) =>
-          current
-            ? {
-                ...current,
-                orders: [order, ...current.orders],
-                trainingSessions: [
-                  {
-                    id: order.trainingSessionId ?? order.id,
-                    name,
-                    serviceDate: activeDay.serviceDate,
-                    expectedAttendees: attendeeCount,
-                    createdAt: order.createdAt,
-                  },
-                  ...current.trainingSessions,
-                ],
-              }
-            : current,
-        );
       } else {
-        const result = await browserApiRequest<
-          | { outcome: "confirmed"; order: OrderDto }
-          | { outcome: "pending"; request: ExceptionDto }
-        >("/api/v1/company/extras", {
+        await browserApiRequest("/api/v1/company/extras", {
           method: "POST",
           body: JSON.stringify({
             ...common,
@@ -229,14 +219,8 @@ export function CompanyOperationsClient({
             ...(lateExtra ? { reason: String(form.get("reason")) } : {}),
           }),
         });
-        setOperations((current) =>
-          current
-            ? result.outcome === "confirmed"
-              ? { ...current, orders: [result.order, ...current.orders] }
-              : { ...current, extraRequests: [result.request, ...current.extraRequests] }
-            : current,
-        );
       }
+      await refreshOperations();
       formElement.reset();
       setMessage(
         mode === "extra" && lateExtra
@@ -491,11 +475,11 @@ export function CompanyOperationsClient({
                     <Clock3 size={18} className="mt-0.5 shrink-0" />
                   )}
                   <div>
-                    <strong>{modeOpen ? "Ventana habilitada" : "Ventana cerrada"}</strong>
+                    <strong>{modeOpen ? "Registro habilitado" : "Registro no disponible"}</strong>
                     <p className="mt-0.5 text-xs font-semibold opacity-80">
                       {modeOpen
                         ? selectedMode.description
-                        : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled))}
+                        : modeClosedReason}
                     </p>
                   </div>
                 </div>
@@ -524,7 +508,12 @@ export function CompanyOperationsClient({
                           name="quantity"
                           type="number"
                           min="1"
-                          max="500"
+                          max={
+                            typeof trainingRemaining === "number"
+                              ? Math.min(500, trainingRemaining)
+                              : 500
+                          }
+                          disabled={!trainingOpen}
                           required
                           placeholder="Ej.: 30"
                           className="company-input form-control px-4"
@@ -539,6 +528,23 @@ export function CompanyOperationsClient({
                             ? `${trainingMenu.label} · ${trainingMenu.description}`
                             : "La proveedora aún no lo ha definido"}
                         </p>
+                        {trainingMenu ? (
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                            <TrainingAvailability
+                              label="Cupo diario"
+                              value={trainingMenu.capacity}
+                            />
+                            <TrainingAvailability
+                              label="Reservadas"
+                              value={trainingMenu.reservedQuantity}
+                            />
+                            <TrainingAvailability
+                              label="Disponibles"
+                              value={trainingMenu.remainingQuantity}
+                              highlight
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </>
                   ) : (
@@ -677,6 +683,7 @@ export function CompanyOperationsClient({
                             <OperationalOrderActions
                               order={order}
                               menuOptions={editableMenuOptions}
+                              trainingMenu={trainingMenu}
                               onChanged={refreshAfterCorrection}
                               onBusyChange={setSaving}
                               onSuccess={showCorrectionSuccess}
@@ -832,6 +839,31 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+function TrainingAvailability({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: number | null;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border px-2 py-2 ${
+        highlight
+          ? "border-[var(--herb)] bg-[var(--herb-soft)]"
+          : "border-[var(--line)] bg-white"
+      }`}
+    >
+      <strong className="block text-base">{value ?? "—"}</strong>
+      <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function sideLabel(side: SideChoice) {
   return {
     ensalada: "Ensalada",
@@ -847,6 +879,28 @@ function closedWindowMessage(mode: Mode, blocked: boolean) {
     return "Puedes registrar fechas actuales o futuras hasta las 09:00 y nuevamente desde las 14:00.";
   }
   return "Las colaciones extra abren a las 08:00 y cierran por completo a las 13:00.";
+}
+
+function trainingClosedMessage({
+  blocked,
+  trainingMenu,
+  remainingQuantity,
+}: {
+  blocked: boolean;
+  trainingMenu: MenuWeekDto["days"][number]["options"][number] | undefined;
+  remainingQuantity: number | null | undefined;
+}) {
+  if (blocked) return "La fecha está bloqueada o fue marcada sin servicio.";
+  if (!trainingMenu) {
+    return "La proveedora todavía no ha definido el menú de capacitación para este día.";
+  }
+  if (trainingMenu.capacity === null || typeof remainingQuantity !== "number") {
+    return "La proveedora todavía no ha informado el cupo diario de capacitación.";
+  }
+  if (remainingQuantity <= 0) {
+    return "No quedan cupos de capacitación para este día.";
+  }
+  return closedWindowMessage("training", false);
 }
 
 function localDate(date: Date) {

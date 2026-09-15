@@ -28,6 +28,16 @@ export const listWorkerAccountsRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const sendWorkerPasswordSetupRequestSchema = z.object({
+  body: z.unknown(),
+  params: z.object({ workerId: uuidSchema }),
+  query: z.object({}),
+});
+
 export type CreateWorkerAccountRequest = z.infer<
   typeof createWorkerAccountRequestSchema
+>;
+
+export type SendWorkerPasswordSetupRequest = z.infer<
+  typeof sendWorkerPasswordSetupRequestSchema
 >;

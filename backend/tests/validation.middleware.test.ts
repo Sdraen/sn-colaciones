@@ -6,7 +6,10 @@ import { requestContext } from "../src/middleware/request-context.js";
 import { validateRequest } from "../src/middleware/validate-request.js";
 import { saveRegularOrderRequestSchema } from "../src/schemas/order.schema.js";
 import { resolveExceptionRequestSchema } from "../src/schemas/provider.schema.js";
-import { createWorkerAccountRequestSchema } from "../src/schemas/worker-admin.schema.js";
+import {
+  createWorkerAccountRequestSchema,
+  sendWorkerPasswordSetupRequestSchema,
+} from "../src/schemas/worker-admin.schema.js";
 
 describe("validación de contratos HTTP", () => {
   const app = express();
@@ -25,6 +28,11 @@ describe("validación de contratos HTTP", () => {
   app.post(
     "/workers",
     validateRequest(createWorkerAccountRequestSchema),
+    (httpRequest, response) => response.json({ data: httpRequest.validated }),
+  );
+  app.post(
+    "/workers/:workerId/password-setup",
+    validateRequest(sendWorkerPasswordSetupRequestSchema),
     (httpRequest, response) => response.json({ data: httpRequest.validated }),
   );
   app.use(errorHandler);
@@ -88,5 +96,18 @@ describe("validación de contratos HTTP", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("valida el trabajador antes de reenviar la creación de contraseña", async () => {
+    const invalid = await request(app).post("/workers/no-es-uuid/password-setup");
+    const valid = await request(app).post(
+      "/workers/00000000-0000-4000-8000-000000000004/password-setup",
+    );
+
+    expect(invalid.status).toBe(400);
+    expect(valid.status).toBe(200);
+    expect(valid.body.data.params.workerId).toBe(
+      "00000000-0000-4000-8000-000000000004",
+    );
   });
 });

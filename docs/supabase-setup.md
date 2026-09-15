@@ -107,16 +107,21 @@ Esta migración convierte el ajuste de Producción en una corrección excepciona
 del mismo cupo definido inicialmente en Menús. Impide reducirlo bajo las reservas
 confirmadas y bloquea modificaciones sobre días pasados o entregados.
 
+Luego ejecutar `supabase/migrations/0017_training_capacity_guard.sql`.
+Esta migración exige que la proveedora informe un cupo diario para el menú de
+capacitación y mantiene atómico el descuento de cupos al crear o modificar
+capacitaciones desde Securitas.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0016` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0017` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa
   de llegada, término de entrega y confirmación de recepción con cada rol.
 - Se creó la organización `Securitas Concepción` y se importaron 78 trabajadores
   desde la hoja revisada, sin cuentas ni correos asociados.
-- El acceso OTP del frontend está implementado con creación pública deshabilitada.
+- El acceso con contraseña personal y la recuperación por correo están implementados; el enlace mágico permanece como alternativa y la creación pública está deshabilitada.
 - Crear los perfiles iniciales cuando se confirmen los correos de las administradoras.
 - Deshabilitar además el registro público desde la configuración de Supabase Auth.
 - Exigir MFA TOTP para las administradoras.

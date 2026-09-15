@@ -89,7 +89,7 @@ export const publishMenuWeekRequestSchema = z.object({
 export const updateTrainingMenuRequestSchema = z.object({
   body: z.object({
     description: z.string().trim().min(3).max(300),
-    capacity: z.number().int().min(0).max(10_000).nullable().default(null),
+    capacity: z.number().int().min(0).max(10_000),
   }),
   params: z.object({ weekId: uuidSchema }),
   query: z.object({}),

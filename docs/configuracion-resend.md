@@ -62,7 +62,7 @@ En **Supabase Dashboard > Authentication > Email/Notifications > SMTP Settings**
 Luego revisar en **Authentication > URL Configuration**:
 
 - **Site URL:** URL pública real del frontend.
-- **Redirect URLs:** incluir la URL pública y las rutas de retorno utilizadas por la aplicación.
+- **Redirect URLs:** incluir la URL pública, `/auth/callback`, `/auth/activar` y `/crear-contrasena` para desarrollo y producción.
 
 También se deben revisar los límites de envío de Supabase Auth para el volumen esperado. Mantener deshabilitado el registro público si las cuentas seguirán siendo creadas por la administradora.
 
@@ -80,6 +80,11 @@ Las plantillas versionadas están en `supabase/templates`. Copiar el contenido d
 | Reauthentication | `reauthentication.html` | `{{ .Token }} es tu código de seguridad` |
 | Password changed | `password-changed.html` | `Tu contraseña fue actualizada` |
 | Email address changed | `email-changed.html` | `El correo de tu cuenta fue actualizado` |
+
+Las plantillas `invite.html` y `recovery.html` usan `TokenHash` para que el
+servidor valide el enlace antes de abrir `/crear-contrasena`. Es imprescindible
+copiar sus versiones actualizadas al Dashboard; guardar solamente los archivos
+del repositorio no modifica las plantillas activas de Supabase.
 
 Activar las notificaciones de seguridad de cambio de contraseña y cambio de correo si están disponibles en el plan y configuración del proyecto.
 

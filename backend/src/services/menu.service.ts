@@ -24,7 +24,12 @@ type MenuOptionSummary = Pick<
 
 export async function getMenuWeek(
   supabase: UserDatabaseClient,
-  options: { startsOn?: string; includeDrafts: boolean; availableForWorkersOnly?: boolean },
+  options: {
+    startsOn?: string;
+    includeDrafts: boolean;
+    availableForWorkersOnly?: boolean;
+    includeAvailability?: boolean;
+  },
 ) {
   let weekQuery = supabase
     .from("menu_weeks")
@@ -59,7 +64,7 @@ export async function getMenuWeek(
     .in("service_day_id", dayIds)
     .order("sort_order", { ascending: true });
   if (!options.includeDrafts) menuOptionsQuery = menuOptionsQuery.eq("visible", true);
-  if (options.availableForWorkersOnly || Boolean(week.published_at)) {
+  if (options.availableForWorkersOnly) {
     menuOptionsQuery = menuOptionsQuery.eq("available_for_workers", true);
   }
   const optionsResult = dayIds.length
@@ -74,7 +79,7 @@ export async function getMenuWeek(
     string,
     { reservedQuantity: number; remainingQuantity: number | null }
   >();
-  if (options.availableForWorkersOnly) {
+  if (options.availableForWorkersOnly || options.includeAvailability) {
     const { data: availability, error: availabilityError } = await supabase.rpc(
       "get_menu_option_availability",
       { target_menu_week_id: week.id },
@@ -359,12 +364,24 @@ export async function publishMenuWeek(
       )
     );
   });
-  if (incompleteDays.length > 0) {
+  const incompleteTrainingDays = draft.days.filter((day) =>
+    day.options.some(
+      (option) =>
+        option.trainingMenu &&
+        option.visible &&
+        (option.description.trim().length < 3 || option.capacity === null),
+    ),
+  );
+  if (incompleteDays.length > 0 || incompleteTrainingDays.length > 0) {
     throw new AppError(
-      "Completa la preparación y disponibilidad de todos los días antes de publicar",
+      "Completa la preparación y disponibilidad diaria de todos los menús antes de publicar",
       422,
       "MENU_WEEK_INCOMPLETE",
-      { serviceDates: incompleteDays.map((day) => day.serviceDate) },
+      {
+        serviceDates: [...new Set(
+          [...incompleteDays, ...incompleteTrainingDays].map((day) => day.serviceDate),
+        )],
+      },
     );
   }
 
@@ -379,7 +396,7 @@ export async function publishMenuWeek(
 
 export async function upsertTrainingMenu(
   supabase: UserDatabaseClient,
-  input: { menuWeekId: string; description: string; capacity: number | null },
+  input: { menuWeekId: string; description: string; capacity: number },
 ) {
   const { data, error } = await supabase.rpc("set_training_menu_for_week", {
     target_menu_week_id: input.menuWeekId,

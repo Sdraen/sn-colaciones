@@ -4,11 +4,12 @@
 
 La implementación recomendada es Supabase Auth con cuentas creadas o invitadas por un administrador. El registro público debe permanecer deshabilitado.
 
-1. El trabajador recibe un enlace mágico o código de un solo uso en su correo.
-2. Supabase valida la identidad y crea una sesión segura.
-3. La aplicación consulta `profiles` para conocer el rol.
-4. Row Level Security limita qué registros puede leer o modificar ese rol.
-5. Las administradoras completan un segundo factor TOTP antes de acceder a acciones sensibles.
+1. Securitas registra el correo autorizado y Supabase envía una invitación.
+2. El trabajador abre el enlace una sola vez y crea su contraseña personal.
+3. Los siguientes ingresos se realizan con correo y contraseña; el enlace mágico queda como alternativa.
+4. Supabase valida la identidad y crea una sesión segura.
+5. La aplicación consulta `profiles` para conocer el rol y Row Level Security limita sus permisos.
+6. Las administradoras completan un segundo factor TOTP antes de acceder a acciones sensibles.
 
 No se deben almacenar contraseñas, códigos de acceso ni secretos de sesión en tablas propias.
 
@@ -52,8 +53,11 @@ encuentran en `docs/configuracion-resend.md`.
 - La administradora de Securitas puede crear exclusivamente cuentas de
   trabajadores desde su panel. El backend vincula el usuario de Supabase Auth,
   su perfil y la persona de la nómina dentro de la misma operación controlada.
-- Las cuentas creadas desde el panel no reciben una contraseña conocida por la
-  administradora. Cada trabajador solicita su propio enlace mágico en `/login`.
+- Las cuentas creadas desde el panel reciben una invitación para establecer una
+  contraseña personal. La administradora puede reenviar ese correo, pero nunca
+  conoce la clave.
+- `/crear-contrasena` permite definir una clave tras validar una invitación o
+  recuperación, y `/login` ofrece “¿Olvidaste tu contraseña?”.
 - `npm run verify:worker-provisioning -w backend` comprueba la creación y la
   limpieza de una cuenta temporal. `npm run load:test-workers -w backend`
   simula por defecto 80 sesiones y pedidos, y elimina la información generada.

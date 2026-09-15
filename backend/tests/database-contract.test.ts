@@ -155,6 +155,20 @@ describe("contrato de migraciones de Supabase", () => {
       "grant execute on function public.set_menu_option_availability(uuid, integer, boolean) to authenticated",
     );
   });
+
+  it("exige cupo diario y mantiene atómicas las capacitaciones", () => {
+    const migration = readMigration("0017_training_capacity_guard.sql");
+
+    expect(migration).toContain("function private.enforce_menu_option_capacity");
+    expect(migration).toContain("new.kind = 'training'");
+    expect(migration).toContain("TRAINING_CAPACITY_REQUIRED");
+    expect(migration).toContain("TRAINING_CAPACITY_EXCEEDED");
+    expect(migration).toContain("for no key update");
+    expect(migration).toContain("MENU_OPTION_CAPACITY_EXCEEDED");
+    expect(migration).toMatch(
+      /order_record\.id <> new\.id[\s\S]*?already_confirmed \+ new\.quantity > option_capacity/i,
+    );
+  });
 });
 
 function readMigration(fileName: string) {

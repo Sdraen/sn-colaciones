@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppError } from "../errors/app-error.js";
 import { throwSupabaseError } from "../lib/supabase-error.js";
 import type { Database, OrderKind, SideChoice } from "../types/database.js";
-import { serializeDeliveryTracking } from "./delivery.service.js";
+import { serializeDeliveryTracking, serializeReceiptCheck } from "./delivery.service.js";
 
 type UserDatabaseClient = SupabaseClient<Database>;
 
@@ -18,7 +18,7 @@ export async function getDailySummary(
   if (dayError) throwSupabaseError(dayError, "No fue posible consultar el día de servicio");
   if (!day) throw new AppError("No existe un día de servicio para la fecha indicada", 404, "SERVICE_DAY_NOT_FOUND");
 
-  const [optionsResult, ordersResult, pendingResult, trackingResult] = await Promise.all([
+  const [optionsResult, ordersResult, pendingResult, trackingResult, receiptResult] = await Promise.all([
     supabase
       .from("menu_options")
       .select("id, label, description, dessert, beverage, notes")
@@ -35,7 +35,12 @@ export async function getDailySummary(
       .eq("status", "pending"),
     supabase
       .from("service_delivery_tracking")
-      .select("service_day_id, organization_id, arrived_at, arrived_by, delivered_at, delivered_by, receipt_confirmed_at, receipt_confirmed_by, updated_at")
+      .select("service_day_id, organization_id, arrived_at, arrived_by, company_arrival_confirmed_at, company_arrival_confirmed_by, delivered_at, delivered_by, receipt_confirmed_at, receipt_confirmed_by, updated_at")
+      .eq("service_day_id", day.id)
+      .maybeSingle(),
+    supabase
+      .from("service_receipt_checks")
+      .select("service_day_id, organization_id, items, general_note, reported_by, created_at, updated_at")
       .eq("service_day_id", day.id)
       .maybeSingle(),
   ]);
@@ -43,20 +48,38 @@ export async function getDailySummary(
   if (ordersResult.error) throwSupabaseError(ordersResult.error, "No fue posible consultar las colaciones del día");
   if (pendingResult.error) throwSupabaseError(pendingResult.error, "No fue posible consultar las solicitudes pendientes");
   if (trackingResult.error) throwSupabaseError(trackingResult.error, "No fue posible consultar el seguimiento del despacho");
+  if (receiptResult.error) throwSupabaseError(receiptResult.error, "No fue posible consultar el control de recepción");
 
   const orders = ordersResult.data ?? [];
   const dinerIds = unique(orders.map((order) => order.diner_id));
   const trainingIds = unique(orders.map((order) => order.training_session_id));
-  const [dinersResult, trainingsResult] = await Promise.all([
+  const deliveryActorIds = unique([
+    trackingResult.data?.arrived_by ?? null,
+    trackingResult.data?.company_arrival_confirmed_by ?? null,
+    trackingResult.data?.delivered_by ?? null,
+    trackingResult.data?.receipt_confirmed_by ?? null,
+  ]);
+  const [dinersResult, trainingsResult, deliveryActorsResult] = await Promise.all([
     dinerIds.length
       ? supabase.from("diners").select("id, full_name, employee_code").in("id", dinerIds)
       : Promise.resolve({ data: [], error: null }),
     trainingIds.length
       ? supabase.from("training_sessions").select("id, name, expected_attendees").in("id", trainingIds)
       : Promise.resolve({ data: [], error: null }),
+    deliveryActorIds.length
+      ? supabase.from("profiles").select("id, organization_id, full_name, role").in("id", deliveryActorIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (dinersResult.error) throwSupabaseError(dinersResult.error, "No fue posible consultar los trabajadores");
   if (trainingsResult.error) throwSupabaseError(trainingsResult.error, "No fue posible consultar las capacitaciones");
+  if (deliveryActorsResult.error) throwSupabaseError(deliveryActorsResult.error, "No fue posible consultar los responsables de la recepción");
+
+  const deliveryActors = (deliveryActorsResult.data ?? []).map((actor) => ({
+    id: actor.id,
+    organizationId: actor.organization_id,
+    fullName: actor.full_name,
+    role: actor.role,
+  }));
 
   const optionsById = new Map((optionsResult.data ?? []).map((option) => [option.id, option]));
   const dinersById = new Map((dinersResult.data ?? []).map((diner) => [diner.id, diner]));
@@ -111,6 +134,44 @@ export async function getDailySummary(
   });
 
   const total = confirmed.reduce((sum, order) => sum + order.quantity, 0);
+  const savedReceipt = receiptResult.data ? serializeReceiptCheck(receiptResult.data) : null;
+  const savedReceiptByKey = new Map(savedReceipt?.items.map((item) => [item.key, item]) ?? []);
+  const receptionItems = [
+    ...[...menuTotals.values()]
+      .sort((a, b) => b.quantity - a.quantity)
+      .map((item) => ({
+        key: `menu:${item.menuOptionId}`,
+        type: "menu" as const,
+        label: `${item.label}${item.description ? ` · ${item.description}` : ""}`,
+        expectedQuantity: item.quantity,
+      })),
+    ...([
+      ["ensalada", "Ensaladas", sides.ensalada],
+      ["fruta", "Frutas", sides.fruta],
+      ["postre", "Postres", sides.postre],
+    ] as const)
+      .filter(([, , quantity]) => quantity > 0)
+      .map(([key, label, expectedQuantity]) => ({
+        key: `side:${key}`,
+        type: "side" as const,
+        label,
+        expectedQuantity,
+      })),
+    ...(bread > 0
+      ? [{ key: "complement:bread", type: "complement" as const, label: "Panes", expectedQuantity: bread }]
+      : []),
+    ...(tea > 0
+      ? [{ key: "complement:tea", type: "complement" as const, label: "Tés", expectedQuantity: tea }]
+      : []),
+  ].map((item) => {
+    const savedItem = savedReceiptByKey.get(item.key);
+    return {
+      ...item,
+      receivedQuantity: savedItem?.receivedQuantity ?? null,
+      note: savedItem?.note ?? null,
+    };
+  });
+
   return {
     serviceDate: day.service_date,
     state: Date.now() >= new Date(day.delivery_closes_at).getTime() ? "final" : "in_progress",
@@ -119,17 +180,30 @@ export async function getDailySummary(
     disabled: day.disabled,
     pendingExtraRequests: pendingResult.data?.length ?? 0,
     delivery: trackingResult.data
-      ? serializeDeliveryTracking(trackingResult.data)
+      ? serializeDeliveryTracking(trackingResult.data, deliveryActors)
       : {
           serviceDayId: day.id,
           arrivedAt: null,
           arrivedBy: null,
+          arrivedByProfile: null,
+          companyArrivalConfirmedAt: null,
+          companyArrivalConfirmedBy: null,
+          companyArrivalConfirmedByProfile: null,
           deliveredAt: null,
           deliveredBy: null,
+          deliveredByProfile: null,
           receiptConfirmedAt: null,
           receiptConfirmedBy: null,
+          receiptConfirmedByProfile: null,
           updatedAt: null,
         },
+    receptionControl: {
+      serviceDayId: day.id,
+      items: receptionItems,
+      generalNote: savedReceipt?.generalNote ?? null,
+      reportedBy: savedReceipt?.reportedBy ?? null,
+      reportedAt: savedReceipt?.reportedAt ?? null,
+    },
     totals: {
       colations: total,
       delivered: confirmed.filter((order) => order.fulfilled_at !== null).reduce((sum, order) => sum + order.quantity, 0),

@@ -11,7 +11,7 @@ import {
 import { browserApiRequest } from "@/lib/api/client";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SuccessDialog } from "@/components/ui/success-dialog";
-import type { DeliveryTrackingDto } from "@/lib/api/contracts";
+import type { DeliveryReceiptCheckDto, DeliveryTrackingDto } from "@/lib/api/contracts";
 import { formatChileanDateTime } from "@/lib/date-format";
 
 type ViewerRole = "provider_admin" | "company_admin" | "delivery";
@@ -20,6 +20,7 @@ interface DeliveryProgressProps {
   tracking: DeliveryTrackingDto;
   serviceDate: string;
   viewerRole: ViewerRole;
+  receptionControl: DeliveryReceiptCheckDto;
   onUpdate: (tracking: DeliveryTrackingDto) => void;
 }
 
@@ -33,6 +34,7 @@ export function DeliveryProgress({
   tracking,
   serviceDate,
   viewerRole,
+  receptionControl,
   onUpdate,
 }: DeliveryProgressProps) {
   const [saving, setSaving] = useState(false);
@@ -42,7 +44,7 @@ export function DeliveryProgress({
   } | null>(null);
   const today = chileToday();
   const isToday = serviceDate === today;
-  const nextAction = getNextAction(tracking, viewerRole, isToday);
+  const nextAction = getNextAction(tracking, receptionControl, viewerRole, isToday);
 
   async function advance() {
     if (!nextAction) return;
@@ -56,7 +58,7 @@ export function DeliveryProgress({
           body: JSON.stringify(nextAction.body),
         },
       );
-      onUpdate(updated);
+      onUpdate(mergeDeliveryTracking(tracking, updated));
       setFeedback({ kind: "success", text: nextAction.successMessage });
     } catch (error) {
       setFeedback({
@@ -118,6 +120,22 @@ export function DeliveryProgress({
               <span className="mt-1 block text-xs text-[var(--muted)]">
                 {timestamp ? formatChileanDateTime(timestamp) : "Pendiente"}
               </span>
+              {timestamp ? (
+                <span className="mt-1 block text-xs font-bold text-[var(--muted)]">
+                  {formatActor(getStepActor(tracking, key))}
+                </span>
+              ) : null}
+              {key === "arrivedAt" ? (
+                <span className={`mt-1 block text-xs font-bold ${
+                  tracking.companyArrivalConfirmedAt
+                    ? "text-[var(--herb-strong)]"
+                    : "text-[var(--warning)]"
+                }`}>
+                  {tracking.companyArrivalConfirmedAt
+                    ? `Confirmado por Securitas: ${tracking.companyArrivalConfirmedByProfile?.fullName ?? "responsable registrado"}`
+                    : "Confirmación de Securitas pendiente"}
+                </span>
+              ) : null}
             </article>
           );
         })}
@@ -126,6 +144,7 @@ export function DeliveryProgress({
       <div className="flex flex-col gap-3 border-t border-[var(--line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <StatusMessage
           tracking={tracking}
+          receptionControl={receptionControl}
           viewerRole={viewerRole}
           isToday={isToday}
         />
@@ -197,34 +216,67 @@ function DeliveryActionButton({
 
 function StatusMessage({
   tracking,
+  receptionControl,
   viewerRole,
   isToday,
 }: {
   tracking: DeliveryTrackingDto;
+  receptionControl: DeliveryReceiptCheckDto;
   viewerRole: ViewerRole;
   isToday: boolean;
 }) {
   let text = "Despacho todavía no ha llegado a Securitas.";
   if (tracking.receiptConfirmedAt) {
     text = "La recepción fue confirmada por Securitas.";
+  } else if (
+    viewerRole === "company_admin" &&
+    tracking.arrivedAt &&
+    !tracking.companyArrivalConfirmedAt
+  ) {
+    text = "Despacho informó que llegó. Securitas debe confirmar la llegada para habilitar el control de recepción.";
   } else if (tracking.deliveredAt) {
-    text =
-      viewerRole === "company_admin"
-        ? "Despacho terminó la entrega. Confirma que recibiste todas las colaciones."
+    if (viewerRole === "company_admin" && !receptionControl.reportedAt) {
+      text = "Despacho terminó la entrega. Revisa y guarda las cantidades recibidas.";
+    } else if (viewerRole === "company_admin" && hasReceiptShortages(receptionControl)) {
+      text = "Hay faltantes pendientes. Actualiza el control cuando sean resueltos.";
+    } else {
+      text = viewerRole === "company_admin"
+        ? "El control está completo. Ya puedes confirmar la recepción."
         : "La entrega terminó y está esperando confirmación de Securitas.";
+    }
+  } else if (tracking.companyArrivalConfirmedAt) {
+    const actor = tracking.companyArrivalConfirmedByProfile;
+    text = `${actor?.fullName ?? "Securitas"} confirmó que la comida llegó. Ya puedes completar el control de recepción.`;
   } else if (tracking.arrivedAt) {
-    text = "Despacho llegó a Securitas y está realizando la entrega.";
+    text = `${tracking.arrivedByProfile?.fullName ?? "Despacho"} registró la llegada a Securitas y está realizando la entrega.`;
   } else if (viewerRole === "delivery" && !isToday) {
     text = "Los hitos de despacho solo se registran durante el día correspondiente.";
+  } else if (viewerRole === "company_admin" && isToday) {
+    text = "Cuando lleguen las colaciones, registra la hora para iniciar la revisión.";
   }
   return <p className="text-sm font-semibold text-[var(--muted)]">{text}</p>;
 }
 
 function getNextAction(
   tracking: DeliveryTrackingDto,
+  receptionControl: DeliveryReceiptCheckDto,
   viewerRole: ViewerRole,
   isToday: boolean,
 ) {
+  if (
+    viewerRole === "company_admin" &&
+    isToday &&
+    !tracking.companyArrivalConfirmedAt
+  ) {
+    return {
+      label: "Confirmar llegada de la comida",
+      icon: MapPinCheck,
+      endpoint: `/api/v1/company/service-days/${tracking.serviceDayId}/arrival`,
+      body: { confirmed: true },
+      successMessage: "Securitas registró la llegada de la comida.",
+      confirmation: "¿Confirmas que la comida llegó a Securitas? Se guardarán tu nombre y la hora, y se habilitará el control de recepción.",
+    };
+  }
   if (viewerRole === "delivery" && isToday && !tracking.arrivedAt) {
     return {
       label: "Marcar llegada",
@@ -248,7 +300,9 @@ function getNextAction(
   if (
     viewerRole === "company_admin" &&
     tracking.deliveredAt &&
-    !tracking.receiptConfirmedAt
+    !tracking.receiptConfirmedAt &&
+    Boolean(receptionControl.reportedAt) &&
+    !hasReceiptShortages(receptionControl)
   ) {
     return {
       label: "Confirmar recepción",
@@ -260,6 +314,47 @@ function getNextAction(
     };
   }
   return null;
+}
+
+function hasReceiptShortages(control: DeliveryReceiptCheckDto) {
+  return control.items.some(
+    (item) => item.receivedQuantity !== null && item.receivedQuantity < item.expectedQuantity,
+  );
+}
+
+function mergeDeliveryTracking(
+  current: DeliveryTrackingDto,
+  updated: DeliveryTrackingDto,
+): DeliveryTrackingDto {
+  return {
+    ...updated,
+    arrivedByProfile: updated.arrivedByProfile ?? current.arrivedByProfile,
+    companyArrivalConfirmedByProfile:
+      updated.companyArrivalConfirmedByProfile
+      ?? current.companyArrivalConfirmedByProfile,
+    deliveredByProfile: updated.deliveredByProfile ?? current.deliveredByProfile,
+    receiptConfirmedByProfile:
+      updated.receiptConfirmedByProfile ?? current.receiptConfirmedByProfile,
+  };
+}
+
+function getStepActor(
+  tracking: DeliveryTrackingDto,
+  key: (typeof steps)[number]["key"],
+) {
+  if (key === "arrivedAt") return tracking.arrivedByProfile;
+  if (key === "deliveredAt") return tracking.deliveredByProfile;
+  return tracking.receiptConfirmedByProfile;
+}
+
+function formatActor(actor: DeliveryTrackingDto["arrivedByProfile"]) {
+  if (!actor) return "Responsable registrado";
+  const role = actor.role === "company_admin"
+    ? "Securitas"
+    : actor.role === "delivery"
+      ? "Despacho"
+      : "Proveedora";
+  return `${role}: ${actor.fullName}`;
 }
 
 function chileToday() {

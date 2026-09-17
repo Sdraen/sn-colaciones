@@ -13,6 +13,12 @@ La implementación recomendada es Supabase Auth con cuentas creadas o invitadas 
 
 No se deben almacenar contraseñas, códigos de acceso ni secretos de sesión en tablas propias.
 
+La administradora proveedora gestiona desde su panel los accesos individuales de
+despacho y de las administradoras Securitas. Al crear un usuario, selecciona el
+rol correspondiente y el sistema envía una invitación al correo indicado para
+que esa persona defina su propia contraseña. La proveedora puede reenviar el
+enlace, pero nunca conoce ni comparte la contraseña del usuario.
+
 ## Trabajadores sin correo corporativo
 
 Orden de preferencia:

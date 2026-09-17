@@ -112,9 +112,21 @@ Esta migración exige que la proveedora informe un cupo diario para el menú de
 capacitación y mantiene atómico el descuento de cupos al crear o modificar
 capacitaciones desde Securitas.
 
+Luego ejecutar `supabase/migrations/0018_worker_meal_selection_rules.sql`.
+Esta migración limita las nuevas selecciones a ensalada o fruta y permite
+elegir pan, té o ambos, conservando los pedidos históricos anteriores.
+
+Luego ejecutar `supabase/migrations/0019_company_receipt_control.sql`.
+
+Luego ejecutar `supabase/migrations/0020_company_arrival_confirmation.sql`.
+Esta migración permite que Securitas también registre la llegada, compare las
+cantidades esperadas y recibidas por preparación o complemento, informe
+faltantes y observaciones, y notifique a la proveedora dentro del sistema y por
+correo. La confirmación completa queda bloqueada mientras existan faltantes.
+
 ## 3. Estado y pendientes antes de producción
 
-- Las migraciones `0001` a `0017` ya fueron ejecutadas en el proyecto remoto.
+- Las migraciones `0001` a `0020` ya fueron ejecutadas en el proyecto remoto.
 - La conexión administrativa, las tablas y los roles requeridos por `0008`
   fueron verificados correctamente el 03/09/2026.
 - Antes de la puesta en producción se debe realizar la prueba funcional completa

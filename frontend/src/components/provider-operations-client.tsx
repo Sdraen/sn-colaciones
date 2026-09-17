@@ -6,6 +6,7 @@ import {
   BellRing,
   Check,
   ChefHat,
+  KeyRound,
   LayoutDashboard,
   ListChecks,
   RefreshCw,
@@ -16,11 +17,13 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { ProviderMenuEditor } from "@/components/provider-menu-editor";
 import { OperationsReports } from "@/components/provider-reports";
 import { DailySummary } from "@/components/daily-summary";
+import { ProviderAccessManagement } from "@/components/provider-access-management";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { browserApiRequest } from "@/lib/api/client";
 import type {
   ExceptionDto,
   DailySummaryDto,
+  ProviderAccessAccountDto,
   MenuWeekDto,
   NotificationDto,
   OrdersReportDto,
@@ -29,14 +32,15 @@ import type {
 import { formatChileanTabDate } from "@/lib/date-format";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
-type View = "production" | "summary" | "menu" | "reports";
+type View = "production" | "summary" | "menu" | "reports" | "access";
 
-const DEFAULT_TAB_ORDER: View[] = ["menu", "production", "summary", "reports"];
+const DEFAULT_TAB_ORDER: View[] = ["menu", "production", "summary", "reports", "access"];
 const PROVIDER_TABS = {
   production: { label: "Producción", icon: LayoutDashboard },
   summary: { label: "Resumen diario", icon: ListChecks },
   menu: { label: "Menús", icon: ChefHat },
   reports: { label: "Reportes", icon: BarChart3 },
+  access: { label: "Accesos", icon: KeyRound },
 } satisfies Record<View, { label: string; icon: typeof ChefHat }>;
 
 export function ProviderOperationsClient({
@@ -48,6 +52,7 @@ export function ProviderOperationsClient({
   initialReport,
   notifications,
   initialSummary,
+  initialAccessAccounts,
 }: {
   initialOperations: ProviderOperationsDto | null;
   initialCurrentMenu: MenuWeekDto | null;
@@ -57,6 +62,7 @@ export function ProviderOperationsClient({
   initialReport: OrdersReportDto;
   notifications: NotificationDto[];
   initialSummary: DailySummaryDto | null;
+  initialAccessAccounts: ProviderAccessAccountDto[];
 }) {
   const [operations, setOperations] = useState(initialOperations);
   const [currentMenu, setCurrentMenu] = useState(initialCurrentMenu);
@@ -230,6 +236,8 @@ export function ProviderOperationsClient({
                 setError("");
               }}
               className={`provider-tab inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-center text-sm font-extrabold sm:min-h-10 sm:px-4 ${
+                value === "access" ? "col-span-2 md:col-span-1" : ""
+              } ${
                 view === value
                   ? "bg-white text-[var(--brand)] shadow-sm"
                   : "text-[var(--muted)]"
@@ -257,6 +265,8 @@ export function ProviderOperationsClient({
         <div className="mt-7"><DailySummary initialSummary={initialSummary} viewerRole="provider_admin" /></div>
       ) : view === "reports" ? (
         <OperationsReports endpoint="/api/v1/provider/reports" initialReport={initialReport} />
+      ) : view === "access" ? (
+        <ProviderAccessManagement initialAccounts={initialAccessAccounts} />
       ) : view === "menu" ? (
         <section className="mt-6 space-y-4">
           <div

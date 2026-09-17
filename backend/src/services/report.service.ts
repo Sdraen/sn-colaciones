@@ -114,12 +114,25 @@ export async function getOrdersReport(
       totals: summarizeReportOrders(dayOrders),
       menuBreakdown: menuOptions
         .filter((option) => option.service_day_id === day.id)
-        .map((option) => ({
-          menuOptionId: option.id,
-          label: option.label,
-          description: option.description,
-          confirmed: countsByMenu.get(option.id) ?? 0,
-        })),
+        .map((option) => {
+          const optionOrders = dayOrders.filter(
+            (order) => order.menu_option_id === option.id,
+          );
+          const optionTotals = summarizeReportOrders(optionOrders);
+          return {
+            menuOptionId: option.id,
+            label: option.label,
+            description: option.description,
+            confirmed: countsByMenu.get(option.id) ?? 0,
+            regular: optionTotals.byKind.regular,
+            training: optionTotals.byKind.training,
+            extra: optionTotals.byKind.extra + optionTotals.byKind.exceptional,
+            salad: optionTotals.sides.salad,
+            fruit: optionTotals.sides.fruit,
+            bread: optionTotals.bread,
+            tea: optionTotals.tea,
+          };
+        }),
     };
   });
 
@@ -130,6 +143,17 @@ export async function getOrdersReport(
     days,
     generatedAt: new Date().toISOString(),
   };
+}
+
+export async function getCompleteOrdersReport(
+  supabase: UserDatabaseClient,
+  input: { period: ReportPeriod; date?: string },
+) {
+  const [summary, nominal] = await Promise.all([
+    getOrdersReport(supabase, input),
+    getNominalOrdersReport(supabase, input),
+  ]);
+  return { ...summary, nominalRows: nominal.rows };
 }
 
 export async function getNominalOrdersReport(

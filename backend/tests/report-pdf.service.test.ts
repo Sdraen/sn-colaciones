@@ -29,7 +29,7 @@ describe("reporte nominal en PDF", () => {
           quantity: 1,
           side: "fruta",
           bread: true,
-          tea: false,
+          tea: true,
           status: "confirmed",
           fulfilled: false,
         },

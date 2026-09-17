@@ -186,14 +186,18 @@ export function CompanyOperationsClient({
     if (!activeDay || !modeOpen) return;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const complement = String(form.get("complement"));
+    const complements = form.getAll("complement").map(String);
+    if (complements.length === 0) {
+      setError("Selecciona pan, té o ambos.");
+      return;
+    }
     const common = {
       serviceDayId: activeDay.id,
       menuOptionId:
         mode === "training" ? trainingMenu?.id : String(form.get("menuOptionId")),
       side: String(form.get("side")) as SideChoice,
-      bread: complement === "bread",
-      tea: complement === "tea",
+      bread: complements.includes("bread"),
+      tea: complements.includes("tea"),
     };
 
     setSaving(true);
@@ -576,15 +580,16 @@ export function CompanyOperationsClient({
                       options={[
                         { value: "ensalada", label: "Ensalada" },
                         { value: "fruta", label: "Fruta" },
-                        { value: "postre", label: "Postre" },
-                        { value: "ninguno", label: "Ninguno" },
                       ]}
                       className="company-input text-sm font-semibold"
                     />
                   </Field>
 
                   <fieldset>
-                    <legend className="text-sm font-extrabold">Complemento</legend>
+                    <legend className="text-sm font-extrabold">Complementos</legend>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Selecciona pan, té o ambos.
+                    </p>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       {[
                         ["bread", "Pan"],
@@ -596,9 +601,8 @@ export function CompanyOperationsClient({
                         >
                           <input
                             name="complement"
-                            type="radio"
+                            type="checkbox"
                             value={value}
-                            required
                             className="mr-2 accent-[var(--brand)]"
                           />
                           {label}
@@ -704,7 +708,7 @@ export function CompanyOperationsClient({
                             <div className="flex justify-between gap-3">
                               <dt>Selección</dt>
                               <dd className="text-right font-bold text-[var(--ink)]">
-                                {sideLabel(order.side)} · {order.bread ? "Pan" : "Té"}
+                                {sideLabel(order.side)} · {complementLabel(order)}
                               </dd>
                             </div>
                           </dl>
@@ -871,6 +875,13 @@ function sideLabel(side: SideChoice) {
     postre: "Postre",
     ninguno: "Ninguno",
   }[side];
+}
+
+function complementLabel(order: { bread: boolean; tea: boolean }) {
+  if (order.bread && order.tea) return "Pan y té";
+  if (order.bread) return "Pan";
+  if (order.tea) return "Té";
+  return "Sin complemento";
 }
 
 function closedWindowMessage(mode: Mode, blocked: boolean) {

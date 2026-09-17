@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { CheckCircle2, Download, FileText, RefreshCw, XCircle } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { CheckCircle2, Download, FileText, RefreshCw, Search, XCircle } from "lucide-react";
 import { browserApiDownload, browserApiRequest } from "@/lib/api/client";
 import type { OrdersReportDto } from "@/lib/api/contracts";
 import { DatePickerField } from "@/components/date-picker-field";
@@ -21,6 +21,8 @@ export function OperationsReports({
   const [selectedDate, setSelectedDate] = useState(initialReport.range.to);
   const [validationError, setValidationError] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchScope, setSearchScope] = useState<"all" | "worker" | "menu" | "kind">("all");
   const supportsNominalPdf = [
     "/api/v1/provider/reports",
     "/api/v1/company/reports",
@@ -39,6 +41,22 @@ export function OperationsReports({
     { enabled: Boolean(selectedDate) },
   );
   const error = validationError || refreshError;
+  const visibleNominalRows = useMemo(() => {
+    const query = normalizeSearch(search);
+    return report.nominalRows.filter((row) => {
+      if (row.status !== "confirmed") return false;
+      if (!query) return true;
+      const values = {
+        worker: `${row.beneficiaryName} ${row.employeeCode}`,
+        menu: `${row.menuLabel} ${row.preparation}`,
+        kind: kindLabel(row.kind),
+      };
+      const haystack = searchScope === "all"
+        ? Object.values(values).join(" ")
+        : values[searchScope];
+      return normalizeSearch(haystack).includes(query);
+    });
+  }, [report.nominalRows, search, searchScope]);
 
   async function loadReport() {
     if (!selectedDate) {
@@ -52,16 +70,18 @@ export function OperationsReports({
 
   function downloadCsv() {
     const rows = [
-      ["Fecha", "Solicitadas", "Confirmadas", "Entregadas", "Canceladas", "Pan", "Té"],
-      ...report.days.map((day) => [
+      ["Fecha", "Categoría", "Preparación", "Reservas anticipadas", "Conteo final", "Ensalada", "Fruta", "Pan", "Té"],
+      ...report.days.flatMap((day) => day.menuBreakdown.map((item) => [
         formatChileanDate(day.serviceDate),
-        day.totals.requested,
-        day.totals.confirmed,
-        day.totals.fulfilled,
-        day.totals.cancelled,
-        day.totals.bread,
-        day.totals.tea,
-      ]),
+        item.label,
+        item.description,
+        item.regular,
+        item.confirmed,
+        item.salad,
+        item.fruit,
+        item.bread,
+        item.tea,
+      ])),
     ];
     const content = rows
       .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";"))
@@ -166,7 +186,7 @@ export function OperationsReports({
               className="provider-action col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 font-extrabold text-[var(--ink)] disabled:cursor-wait disabled:opacity-60 sm:col-span-1 sm:px-4"
             >
               <FileText size={17} className={downloadingPdf ? "animate-pulse" : ""} />
-              {downloadingPdf ? "Generando…" : "PDF nominal"}
+              {downloadingPdf ? "Generando…" : "PDF completo"}
             </button>
           ) : null}
         </div>
@@ -188,39 +208,49 @@ export function OperationsReports({
           <Metric label="Entregadas" value={report.totals.fulfilled} />
           <Metric label="Canceladas" value={report.totals.cancelled} />
         </div>
-        <div className="provider-stagger-grid grid gap-4 sm:grid-cols-3">
+        <div className="provider-stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Ensaladas" value={report.totals.sides.salad} />
+          <Metric label="Frutas" value={report.totals.sides.fruit} />
           <Metric label="Pan" value={report.totals.bread} />
           <Metric label="Té" value={report.totals.tea} />
-          <Metric label="Capacitaciones" value={report.totals.byKind.training} />
         </div>
+        <section className="card overflow-hidden">
+          <div className="border-b border-[var(--line)] px-5 py-4">
+            <h3 className="font-black">Disponibles y conteo final por preparación</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              “Reservas anticipadas” considera trabajadores registrados antes del cierre de las 22:00. “Conteo final” suma todas las colaciones confirmadas.
+            </p>
+          </div>
         <div className="provider-table-enter mobile-scroll-tabs card max-w-full overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[940px] text-left text-sm">
           <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
             <tr>
               <th className="px-5 py-3">Fecha</th>
-              <th className="px-4 py-3 text-right">Solicitadas</th>
-              <th className="px-4 py-3 text-right">Confirmadas</th>
-              <th className="px-4 py-3 text-right">Entregadas</th>
-              <th className="px-4 py-3 text-right">Canceladas</th>
+              <th className="px-4 py-3">Plato</th>
+              <th className="px-4 py-3 text-right">Anticipadas</th>
+              <th className="px-4 py-3 text-right">Final</th>
+              <th className="px-4 py-3 text-right">Ensalada</th>
+              <th className="px-4 py-3 text-right">Fruta</th>
               <th className="px-4 py-3 text-right">Pan</th>
               <th className="px-5 py-3 text-right">Té</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--line)]">
-            {report.days.map((day) => (
-              <tr key={day.serviceDayId}>
+            {report.days.flatMap((day) => day.menuBreakdown.map((item) => (
+              <tr key={`${day.serviceDayId}-${item.menuOptionId}`}>
                 <td className="px-5 py-4 font-bold">{formatChileanDate(day.serviceDate)}</td>
-                <td className="px-4 py-4 text-right">{day.totals.requested}</td>
-                <td className="px-4 py-4 text-right">{day.totals.confirmed}</td>
-                <td className="px-4 py-4 text-right">{day.totals.fulfilled}</td>
-                <td className="px-4 py-4 text-right">{day.totals.cancelled}</td>
-                <td className="px-4 py-4 text-right">{day.totals.bread}</td>
-                <td className="px-5 py-4 text-right">{day.totals.tea}</td>
+                <td className="px-4 py-4"><strong>{item.label}</strong><span className="block text-xs text-[var(--muted)]">{item.description}</span></td>
+                <td className="px-4 py-4 text-right">{item.regular}</td>
+                <td className="px-4 py-4 text-right font-black">{item.confirmed}</td>
+                <td className="px-4 py-4 text-right">{item.salad}</td>
+                <td className="px-4 py-4 text-right">{item.fruit}</td>
+                <td className="px-4 py-4 text-right">{item.bread}</td>
+                <td className="px-5 py-4 text-right">{item.tea}</td>
               </tr>
-            ))}
-            {report.days.length === 0 ? (
+            )))}
+            {report.days.every((day) => day.menuBreakdown.length === 0) ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-[var(--muted)]">
+                <td colSpan={8} className="p-8 text-center text-[var(--muted)]">
                   No hay registros en el período.
                 </td>
               </tr>
@@ -228,9 +258,83 @@ export function OperationsReports({
           </tbody>
           </table>
         </div>
+        </section>
+
+        <section className="card overflow-hidden">
+          <div className="border-b border-[var(--line)] p-5">
+            <h3 className="font-black">Listado de trabajadores y colaciones</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Busca por nombre, categoría o preparación. Se muestran sólo reservas confirmadas.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)]">
+              <FormSelect
+                value={searchScope}
+                onValueChange={(value) => setSearchScope(value as typeof searchScope)}
+                ariaLabel="Categoría de búsqueda"
+                options={[
+                  { value: "all", label: "Todo" },
+                  { value: "worker", label: "Funcionario" },
+                  { value: "menu", label: "Comida" },
+                  { value: "kind", label: "Categoría" },
+                ]}
+                className="min-h-11 text-sm font-bold"
+              />
+              <label className="relative block">
+                <span className="sr-only">Buscar en el reporte</span>
+                <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar nombre, plato o categoría"
+                  className="form-control min-h-11 pl-10 pr-3 text-sm"
+                />
+              </label>
+            </div>
+          </div>
+          <div className="mobile-scroll-tabs max-w-full overflow-x-auto">
+            <table className="w-full min-w-[960px] text-left text-sm">
+              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
+                <tr><th className="p-3">Fecha</th><th className="p-3">Funcionario / grupo</th><th className="p-3">Categoría</th><th className="p-3">Plato</th><th className="p-3">Acompañamiento</th><th className="p-3">Pan</th><th className="p-3">Té</th><th className="p-3 text-right">Cantidad</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {visibleNominalRows.map((row) => (
+                  <tr key={row.orderId}>
+                    <td className="p-3 font-bold">{formatChileanDate(row.serviceDate)}</td>
+                    <td className="p-3"><strong>{row.beneficiaryName}</strong>{row.employeeCode ? <span className="block text-xs text-[var(--muted)]">{row.employeeCode}</span> : null}</td>
+                    <td className="p-3">{kindLabel(row.kind)}</td>
+                    <td className="p-3"><strong>{row.menuLabel}</strong><span className="block text-xs text-[var(--muted)]">{row.preparation}</span></td>
+                    <td className="p-3">{sideLabel(row.side)}</td>
+                    <td className="p-3">{row.bread ? "Sí" : "No"}</td>
+                    <td className="p-3">{row.tea ? "Sí" : "No"}</td>
+                    <td className="p-3 text-right font-black">{row.quantity}</td>
+                  </tr>
+                ))}
+                {visibleNominalRows.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[var(--muted)]">No hay resultados para esta búsqueda.</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
   );
+}
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-CL").trim();
+}
+
+function kindLabel(kind: "regular" | "training" | "extra" | "exceptional") {
+  if (kind === "regular") return "Trabajador";
+  if (kind === "training") return "Capacitación";
+  return kind === "exceptional" ? "Extra excepcional" : "Extra";
+}
+
+function sideLabel(side: string) {
+  if (side === "ensalada") return "Ensalada";
+  if (side === "fruta") return "Fruta";
+  if (side === "postre") return "Postre (histórico)";
+  return "Sin acompañamiento";
 }
 
 function Metric({

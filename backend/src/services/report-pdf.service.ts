@@ -22,6 +22,29 @@ pdfMake.setFonts({
 });
 
 export async function createNominalOrdersPdf(report: NominalOrdersReport) {
+  const confirmedRows = report.rows.filter((row) => row.status === "confirmed");
+  const preparationSummary = summarizePreparations(confirmedRows);
+  const groupedNames = groupNamesByPreparation(confirmedRows);
+  const preparationBody: TableCell[][] = [
+    [
+      tableHeader("Fecha"),
+      tableHeader("Plato"),
+      tableHeader("Total"),
+      tableHeader("Ensalada"),
+      tableHeader("Fruta"),
+      tableHeader("Pan"),
+      tableHeader("Té"),
+    ],
+    ...preparationSummary.map((item): TableCell[] => [
+      { text: formatDate(item.serviceDate), noWrap: true },
+      { stack: [{ text: item.menuLabel, bold: true }, { text: item.preparation, color: MUTED, margin: [0, 2, 0, 0] }] },
+      { text: String(item.total), alignment: "right", bold: true },
+      { text: String(item.salad), alignment: "right" },
+      { text: String(item.fruit), alignment: "right" },
+      { text: String(item.bread), alignment: "right" },
+      { text: String(item.tea), alignment: "right" },
+    ]),
+  ];
   const body: TableCell[][] = [
     [
       tableHeader("Fecha"),
@@ -123,6 +146,43 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
         margin: [0, 0, 0, 14],
       },
       {
+        text: "Conteo final por preparación",
+        bold: true,
+        fontSize: 13,
+        margin: [0, 0, 0, 7],
+      },
+      {
+        table: {
+          headerRows: 1,
+          dontBreakRows: true,
+          widths: [50, 150, 45, 42, 42, 38, 38],
+          body: preparationBody,
+        },
+        layout: reportTableLayout,
+        margin: [0, 0, 0, 14],
+      },
+      {
+        text: "Nómina agrupada por preparación",
+        bold: true,
+        fontSize: 13,
+        margin: [0, 0, 0, 7],
+      },
+      ...groupedNames.map((group) => ({
+        stack: [
+          { text: `${formatDate(group.serviceDate)} · ${group.menuLabel}`, bold: true, color: BRAND },
+          { text: group.preparation, color: MUTED, margin: [0, 2, 0, 3] },
+          { text: group.names.join(" · ") || "Sin funcionarios", fontSize: 8 },
+        ],
+        margin: [0, 0, 0, 8],
+        unbreakable: true,
+      }) satisfies Content),
+      {
+        text: "Detalle completo por funcionario",
+        bold: true,
+        fontSize: 13,
+        margin: [0, 5, 0, 7],
+      },
+      {
         table: {
           headerRows: 1,
           dontBreakRows: true,
@@ -152,6 +212,72 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
   };
 
   return pdfMake.createPdf(definition).getBuffer();
+}
+
+const reportTableLayout = {
+  fillColor: (rowIndex: number) => rowIndex === 0 ? BRAND : rowIndex % 2 === 0 ? SURFACE : null,
+  hLineColor: () => LINE,
+  vLineColor: () => LINE,
+  hLineWidth: () => 0.5,
+  vLineWidth: () => 0.5,
+  paddingLeft: () => 5,
+  paddingRight: () => 5,
+  paddingTop: () => 6,
+  paddingBottom: () => 6,
+};
+
+function summarizePreparations(rows: NominalReportRow[]) {
+  const groups = new Map<string, {
+    serviceDate: string;
+    menuLabel: string;
+    preparation: string;
+    total: number;
+    salad: number;
+    fruit: number;
+    bread: number;
+    tea: number;
+  }>();
+  for (const row of rows) {
+    const key = `${row.serviceDate}\u0000${row.menuLabel}\u0000${row.preparation}`;
+    const group = groups.get(key) ?? {
+      serviceDate: row.serviceDate,
+      menuLabel: row.menuLabel,
+      preparation: row.preparation,
+      total: 0,
+      salad: 0,
+      fruit: 0,
+      bread: 0,
+      tea: 0,
+    };
+    group.total += row.quantity;
+    if (row.side === "ensalada") group.salad += row.quantity;
+    if (row.side === "fruta") group.fruit += row.quantity;
+    if (row.bread) group.bread += row.quantity;
+    if (row.tea) group.tea += row.quantity;
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
+function groupNamesByPreparation(rows: NominalReportRow[]) {
+  const groups = new Map<string, {
+    serviceDate: string;
+    menuLabel: string;
+    preparation: string;
+    names: string[];
+  }>();
+  for (const row of rows) {
+    const key = `${row.serviceDate}\u0000${row.menuLabel}\u0000${row.preparation}`;
+    const group = groups.get(key) ?? {
+      serviceDate: row.serviceDate,
+      menuLabel: row.menuLabel,
+      preparation: row.preparation,
+      names: [],
+    };
+    group.names.push(row.beneficiaryName);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }
 
 function tableHeader(text: string): TableCell {

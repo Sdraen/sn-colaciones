@@ -118,7 +118,7 @@ export function WorkerOrdersClient({
       currentTime <= new Date(activeDay.preorderDeadline).getTime(),
   );
   const formComplete = Boolean(
-    draft.menuOptionId && draft.side && draft.bread !== draft.tea && selectedOptionAvailable,
+    draft.menuOptionId && draft.side && (draft.bread || draft.tea) && selectedOptionAvailable,
   );
   const serviceDays = initialData.menuWeek.days.filter((day) => !day.disabled);
   const reservedDays = serviceDays.filter((day) => getConfirmedOrder(orders, day.id)).length;
@@ -382,8 +382,8 @@ export function WorkerOrdersClient({
               <p className="mt-2 text-sm text-[var(--muted)]">
                 Elige sólo una opción. La fruta reemplaza a la ensalada.
               </p>
-              <div className={`mt-4 grid gap-2 ${isWednesday(activeDay.serviceDate) ? "grid-cols-3" : "grid-cols-2"}`}>
-                {getSideChoices(activeDay.serviceDate).map(([value, label]) => (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {getSideChoices().map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
@@ -404,8 +404,11 @@ export function WorkerOrdersClient({
             <section className="card p-5">
               <p className="eyebrow">Paso 3</p>
               <h2 className="mt-1 flex items-center gap-2 font-extrabold">
-                <Coffee size={20} aria-hidden="true" /> Pan o té
+                <Coffee size={20} aria-hidden="true" /> Pan y té
               </h2>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Puedes elegir uno o ambos complementos.
+              </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {(
                   [
@@ -424,15 +427,11 @@ export function WorkerOrdersClient({
                       } ${canReserve ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
                     >
                       <input
-                        type="radio"
-                        name="complement"
+                        type="checkbox"
                         disabled={!canReserve}
                         checked={checked}
                         onChange={() =>
-                          updateDraft({
-                            bread: field === "bread",
-                            tea: field === "tea",
-                          })
+                          updateDraft({ [field]: !checked })
                         }
                         className="size-4 accent-[var(--brand)]"
                       />
@@ -510,7 +509,7 @@ function OrderProgress({
   const steps = [
     { label: "Preparación", complete: Boolean(draft.menuOptionId) },
     { label: "Acompañamiento", complete: Boolean(draft.side) },
-    { label: "Pan o té", complete: draft.bread !== draft.tea },
+    { label: "Pan y té", complete: draft.bread || draft.tea },
   ];
   const completedSteps = steps.filter((step) => step.complete).length;
   const percentage = Math.round((completedSteps / steps.length) * 100);
@@ -719,7 +718,13 @@ function OrderReview({
         ninguno: "Sin acompañamiento",
       }[draft.side]
     : "Por elegir";
-  const complement = draft.bread ? "Pan" : draft.tea ? "Té" : "Por elegir";
+  const complement = draft.bread && draft.tea
+    ? "Pan y té"
+    : draft.bread
+      ? "Pan"
+      : draft.tea
+        ? "Té"
+        : "Por elegir";
 
   return (
     <section className="rounded-2xl border border-dashed border-[var(--line)] bg-white/65 p-5">
@@ -759,10 +764,7 @@ function draftForDay(orders: OrderDto[], day: ServiceDayDto | undefined): Draft 
   if (!day) return emptyDraft;
   const order = getConfirmedOrder(orders, day.id);
   if (!order) return emptyDraft;
-  const validSide =
-    order.side === "ensalada" ||
-    order.side === "fruta" ||
-    (order.side === "postre" && isWednesday(day.serviceDate));
+  const validSide = order.side === "ensalada" || order.side === "fruta";
   return {
     menuOptionId: order.menuOptionId,
     side: validSide ? order.side : "",
@@ -771,17 +773,12 @@ function draftForDay(orders: OrderDto[], day: ServiceDayDto | undefined): Draft 
   };
 }
 
-function getSideChoices(serviceDate: string) {
-  const choices: Array<[Extract<SideChoice, "ensalada" | "fruta" | "postre">, string]> = [
+function getSideChoices() {
+  const choices: Array<[Extract<SideChoice, "ensalada" | "fruta">, string]> = [
     ["ensalada", "Ensalada"],
     ["fruta", "Fruta"],
   ];
-  if (isWednesday(serviceDate)) choices.push(["postre", "Postre"]);
   return choices;
-}
-
-function isWednesday(serviceDate: string) {
-  return new Date(`${serviceDate}T12:00:00.000Z`).getUTCDay() === 3;
 }
 
 function availabilityFromMenu(data: WorkerOrdersDto) {

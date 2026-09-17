@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  ChevronUp,
   Copy,
   Pencil,
   Plus,
@@ -854,9 +855,10 @@ function DayEditor({
         <button
           type="button"
           onClick={onDone}
-          className="menu-action inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white"
+          aria-label={`Cerrar el formulario de ${formatChileanDateWithWeekday(day.serviceDate)}`}
+          className="menu-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 font-extrabold text-white sm:w-auto"
         >
-          <Check size={17} /> Listo
+          <ChevronUp size={18} aria-hidden="true" /> Cerrar día
         </button>
       </div>
     </div>

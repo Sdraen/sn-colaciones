@@ -11,8 +11,6 @@ import { FormSelect } from "@/components/ui/form-select";
 const SIDE_OPTIONS = [
   { value: "ensalada", label: "Ensalada" },
   { value: "fruta", label: "Fruta" },
-  { value: "postre", label: "Postre" },
-  { value: "ninguno", label: "Ninguno" },
 ];
 
 type MutationCallbacks = {
@@ -37,9 +35,8 @@ export function OperationalOrderActions({
   const [attendeeCount, setAttendeeCount] = useState(String(order.quantity));
   const [menuOptionId, setMenuOptionId] = useState(order.menuOptionId);
   const [side, setSide] = useState<SideChoice>(order.side);
-  const [complement, setComplement] = useState<"bread" | "tea">(
-    order.bread ? "bread" : "tea",
-  );
+  const [bread, setBread] = useState(order.bread);
+  const [tea, setTea] = useState(order.tea);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const training = order.kind === "training";
@@ -53,7 +50,8 @@ export function OperationalOrderActions({
     setAttendeeCount(String(order.quantity));
     setMenuOptionId(order.menuOptionId);
     setSide(order.side);
-    setComplement(order.bread ? "bread" : "tea");
+    setBread(order.bread);
+    setTea(order.tea);
     setError("");
   }
 
@@ -70,8 +68,8 @@ export function OperationalOrderActions({
           name,
           attendeeCount: training ? Number(attendeeCount) : null,
           side,
-          bread: complement === "bread",
-          tea: complement === "tea",
+          bread,
+          tea,
         }),
       });
       await callbacks.onChanged();
@@ -191,16 +189,18 @@ export function OperationalOrderActions({
 
               <MealSelectionFields
                 side={side}
-                complement={complement}
+                bread={bread}
+                tea={tea}
                 onSideChange={setSide}
-                onComplementChange={setComplement}
+                onBreadChange={setBread}
+                onTeaChange={setTea}
               />
 
               {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
 
               <button
                 type="submit"
-                disabled={saving || (training && trainingMaximum === null)}
+                disabled={saving || (!bread && !tea) || (training && trainingMaximum === null)}
                 className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50"
               >
                 <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}
@@ -243,9 +243,8 @@ export function ExtraRequestActions({
   const [reason, setReason] = useState(request.reason);
   const [menuOptionId, setMenuOptionId] = useState(request.menuOptionId);
   const [side, setSide] = useState<SideChoice>(request.side);
-  const [complement, setComplement] = useState<"bread" | "tea">(
-    request.bread ? "bread" : "tea",
-  );
+  const [bread, setBread] = useState(request.bread);
+  const [tea, setTea] = useState(request.tea);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -254,7 +253,8 @@ export function ExtraRequestActions({
     setReason(request.reason);
     setMenuOptionId(request.menuOptionId);
     setSide(request.side);
-    setComplement(request.bread ? "bread" : "tea");
+    setBread(request.bread);
+    setTea(request.tea);
     setError("");
   }
 
@@ -271,8 +271,8 @@ export function ExtraRequestActions({
           beneficiaryLabel: name,
           reason,
           side,
-          bread: complement === "bread",
-          tea: complement === "tea",
+          bread,
+          tea,
         }),
       });
       await callbacks.onChanged();
@@ -347,13 +347,20 @@ export function ExtraRequestActions({
                     className="mt-2 text-sm font-semibold"
                   />
                 </label>
-                <MealSelectionFields side={side} complement={complement} onSideChange={setSide} onComplementChange={setComplement} />
+                <MealSelectionFields
+                  side={side}
+                  bread={bread}
+                  tea={tea}
+                  onSideChange={setSide}
+                  onBreadChange={setBread}
+                  onTeaChange={setTea}
+                />
                 <label className="block text-sm font-extrabold">
                   Motivo de la solicitud tardía
                   <textarea value={reason} onChange={(event) => setReason(event.target.value)} required minLength={5} maxLength={500} rows={3} className="form-control mt-2 p-4 font-normal" />
                 </label>
                 {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
-                <button type="submit" disabled={saving} className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50">
+                <button type="submit" disabled={saving || (!bread && !tea)} className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50">
                   <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}
                 </button>
               </form>
@@ -380,14 +387,18 @@ export function ExtraRequestActions({
 
 function MealSelectionFields({
   side,
-  complement,
+  bread,
+  tea,
   onSideChange,
-  onComplementChange,
+  onBreadChange,
+  onTeaChange,
 }: {
   side: SideChoice;
-  complement: "bread" | "tea";
+  bread: boolean;
+  tea: boolean;
   onSideChange: (side: SideChoice) => void;
-  onComplementChange: (complement: "bread" | "tea") => void;
+  onBreadChange: (selected: boolean) => void;
+  onTeaChange: (selected: boolean) => void;
 }) {
   return (
     <>
@@ -402,11 +413,17 @@ function MealSelectionFields({
         />
       </label>
       <fieldset>
-        <legend className="text-sm font-extrabold">Complemento</legend>
+        <legend className="text-sm font-extrabold">Complementos</legend>
+        <p className="mt-1 text-xs text-[var(--muted)]">Selecciona pan, té o ambos.</p>
         <div className="mt-2 grid grid-cols-2 gap-3">
           {(["bread", "tea"] as const).map((value) => (
-            <label key={value} className={`cursor-pointer rounded-xl border p-3 font-bold ${complement === value ? "border-[var(--brand)] bg-[var(--brand-soft)]" : "border-[var(--line)] bg-white"}`}>
-              <input type="radio" checked={complement === value} onChange={() => onComplementChange(value)} className="mr-2 accent-[var(--brand)]" />
+            <label key={value} className={`cursor-pointer rounded-xl border p-3 font-bold ${(value === "bread" ? bread : tea) ? "border-[var(--brand)] bg-[var(--brand-soft)]" : "border-[var(--line)] bg-white"}`}>
+              <input
+                type="checkbox"
+                checked={value === "bread" ? bread : tea}
+                onChange={(event) => value === "bread" ? onBreadChange(event.target.checked) : onTeaChange(event.target.checked)}
+                className="mr-2 accent-[var(--brand)]"
+              />
               {value === "bread" ? "Pan" : "Té"}
             </label>
           ))}

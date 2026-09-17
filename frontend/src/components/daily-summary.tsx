@@ -7,6 +7,7 @@ import { browserApiRequest } from "@/lib/api/client";
 import type { DailySummaryDto } from "@/lib/api/contracts";
 import { DatePickerField } from "@/components/date-picker-field";
 import { DeliveryProgress } from "@/components/delivery-progress";
+import { DeliveryReceiptControl } from "@/components/delivery-receipt-control";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export function DailySummary({
@@ -77,10 +78,11 @@ export function DailySummary({
           </div>
 
           <DeliveryProgress
-            key={summary.serviceDate}
+            key={`delivery-progress-${summary.serviceDate}`}
             tracking={summary.delivery}
             serviceDate={summary.serviceDate}
             viewerRole={viewerRole}
+            receptionControl={summary.receptionControl}
             onUpdate={(delivery) =>
               setSummary((current) =>
                 current
@@ -93,6 +95,17 @@ export function DailySummary({
                     }
                   : current,
               )
+            }
+          />
+
+          <DeliveryReceiptControl
+            key={`receipt-control-${summary.serviceDate}`}
+            control={summary.receptionControl}
+            viewerRole={viewerRole}
+            arrivalRecorded={Boolean(summary.delivery.companyArrivalConfirmedAt)}
+            receiptConfirmed={Boolean(summary.delivery.receiptConfirmedAt)}
+            onUpdate={(receptionControl) =>
+              setSummary((current) => current ? { ...current, receptionControl } : current)
             }
           />
 
@@ -126,7 +139,7 @@ export function DailySummary({
               <div className="mobile-scroll-tabs max-w-full overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]"><tr><th className="p-3">Nombre / grupo</th><th className="p-3">Tipo</th><th className="p-3">Menú</th><th className="p-3">Complemento</th><th className="p-3 text-right">Cantidad</th></tr></thead>
-                  <tbody>{summary.manifest.map((item) => <tr key={item.orderId} className="border-t border-[var(--line)]"><td className="p-3 font-bold">{item.beneficiary}{item.employeeCode ? <span className="block text-xs font-normal text-[var(--muted)]">{item.employeeCode}</span> : null}</td><td className="p-3">{kindLabel(item.kind)}</td><td className="p-3"><span className="font-bold">{item.menuLabel}</span><span className="block text-xs text-[var(--muted)]">{item.menuDescription}</span></td><td className="p-3">{sideLabel(item.side)} · {item.bread ? "Pan" : "Té"}</td><td className="p-3 text-right text-lg font-black">{item.quantity}</td></tr>)}</tbody>
+                  <tbody>{summary.manifest.map((item) => <tr key={item.orderId} className="border-t border-[var(--line)]"><td className="p-3 font-bold">{item.beneficiary}{item.employeeCode ? <span className="block text-xs font-normal text-[var(--muted)]">{item.employeeCode}</span> : null}</td><td className="p-3">{kindLabel(item.kind)}</td><td className="p-3"><span className="font-bold">{item.menuLabel}</span><span className="block text-xs text-[var(--muted)]">{item.menuDescription}</span></td><td className="p-3">{sideLabel(item.side)} · {complementLabel(item)}</td><td className="p-3 text-right text-lg font-black">{item.quantity}</td></tr>)}</tbody>
                 </table>
                 {summary.manifest.length === 0 ? <p className="p-8 text-center text-sm text-[var(--muted)]">Aún no hay colaciones confirmadas.</p> : null}
               </div>
@@ -153,6 +166,12 @@ function sideLabel(value: string) {
   if (value === "fruta") return "Fruta";
   if (value === "postre") return "Postre";
   return "Sin acompañamiento";
+}
+function complementLabel(value: { bread: boolean; tea: boolean }) {
+  if (value.bread && value.tea) return "Pan y té";
+  if (value.bread) return "Pan";
+  if (value.tea) return "Té";
+  return "Sin complemento";
 }
 function kindLabel(value: string) { return value === "regular" ? "Trabajador" : value === "training" ? "Capacitación" : "Extra"; }
 

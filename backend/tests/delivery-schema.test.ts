@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   confirmServiceReceiptRequestSchema,
+  recordCompanyArrivalRequestSchema,
   recordDeliveryEventRequestSchema,
+  saveServiceReceiptCheckRequestSchema,
 } from "../src/schemas/delivery.schema.js";
 
 const serviceDayId = "00000000-0000-4000-8000-000000000001";
@@ -28,6 +30,27 @@ describe("contratos de seguimiento de despacho", () => {
     }).success).toBe(true);
     expect(confirmServiceReceiptRequestSchema.safeParse({
       body: { confirmed: false },
+      params: { serviceDayId },
+      query: {},
+    }).success).toBe(false);
+  });
+
+  it("permite a Securitas confirmar la llegada y registrar cantidades recibidas", () => {
+    expect(recordCompanyArrivalRequestSchema.safeParse({
+      body: { confirmed: true },
+      params: { serviceDayId },
+      query: {},
+    }).success).toBe(true);
+    expect(saveServiceReceiptCheckRequestSchema.safeParse({
+      body: {
+        items: [{ key: "side:ensalada", receivedQuantity: 23, note: "Faltó una" }],
+        generalNote: "Se informó al proveedor",
+      },
+      params: { serviceDayId },
+      query: {},
+    }).success).toBe(true);
+    expect(saveServiceReceiptCheckRequestSchema.safeParse({
+      body: { items: [{ key: "side:ensalada", receivedQuantity: -1 }] },
       params: { serviceDayId },
       query: {},
     }).success).toBe(false);

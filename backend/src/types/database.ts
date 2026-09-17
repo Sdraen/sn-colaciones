@@ -205,6 +205,8 @@ export interface Database {
           organization_id: string;
           arrived_at: string | null;
           arrived_by: string | null;
+          company_arrival_confirmed_at: string | null;
+          company_arrival_confirmed_by: string | null;
           delivered_at: string | null;
           delivered_by: string | null;
           receipt_confirmed_at: string | null;
@@ -216,6 +218,8 @@ export interface Database {
           organization_id: string;
           arrived_at?: string | null;
           arrived_by?: string | null;
+          company_arrival_confirmed_at?: string | null;
+          company_arrival_confirmed_by?: string | null;
           delivered_at?: string | null;
           delivered_by?: string | null;
           receipt_confirmed_at?: string | null;
@@ -223,6 +227,28 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["service_delivery_tracking"]["Insert"]>;
+        Relationships: Relationship[];
+      };
+      service_receipt_checks: {
+        Row: {
+          service_day_id: string;
+          organization_id: string;
+          items: Json;
+          general_note: string | null;
+          reported_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          service_day_id: string;
+          organization_id: string;
+          items?: Json;
+          general_note?: string | null;
+          reported_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["service_receipt_checks"]["Insert"]>;
         Relationships: Relationship[];
       };
       menu_options: {
@@ -412,6 +438,10 @@ export interface Database {
         Args: { target_service_day_id: string };
         Returns: Database["public"]["Tables"]["service_delivery_tracking"]["Row"];
       };
+      confirm_company_delivery_arrival: {
+        Args: { target_service_day_id: string };
+        Returns: Database["public"]["Tables"]["service_delivery_tracking"]["Row"];
+      };
       create_extra_order: {
         Args: {
           target_service_day_id: string;
@@ -486,6 +516,14 @@ export interface Database {
       record_delivery_event: {
         Args: { target_service_day_id: string; event_name: "arrived" | "delivered" };
         Returns: Database["public"]["Tables"]["service_delivery_tracking"]["Row"];
+      };
+      save_service_receipt_check: {
+        Args: {
+          target_service_day_id: string;
+          receipt_items: Json;
+          receipt_note?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["service_receipt_checks"]["Row"];
       };
       publish_menu_week: {
         Args: { target_menu_week_id: string };

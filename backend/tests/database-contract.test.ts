@@ -169,6 +169,43 @@ describe("contrato de migraciones de Supabase", () => {
       /order_record\.id <> new\.id[\s\S]*?already_confirmed \+ new\.quantity > option_capacity/i,
     );
   });
+
+  it("permite pan y té juntos y limita los nuevos acompañamientos", () => {
+    const migration = readMigration("0018_worker_meal_selection_rules.sql");
+
+    expect(migration).toContain("check (bread or tea)");
+    expect(migration).toContain("selected_side::text not in ('ensalada', 'fruta')");
+    expect(migration).toContain("INVALID_SIDE_CHOICE");
+    expect(migration).toContain("not (include_bread or include_tea)");
+    expect(migration).not.toContain("DESSERT_ONLY_WEDNESDAY");
+  });
+
+  it("registra la revisión de recepción y avisa los faltantes", () => {
+    const migration = readMigration("0019_company_receipt_control.sql");
+
+    expect(migration).toContain("create table public.service_receipt_checks");
+    expect(migration).toContain("function public.save_service_receipt_check");
+    expect(migration).toContain("profile.role::text in ('delivery', 'company_admin')");
+    expect(migration).toContain("DELIVERY_RECEIPT_HAS_SHORTAGES");
+    expect(migration).toContain("RECEIPT_ALREADY_CONFIRMED");
+    expect(migration).toContain("delivery_shortage_reported");
+    expect(migration).toContain("('in_app'::text), ('email'::text)");
+    expect(migration).toContain(
+      "grant execute on function public.save_service_receipt_check(uuid, jsonb, text) to authenticated",
+    );
+  });
+
+  it("separa la llegada de despacho de la confirmación de Securitas", () => {
+    const migration = readMigration("0020_company_arrival_confirmation.sql");
+
+    expect(migration).toContain("company_arrival_confirmed_at");
+    expect(migration).toContain("function public.confirm_company_delivery_arrival");
+    expect(migration).toContain("COMPANY_ARRIVAL_REQUIRED");
+    expect(migration).toContain("delivery.company_arrival_confirmed");
+    expect(migration).toContain(
+      "grant execute on function public.confirm_company_delivery_arrival(uuid) to authenticated",
+    );
+  });
 });
 
 function readMigration(fileName: string) {

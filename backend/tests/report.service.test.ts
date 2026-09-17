@@ -29,7 +29,7 @@ describe("reportes por período", () => {
         quantity: 1,
         side: "ensalada",
         bread: true,
-        tea: false,
+        tea: true,
         status: "confirmed",
         fulfilled_at: "2026-08-26T16:00:00.000Z",
       },
@@ -74,7 +74,7 @@ describe("reportes por período", () => {
       cancelled: 1,
       fulfilled: 1,
       bread: 3,
-      tea: 20,
+      tea: 21,
       byKind: { regular: 1, training: 20, extra: 2, exceptional: 0 },
       sides: { salad: 1, fruit: 2, dessert: 20, none: 0 },
     });

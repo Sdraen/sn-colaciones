@@ -11,6 +11,8 @@ import {
   postWorker,
   postWorkerPasswordSetup,
   patchServiceReceipt,
+  patchCompanyArrival,
+  putServiceReceiptCheck,
   patchExtraRequest,
   patchOperationalOrder,
 } from "../controllers/company.controller.js";
@@ -31,7 +33,11 @@ import {
   listWorkerAccountsRequestSchema,
   sendWorkerPasswordSetupRequestSchema,
 } from "../schemas/worker-admin.schema.js";
-import { confirmServiceReceiptRequestSchema } from "../schemas/delivery.schema.js";
+import {
+  confirmServiceReceiptRequestSchema,
+  recordCompanyArrivalRequestSchema,
+  saveServiceReceiptCheckRequestSchema,
+} from "../schemas/delivery.schema.js";
 
 export const companyRouter = Router();
 
@@ -95,6 +101,16 @@ companyRouter.delete(
   "/extra-requests/:requestId",
   validateRequest(deleteExtraRequestRequestSchema),
   deleteExtraRequest,
+);
+companyRouter.patch(
+  "/service-days/:serviceDayId/arrival",
+  validateRequest(recordCompanyArrivalRequestSchema),
+  patchCompanyArrival,
+);
+companyRouter.put(
+  "/service-days/:serviceDayId/receipt-check",
+  validateRequest(saveServiceReceiptCheckRequestSchema),
+  putServiceReceiptCheck,
 );
 companyRouter.patch(
   "/service-days/:serviceDayId/receipt",

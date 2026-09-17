@@ -27,7 +27,7 @@ describe("correcciones operacionales de Securitas", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rechaza pan y té simultáneos en una corrección", () => {
+  it("acepta pan y té simultáneos y rechaza omitir ambos", () => {
     const result = updateOperationalOrderRequestSchema.safeParse({
       body: {
         menuOptionId: validOptionId,
@@ -41,7 +41,21 @@ describe("correcciones operacionales de Securitas", () => {
       query: {},
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    expect(
+      updateOperationalOrderRequestSchema.safeParse({
+        body: {
+          menuOptionId: validOptionId,
+          name: "Visita externa",
+          attendeeCount: null,
+          side: "fruta",
+          bread: false,
+          tea: false,
+        },
+        params: { orderId: validId },
+        query: {},
+      }).success,
+    ).toBe(false);
   });
 
   it("exige motivo al modificar una solicitud tardía", () => {

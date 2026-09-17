@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getProviderReport,
   getProviderReportPdf,
+  getProviderAccessAccounts,
   getWeeklyReport,
   getOperationalDetail,
   getCalendarBlocks,
@@ -11,6 +12,8 @@ import {
   postMenuWeek,
   postPublishMenuWeek,
   postCalendarBlock,
+  postProviderAccessAccount,
+  postProviderAccessPasswordSetup,
   removeCalendarBlock,
   removeMenuWeek,
   putTrainingMenu,
@@ -35,10 +38,30 @@ import {
   updateMenuWeekRequestSchema,
 } from "../schemas/menu.schema.js";
 import { reportRequestSchema } from "../schemas/report.schema.js";
+import {
+  createProviderAccessRequestSchema,
+  listProviderAccessRequestSchema,
+  sendProviderAccessPasswordSetupRequestSchema,
+} from "../schemas/provider-access.schema.js";
 
 export const providerRouter = Router();
 
 providerRouter.use(requireRole("provider_admin"));
+providerRouter.get(
+  "/access-users",
+  validateRequest(listProviderAccessRequestSchema),
+  getProviderAccessAccounts,
+);
+providerRouter.post(
+  "/access-users",
+  validateRequest(createProviderAccessRequestSchema),
+  postProviderAccessAccount,
+);
+providerRouter.post(
+  "/access-users/:accessUserId/password-setup",
+  validateRequest(sendProviderAccessPasswordSetupRequestSchema),
+  postProviderAccessPasswordSetup,
+);
 providerRouter.get(
   "/reports/pdf",
   validateRequest(reportRequestSchema),

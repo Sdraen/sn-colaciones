@@ -4,7 +4,7 @@ import { isoDateSchema, uuidSchema } from "./common.schema.js";
 const mealSelectionSchema = z.object({
   serviceDayId: uuidSchema,
   menuOptionId: uuidSchema,
-  side: z.enum(["ensalada", "fruta", "postre", "ninguno"]),
+  side: z.enum(["ensalada", "fruta"]),
   bread: z.boolean().default(false),
   tea: z.boolean().default(false),
 });
@@ -12,10 +12,10 @@ const mealSelectionSchema = z.object({
 function requireBreadOrTea<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
   return schema.refine(
     (body) =>
-      "bread" in body && "tea" in body && body.bread !== body.tea,
+      "bread" in body && "tea" in body && Boolean(body.bread || body.tea),
     {
       path: ["bread"],
-      message: "Debes elegir pan o té, pero no ambos",
+      message: "Debes elegir pan, té o ambos",
     },
   );
 }

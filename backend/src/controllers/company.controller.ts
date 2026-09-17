@@ -19,7 +19,7 @@ import {
   updateCompanyOperationalOrder,
 } from "../services/company.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
-import { getNominalOrdersReport, getOrdersReport } from "../services/report.service.js";
+import { getCompleteOrdersReport, getNominalOrdersReport } from "../services/report.service.js";
 import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
 import type {
   CreateWorkerAccountRequest,
@@ -31,8 +31,16 @@ import {
   listWorkerAccounts,
   sendWorkerPasswordSetupEmail,
 } from "../services/worker-admin.service.js";
-import type { ConfirmServiceReceiptRequest } from "../schemas/delivery.schema.js";
-import { confirmServiceReceipt } from "../services/delivery.service.js";
+import type {
+  ConfirmServiceReceiptRequest,
+  RecordCompanyArrivalRequest,
+  SaveServiceReceiptCheckRequest,
+} from "../schemas/delivery.schema.js";
+import {
+  confirmCompanyDeliveryArrival,
+  confirmServiceReceipt,
+  saveServiceReceiptCheck,
+} from "../services/delivery.service.js";
 import { getAppUrlEnv } from "../config/env.js";
 
 export const postTrainingOrder: RequestHandler = async (request, response) => {
@@ -93,7 +101,7 @@ export const getOperations: RequestHandler = async (request, response) => {
 export const getCompanyReport: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { query } = getValidatedRequest<ReportRequest>(request);
-  const report = await getOrdersReport(supabase, query);
+  const report = await getCompleteOrdersReport(supabase, query);
   response.status(200).json({ data: report });
 };
 
@@ -147,10 +155,32 @@ export const postWorkerPasswordSetup: RequestHandler = async (request, response)
 };
 
 export const patchServiceReceipt: RequestHandler = async (request, response) => {
-  const { supabase } = getRequestAuth(request);
+  const { profile, supabase } = getRequestAuth(request);
   const { params } = getValidatedRequest<ConfirmServiceReceiptRequest>(request);
-  const tracking = await confirmServiceReceipt(supabase, params.serviceDayId);
+  const tracking = await confirmServiceReceipt(supabase, params.serviceDayId, profile);
   response.status(200).json({ data: tracking });
+};
+
+export const patchCompanyArrival: RequestHandler = async (request, response) => {
+  const { profile, supabase } = getRequestAuth(request);
+  const { params } = getValidatedRequest<RecordCompanyArrivalRequest>(request);
+  const tracking = await confirmCompanyDeliveryArrival(
+    supabase,
+    params.serviceDayId,
+    profile,
+  );
+  response.status(200).json({ data: tracking });
+};
+
+export const putServiceReceiptCheck: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<SaveServiceReceiptCheckRequest>(request);
+  const receipt = await saveServiceReceiptCheck(supabase, {
+    serviceDayId: params.serviceDayId,
+    items: body.items,
+    generalNote: body.generalNote,
+  });
+  response.status(200).json({ data: receipt });
 };
 
 function getPasswordSetupRedirectUrl() {

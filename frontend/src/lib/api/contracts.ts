@@ -8,21 +8,51 @@ export interface OrderDto { id: string; serviceDayId: string; menuOptionId: stri
 export interface WorkerOrdersDto { menuWeek: MenuWeekDto; orders: OrderDto[]; }
 export interface WorkerMenuWeekSummaryDto { id: string; startsOn: string; publishedAt: string; }
 export interface WorkerAccountDto { id: string; fullName: string; employeeCode: string | null; email: string | null; accountCreated: boolean; accessActivated: boolean; active: boolean; createdAt: string; }
+export type ProviderManagedRole = "delivery" | "company_admin";
+export interface ProviderAccessAccountDto { id: string; fullName: string; email: string | null; role: ProviderManagedRole; accessActivated: boolean; active: boolean; createdAt: string; }
 export interface ExceptionDto { id: string; serviceDayId: string; menuOptionId: string; beneficiaryLabel: string; reason: string; side: SideChoice; bread: boolean; tea: boolean; status: "pending" | "approved" | "rejected"; resolutionNote: string | null; requestedAt: string; resolvedAt: string | null; }
 export interface TrainingSessionDto { id: string; name: string; serviceDate: string; expectedAttendees: number; createdAt: string; }
 export interface CompanyOperationsDto { menuWeek: { id: string; startsOn: string }; trainingSessions: TrainingSessionDto[]; extraRequests: ExceptionDto[]; orders: OrderDto[]; calendarBlocks: Array<{ id: string; startsOn: string; endsOn: string; kind: string; reason: string }>; }
 export interface ReportTotalsDto { requested: number; confirmed: number; cancelled: number; fulfilled: number; byKind: Record<OrderKind, number>; sides: { salad: number; fruit: number; dessert: number; none: number }; bread: number; tea: number; }
-export interface OrdersReportDto { period: "daily" | "weekly" | "monthly"; range: { from: string; to: string }; totals: ReportTotalsDto; days: Array<{ serviceDayId: string; serviceDate: string; totals: ReportTotalsDto; menuBreakdown: Array<{ menuOptionId: string; label: string; description: string; confirmed: number }> }>; generatedAt: string; }
+export interface NominalReportRowDto { orderId: string; serviceDate: string; beneficiaryName: string; employeeCode: string; kind: OrderKind; menuLabel: string; preparation: string; quantity: number; side: SideChoice; bread: boolean; tea: boolean; status: "confirmed" | "cancelled"; fulfilled: boolean; }
+export interface MenuReportBreakdownDto { menuOptionId: string; label: string; description: string; confirmed: number; regular: number; training: number; extra: number; salad: number; fruit: number; bread: number; tea: number; }
+export interface OrdersReportDto { period: "daily" | "weekly" | "monthly"; range: { from: string; to: string }; totals: ReportTotalsDto; days: Array<{ serviceDayId: string; serviceDate: string; totals: ReportTotalsDto; menuBreakdown: MenuReportBreakdownDto[] }>; nominalRows: NominalReportRowDto[]; generatedAt: string; }
 export interface NotificationDto { id: string; channel: "in_app" | "email"; eventType: string; title: string; message: string; relatedEntityType: string | null; relatedEntityId: string | null; deliveredAt: string | null; readAt: string | null; createdAt: string; }
+export interface DeliveryActorDto {
+  id: string;
+  fullName: string;
+  role: "worker" | "company_admin" | "provider_admin" | "delivery";
+}
 export interface DeliveryTrackingDto {
   serviceDayId: string;
   arrivedAt: string | null;
   arrivedBy: string | null;
+  arrivedByProfile: DeliveryActorDto | null;
+  companyArrivalConfirmedAt: string | null;
+  companyArrivalConfirmedBy: string | null;
+  companyArrivalConfirmedByProfile: DeliveryActorDto | null;
   deliveredAt: string | null;
   deliveredBy: string | null;
+  deliveredByProfile: DeliveryActorDto | null;
   receiptConfirmedAt: string | null;
   receiptConfirmedBy: string | null;
+  receiptConfirmedByProfile: DeliveryActorDto | null;
   updatedAt: string | null;
+}
+export interface DeliveryReceiptItemDto {
+  key: string;
+  type: "menu" | "side" | "complement";
+  label: string;
+  expectedQuantity: number;
+  receivedQuantity: number | null;
+  note: string | null;
+}
+export interface DeliveryReceiptCheckDto {
+  serviceDayId: string;
+  items: DeliveryReceiptItemDto[];
+  generalNote: string | null;
+  reportedBy: string | null;
+  reportedAt: string | null;
 }
 export interface ProviderOrderDto extends OrderDto { beneficiary: { id: string | null; fullName: string; employeeCode: string | null; type: string }; training: { id: string; name: string; expectedAttendees: number } | null; exception: { id: string; reason: string; status: string; resolutionNote: string | null } | null; }
 export interface ProviderOperationsDto { menu: MenuWeekDto; extraRequests: ExceptionDto[]; orders: ProviderOrderDto[]; }
@@ -34,6 +64,7 @@ export interface DailySummaryDto {
   disabled: boolean;
   pendingExtraRequests: number;
   delivery: DeliveryTrackingDto;
+  receptionControl: DeliveryReceiptCheckDto;
   totals: {
     colations: number;
     delivered: number;

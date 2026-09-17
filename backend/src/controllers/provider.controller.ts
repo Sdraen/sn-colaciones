@@ -34,8 +34,54 @@ import {
   updateMenuWeekDraft,
 } from "../services/menu.service.js";
 import type { ReportRequest } from "../schemas/report.schema.js";
-import { getNominalOrdersReport, getOrdersReport } from "../services/report.service.js";
+import { getCompleteOrdersReport, getNominalOrdersReport } from "../services/report.service.js";
 import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
+import type {
+  CreateProviderAccessRequest,
+  SendProviderAccessPasswordSetupRequest,
+} from "../schemas/provider-access.schema.js";
+import { createAdminSupabaseClient } from "../lib/supabase.js";
+import {
+  createProviderAccessAccount,
+  listProviderAccessAccounts,
+  sendProviderAccessPasswordSetupEmail,
+} from "../services/provider-access.service.js";
+import { getAppUrlEnv } from "../config/env.js";
+
+export const getProviderAccessAccounts: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const accounts = await listProviderAccessAccounts(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+  );
+  response.status(200).json({ data: accounts });
+};
+
+export const postProviderAccessAccount: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CreateProviderAccessRequest>(request);
+  const account = await createProviderAccessAccount(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+    {
+      ...body,
+      passwordSetupRedirectTo: getPasswordSetupRedirectUrl(),
+    },
+  );
+  response.status(201).json({ data: account });
+};
+
+export const postProviderAccessPasswordSetup: RequestHandler = async (request, response) => {
+  const { profile } = getRequestAuth(request);
+  const { params } = getValidatedRequest<SendProviderAccessPasswordSetupRequest>(request);
+  const result = await sendProviderAccessPasswordSetupEmail(
+    createAdminSupabaseClient(),
+    profile.organizationId,
+    params.accessUserId,
+    getPasswordSetupRedirectUrl(),
+  );
+  response.status(200).json({ data: result });
+};
 
 export const patchMenuOptionAvailability: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -58,7 +104,7 @@ export const getWeeklyReport: RequestHandler = async (request, response) => {
 export const getProviderReport: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { query } = getValidatedRequest<ReportRequest>(request);
-  const report = await getOrdersReport(supabase, query);
+  const report = await getCompleteOrdersReport(supabase, query);
   response.status(200).json({ data: report });
 };
 
@@ -175,3 +221,7 @@ export const removeCalendarBlock: RequestHandler = async (request, response) => 
   const result = await deleteCalendarBlock(supabase, params.blockId);
   response.status(200).json({ data: result });
 };
+
+function getPasswordSetupRedirectUrl() {
+  return new URL("/auth/activar", getAppUrlEnv().APP_URL).toString();
+}

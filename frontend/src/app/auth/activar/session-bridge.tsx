@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
+import { BrandVertical } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 
 export function AuthSessionBridge() {
@@ -44,6 +45,7 @@ export function AuthSessionBridge() {
   return (
     <main className="login-page-enter page-shell grid min-h-[calc(100vh-72px)] place-items-center">
       <section className="card w-full max-w-[420px] p-7 text-center">
+        <BrandVertical className="mx-auto mb-5 w-32 sm:w-36" priority />
         <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--herb-soft)] text-[var(--herb-strong)]">
           <ShieldCheck size={23} aria-hidden="true" />
         </span>

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import {
   AlertCircle,
   BarChart3,
-  BellRing,
   Building2,
   CheckCircle2,
   ClipboardPlus,
@@ -31,7 +30,6 @@ import type {
   DailySummaryDto,
   ExceptionDto,
   MenuWeekDto,
-  NotificationDto,
   OrdersReportDto,
   SideChoice,
   WorkerAccountDto,
@@ -67,7 +65,6 @@ export function CompanyOperationsClient({
   menu: initialMenu,
   initialOperations,
   initialReport,
-  notifications,
   nowIso,
   initialSummary,
   initialWorkers,
@@ -76,7 +73,6 @@ export function CompanyOperationsClient({
   menu: MenuWeekDto | null;
   initialOperations: CompanyOperationsDto | null;
   initialReport: OrdersReportDto;
-  notifications: NotificationDto[];
   nowIso: string;
   initialSummary: DailySummaryDto | null;
   initialWorkers: WorkerAccountDto[];
@@ -90,7 +86,6 @@ export function CompanyOperationsClient({
     "";
   const [menu, setMenu] = useState(initialMenu);
   const [operations, setOperations] = useState(initialOperations);
-  const [liveNotifications, setLiveNotifications] = useState(notifications);
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [mode, setMode] = useState<Mode>("training");
   const [view, setView] = useState<View>(initialView ?? "operations");
@@ -105,14 +100,12 @@ export function CompanyOperationsClient({
   }, []);
 
   const refreshOperations = useCallback(async () => {
-    const [nextMenu, nextOperations, nextNotifications] = await Promise.all([
+    const [nextMenu, nextOperations] = await Promise.all([
       browserApiRequest<MenuWeekDto>("/api/v1/menus/current"),
       browserApiRequest<CompanyOperationsDto>("/api/v1/company/operations"),
-      browserApiRequest<NotificationDto[]>("/api/v1/notifications?limit=20"),
     ]);
     setMenu(nextMenu);
     setOperations(nextOperations);
-    setLiveNotifications(nextNotifications);
     setActiveDayId((current) => {
       if (nextMenu.days.some((day) => day.id === current)) return current;
       const today = localDate(new Date());
@@ -179,7 +172,6 @@ export function CompanyOperationsClient({
         })
       : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled));
   const selectedMode = modes.find((item) => item.value === mode) ?? modes[0];
-  const unreadNotifications = liveNotifications.filter((item) => !item.readAt).length;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -265,9 +257,6 @@ export function CompanyOperationsClient({
         <div className="flex flex-wrap items-start gap-2">
           <span className="company-badge-enter inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-2 text-xs font-extrabold text-[var(--warning)]">
             <Building2 size={15} /> Acceso autorizado
-          </span>
-          <span className="company-badge-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[var(--brand-strong)]">
-            <BellRing size={15} /> {unreadNotifications} avisos
           </span>
           {view === "operations" ? (
             <button
@@ -765,27 +754,6 @@ export function CompanyOperationsClient({
                 </div>
               </section>
 
-              <section className="company-card-motion card p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-black">Notificaciones</h2>
-                  <BellRing size={18} className="text-[var(--brand)]" />
-                </div>
-                <div className="company-list-enter mt-3 space-y-2">
-                  {liveNotifications.length ? (
-                    liveNotifications.slice(0, 5).map((item) => (
-                      <div
-                        key={item.id}
-                        className="company-list-item rounded-xl bg-[var(--surface-muted)] p-3 text-sm"
-                      >
-                        <strong className="block">{item.title}</strong>
-                        <p className="mt-1 text-xs text-[var(--muted)]">{item.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState text="No tienes notificaciones nuevas." />
-                  )}
-                </div>
-              </section>
             </aside>
           </div>
         </section>

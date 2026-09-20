@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   BarChart3,
-  BellRing,
   Check,
   ChefHat,
   KeyRound,
@@ -25,7 +24,6 @@ import type {
   DailySummaryDto,
   ProviderAccessAccountDto,
   MenuWeekDto,
-  NotificationDto,
   OrdersReportDto,
   ProviderOperationsDto,
 } from "@/lib/api/contracts";
@@ -50,7 +48,6 @@ export function ProviderOperationsClient({
   currentStartsOn,
   nextStartsOn,
   initialReport,
-  notifications,
   initialSummary,
   initialAccessAccounts,
 }: {
@@ -60,7 +57,6 @@ export function ProviderOperationsClient({
   currentStartsOn: string;
   nextStartsOn: string;
   initialReport: OrdersReportDto;
-  notifications: NotificationDto[];
   initialSummary: DailySummaryDto | null;
   initialAccessAccounts: ProviderAccessAccountDto[];
 }) {
@@ -70,7 +66,6 @@ export function ProviderOperationsClient({
   const [menuPeriod, setMenuPeriod] = useState<"current" | "next">(
     initialCurrentMenu ? "next" : "current",
   );
-  const [liveNotifications, setLiveNotifications] = useState(notifications);
   const [view, setView] = useState<View>("menu");
   const [activeDayId, setActiveDayId] = useState(initialOperations?.menu.days[0]?.id ?? "");
   const [message, setMessage] = useState("");
@@ -79,14 +74,10 @@ export function ProviderOperationsClient({
   const [rejectionNotes, setRejectionNotes] = useState<Record<string, string>>({});
 
   const refreshOperations = useCallback(async () => {
-    const [nextOperations, nextNotifications] = await Promise.all([
-      browserApiRequest<ProviderOperationsDto>(
-        `/api/v1/provider/operations?startsOn=${currentStartsOn}`,
-      ),
-      browserApiRequest<NotificationDto[]>("/api/v1/notifications?limit=20"),
-    ]);
+    const nextOperations = await browserApiRequest<ProviderOperationsDto>(
+      `/api/v1/provider/operations?startsOn=${currentStartsOn}`,
+    );
     setOperations(nextOperations);
-    setLiveNotifications(nextNotifications);
     setActiveDayId((current) =>
       nextOperations.menu.days.some((day) => day.id === current)
         ? current
@@ -199,11 +190,8 @@ export function ProviderOperationsClient({
             Producción real, menús semanales y reportes.
           </p>
         </div>
-        <div className="flex min-h-10 flex-wrap items-center gap-2 md:justify-end">
-          <span className="provider-notification-enter inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold">
-            <BellRing size={15} /> {liveNotifications.filter((item) => !item.readAt).length} avisos
-          </span>
-          {view === "production" ? (
+        {view === "production" ? (
+          <div className="flex min-h-10 flex-wrap items-center gap-2 md:justify-end">
             <button
               type="button"
               onClick={() => void refreshNow()}
@@ -213,8 +201,8 @@ export function ProviderOperationsClient({
               <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
               {refreshing ? "Actualizando…" : "Actualizar"}
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -264,7 +252,11 @@ export function ProviderOperationsClient({
       {view === "summary" ? (
         <div className="mt-7"><DailySummary initialSummary={initialSummary} viewerRole="provider_admin" /></div>
       ) : view === "reports" ? (
-        <OperationsReports endpoint="/api/v1/provider/reports" initialReport={initialReport} />
+        <OperationsReports
+          endpoint="/api/v1/provider/reports"
+          initialReport={initialReport}
+          sectioned
+        />
       ) : view === "access" ? (
         <ProviderAccessManagement initialAccounts={initialAccessAccounts} />
       ) : view === "menu" ? (

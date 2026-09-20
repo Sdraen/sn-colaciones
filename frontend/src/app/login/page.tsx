@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { ChefHat, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
+import { BrandVertical } from "@/components/brand-logo";
 import { getCurrentApiUser } from "@/lib/api/server";
 import { LoginForm } from "./login-form";
 
@@ -23,17 +24,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
       <section className="login-card-enter card relative z-10 w-full max-w-[420px] overflow-hidden">
         <div className="bg-[linear-gradient(135deg,var(--brand-strong),var(--brand),var(--accent))] px-6 py-6 text-white sm:px-7">
-          <div className="login-brand-enter flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/18 shadow-sm">
-              <ChefHat size={23} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white/75">
-                Acceso privado
-              </p>
-              <p className="text-sm font-extrabold">SN Colaciones</p>
-            </div>
+          <div className="login-brand-enter rounded-2xl bg-[#fffdf8] px-4 py-3 shadow-sm">
+            <BrandVertical className="mx-auto w-36 sm:w-40" priority />
           </div>
+          <p className="mt-4 text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white/75">
+            Acceso privado
+          </p>
           <h1 className="mt-4 text-2xl font-black tracking-[-0.035em]">Bienvenido</h1>
           <p className="mt-1.5 text-sm leading-5 text-white/85">
             Ingresa con tus datos autorizados.

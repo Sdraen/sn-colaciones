@@ -340,7 +340,11 @@ export function CompanyOperationsClient({
       ) : view === "workers" ? (
         <WorkerManagement initialWorkers={initialWorkers} />
       ) : view === "reports" ? (
-        <OperationsReports endpoint="/api/v1/company/reports" initialReport={initialReport} />
+        <OperationsReports
+          endpoint="/api/v1/company/reports"
+          initialReport={initialReport}
+          sectioned
+        />
       ) : !menu || !operations ? (
         <section className="company-panel-enter mt-7">
           <div className="company-card-motion card p-8 text-center">

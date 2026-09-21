@@ -352,7 +352,17 @@ function SignOutLink() {
 }
 
 function qrDataUrl(qrCode: string) {
-  return qrCode.startsWith("data:")
-    ? qrCode
-    : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrCode)}`;
+  const value = qrCode.trim();
+  const dataUrlPrefix = /^data:image\/svg\+xml(?:;[^,]*)?,/i.exec(value)?.[0];
+
+  if (dataUrlPrefix) {
+    const svg = value.slice(dataUrlPrefix.length);
+    if (/;base64,$/i.test(dataUrlPrefix) || !svg.trimStart().startsWith("<")) {
+      return value;
+    }
+
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(value)}`;
 }

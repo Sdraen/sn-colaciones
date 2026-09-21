@@ -8,6 +8,7 @@ import {
   getCalendarBlocks,
   patchExceptionalRequest,
   patchMenuOptionAvailability,
+  patchProviderAccessStatus,
   postCopyMenuWeek,
   postMenuWeek,
   postPublishMenuWeek,
@@ -42,7 +43,12 @@ import {
   createProviderAccessRequestSchema,
   listProviderAccessRequestSchema,
   sendProviderAccessPasswordSetupRequestSchema,
+  updateProviderAccessStatusRequestSchema,
 } from "../schemas/provider-access.schema.js";
+import {
+  accountManagementRateLimit,
+  reportRateLimit,
+} from "../middleware/rate-limit.js";
 
 export const providerRouter = Router();
 
@@ -54,21 +60,31 @@ providerRouter.get(
 );
 providerRouter.post(
   "/access-users",
+  accountManagementRateLimit,
   validateRequest(createProviderAccessRequestSchema),
   postProviderAccessAccount,
 );
+providerRouter.patch(
+  "/access-users/:accessUserId/status",
+  accountManagementRateLimit,
+  validateRequest(updateProviderAccessStatusRequestSchema),
+  patchProviderAccessStatus,
+);
 providerRouter.post(
   "/access-users/:accessUserId/password-setup",
+  accountManagementRateLimit,
   validateRequest(sendProviderAccessPasswordSetupRequestSchema),
   postProviderAccessPasswordSetup,
 );
 providerRouter.get(
   "/reports/pdf",
+  reportRateLimit,
   validateRequest(reportRequestSchema),
   getProviderReportPdf,
 );
 providerRouter.get(
   "/reports",
+  reportRateLimit,
   validateRequest(reportRequestSchema),
   getProviderReport,
 );

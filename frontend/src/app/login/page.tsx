@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BrandVertical } from "@/components/brand-logo";
 import { getCurrentApiUser } from "@/lib/api/server";
 import { LoginForm } from "./login-form";
+import { homeByRole, isAdministrativeRole, mfaPath, safeNextPath } from "@/lib/auth-flow";
 
 type LoginPageProps = {
   searchParams: Promise<{ next?: string; error?: string }>;
@@ -14,8 +15,14 @@ export const metadata: Metadata = { title: "Ingresar" };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [params, currentUser] = await Promise.all([searchParams, getCurrentApiUser()]);
-  if (currentUser) redirect(homeByRole(currentUser.role));
   const nextPath = safeNextPath(params.next);
+  if (currentUser) {
+    const destination = nextPath === "/" ? homeByRole(currentUser.role) : nextPath;
+    if (isAdministrativeRole(currentUser.role) && currentUser.assuranceLevel !== "aal2") {
+      redirect(mfaPath(destination));
+    }
+    redirect(destination);
+  }
 
   return (
     <main className="login-page-enter page-shell relative grid min-h-[calc(100vh-72px)] place-items-center overflow-hidden">
@@ -50,15 +57,4 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       </section>
     </main>
   );
-}
-
-function safeNextPath(value?: string) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
-}
-
-function homeByRole(role: "worker" | "company_admin" | "provider_admin" | "delivery") {
-  if (role === "worker") return "/pedidos";
-  if (role === "company_admin") return "/admin/empresa";
-  if (role === "delivery") return "/despacho";
-  return "/admin/proveedor";
 }

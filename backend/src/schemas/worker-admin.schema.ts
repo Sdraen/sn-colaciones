@@ -34,10 +34,19 @@ export const sendWorkerPasswordSetupRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const updateWorkerStatusRequestSchema = z.object({
+  body: z.object({ active: z.boolean() }),
+  params: z.object({ workerId: uuidSchema }),
+  query: z.object({}),
+});
+
 export type CreateWorkerAccountRequest = z.infer<
   typeof createWorkerAccountRequestSchema
 >;
 
 export type SendWorkerPasswordSetupRequest = z.infer<
   typeof sendWorkerPasswordSetupRequestSchema
+>;
+export type UpdateWorkerStatusRequest = z.infer<
+  typeof updateWorkerStatusRequestSchema
 >;

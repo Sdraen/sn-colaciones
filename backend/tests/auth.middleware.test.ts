@@ -5,11 +5,16 @@ import { createAuthenticate, readBearerToken } from "../src/middleware/authentic
 import { errorHandler } from "../src/middleware/error-handler.js";
 import { requestContext } from "../src/middleware/request-context.js";
 import { requireRole } from "../src/middleware/require-role.js";
+import { requireAdministrativeMfa } from "../src/middleware/require-administrative-mfa.js";
 import type { RequestAuth } from "../src/models/auth.js";
 
-function fakeAuth(role: RequestAuth["profile"]["role"]): RequestAuth {
+function fakeAuth(
+  role: RequestAuth["profile"]["role"],
+  assuranceLevel: RequestAuth["assuranceLevel"] = "aal2",
+): RequestAuth {
   return {
     accessToken: "valid-token",
+    assuranceLevel,
     user: { id: "00000000-0000-4000-8000-000000000001" },
     profile: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -86,5 +91,47 @@ describe("autenticación y autorización HTTP", () => {
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("exige MFA a los roles administrativos", async () => {
+    const app = express();
+    app.use(requestContext);
+    app.get(
+      "/admin",
+      createAuthenticate(async () => fakeAuth("company_admin", "aal1")),
+      requireAdministrativeMfa,
+      (_request, response) => response.json({ ok: true }),
+    );
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get("/admin")
+      .set("authorization", "Bearer valid-token");
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("MFA_REQUIRED");
+  });
+
+  it("permite MFA aal2 y no obliga a trabajadores", async () => {
+    for (const auth of [
+      fakeAuth("provider_admin", "aal2"),
+      fakeAuth("worker", "aal1"),
+    ]) {
+      const app = express();
+      app.use(requestContext);
+      app.get(
+        "/private",
+        createAuthenticate(async () => auth),
+        requireAdministrativeMfa,
+        (_request, response) => response.json({ ok: true }),
+      );
+      app.use(errorHandler);
+
+      const response = await request(app)
+        .get("/private")
+        .set("authorization", "Bearer valid-token");
+
+      expect(response.status).toBe(200);
+    }
   });
 });

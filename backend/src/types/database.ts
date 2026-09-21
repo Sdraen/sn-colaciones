@@ -583,6 +583,14 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["menu_options"]["Row"];
       };
+      set_provider_access_active: {
+        Args: { target_profile_id: string; is_active: boolean };
+        Returns: Database["public"]["Tables"]["profiles"]["Row"];
+      };
+      set_worker_account_active: {
+        Args: { target_diner_id: string; is_active: boolean };
+        Returns: Database["public"]["Tables"]["diners"]["Row"];
+      };
     };
     Enums: {
       app_role: AppRole;

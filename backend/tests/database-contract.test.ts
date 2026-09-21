@@ -206,6 +206,35 @@ describe("contrato de migraciones de Supabase", () => {
       "grant execute on function public.confirm_company_delivery_arrival(uuid) to authenticated",
     );
   });
+  it("revokes accounts and limits direct delivery access", () => {
+    const migration = readMigration("0021_security_hardening.sql");
+
+    expect(migration).toContain("function public.set_provider_access_active");
+    expect(migration).toContain("function public.set_worker_account_active");
+    expect(migration).toContain("security definer set search_path = ''");
+    expect(migration).toContain("access.account_deactivated");
+    expect(migration).toContain("worker.account_deactivated");
+    expect(migration).toContain(
+      'drop policy if exists "delivery can read organization diners"',
+    );
+    expect(migration).toContain(
+      'drop policy if exists "delivery can read organization orders"',
+    );
+    expect(migration).toContain(
+      "grant execute on function public.set_provider_access_active(uuid, boolean) to authenticated",
+    );
+  });
+
+  it("requires aal2 for administrative reads, writes and RPC operations", () => {
+    const migration = readMigration("0022_admin_totp_mfa.sql");
+
+    expect(migration).toContain("auth.jwt()->>'aal'");
+    expect(migration).toContain("function private.require_admin_mfa_for_write");
+    expect(migration).toContain("message = 'MFA_REQUIRED'");
+    expect(migration).toContain("before insert or update or delete on public.orders");
+    expect(migration).toContain("before insert or update or delete on public.profiles");
+    expect(migration).toContain("expected_role not in ('company_admin', 'provider_admin')");
+  });
 });
 
 function readMigration(fileName: string) {

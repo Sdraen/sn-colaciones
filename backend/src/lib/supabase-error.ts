@@ -2,6 +2,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { AppError } from "../errors/app-error.js";
 
 const domainErrors: Record<string, { status: number; message: string }> = {
+  MFA_REQUIRED: { status: 403, message: "Debes verificar el codigo de autenticacion para continuar" },
+  ACCESS_ACCOUNT_NOT_FOUND: { status: 404, message: "No se encontro la cuenta de acceso" },
   AUTH_REQUIRED: { status: 401, message: "Debes iniciar sesión" },
   BREAD_OR_TEA_REQUIRED: { status: 422, message: "Debes elegir pan, té o ambos" },
   CALENDAR_BLOCK_NOT_FOUND: { status: 404, message: "No se encontró el bloqueo de calendario" },
@@ -64,6 +66,7 @@ const domainErrors: Record<string, { status: number; message: string }> = {
   TRAINING_SESSION_MISMATCH: { status: 409, message: "La capacitación no corresponde al día seleccionado" },
   TRAINING_WINDOW_CLOSED: { status: 409, message: "Las capacitaciones para fechas actuales o futuras se registran hasta las 09:00 y desde las 14:00" },
   WORKER_ROLE_REQUIRED: { status: 403, message: "Esta acción requiere el rol de trabajador" },
+  WORKER_NOT_FOUND: { status: 404, message: "No se encontro el trabajador" },
 };
 
 export function throwSupabaseError(

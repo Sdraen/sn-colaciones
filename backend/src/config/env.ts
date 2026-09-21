@@ -8,6 +8,7 @@ const runtimeEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().max(65_535).default(4000),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
 });
 
 const supabaseEnvSchema = z.object({

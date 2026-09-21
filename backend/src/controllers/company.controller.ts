@@ -24,12 +24,14 @@ import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
 import type {
   CreateWorkerAccountRequest,
   SendWorkerPasswordSetupRequest,
+  UpdateWorkerStatusRequest,
 } from "../schemas/worker-admin.schema.js";
 import { createAdminSupabaseClient } from "../lib/supabase.js";
 import {
   createWorkerAccount,
   listWorkerAccounts,
   sendWorkerPasswordSetupEmail,
+  setWorkerAccountActive,
 } from "../services/worker-admin.service.js";
 import type {
   ConfirmServiceReceiptRequest,
@@ -42,6 +44,7 @@ import {
   saveServiceReceiptCheck,
 } from "../services/delivery.service.js";
 import { getAppUrlEnv } from "../config/env.js";
+import { recordSecurityAuditEvent } from "../services/security-audit.service.js";
 
 export const postTrainingOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
@@ -106,10 +109,17 @@ export const getCompanyReport: RequestHandler = async (request, response) => {
 };
 
 export const getCompanyReportPdf: RequestHandler = async (request, response) => {
-  const { supabase } = getRequestAuth(request);
+  const { profile, supabase } = getRequestAuth(request);
   const { query } = getValidatedRequest<ReportRequest>(request);
   const report = await getNominalOrdersReport(supabase, query);
   const pdf = await createNominalOrdersPdf(report);
+  await recordSecurityAuditEvent(createAdminSupabaseClient(), {
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    entityType: "report",
+    action: "report.nominal_pdf_downloaded",
+    metadata: { period: query.period, from: report.range.from, to: report.range.to },
+  });
   const fileName = `reporte-nominal-colaciones-${query.period}-${report.range.from}-${report.range.to}.pdf`;
 
   response.set({
@@ -137,7 +147,11 @@ export const postWorker: RequestHandler = async (request, response) => {
   const worker = await createWorkerAccount(
     createAdminSupabaseClient(),
     profile.organizationId,
-    { ...body, passwordSetupRedirectTo: getPasswordSetupRedirectUrl() },
+    {
+      ...body,
+      actorId: profile.id,
+      passwordSetupRedirectTo: getPasswordSetupRedirectUrl(),
+    },
   );
   response.status(201).json({ data: worker });
 };
@@ -149,8 +163,16 @@ export const postWorkerPasswordSetup: RequestHandler = async (request, response)
     createAdminSupabaseClient(),
     profile.organizationId,
     params.workerId,
+    profile.id,
     getPasswordSetupRedirectUrl(),
   );
+  response.status(200).json({ data: result });
+};
+
+export const patchWorkerStatus: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateWorkerStatusRequest>(request);
+  const result = await setWorkerAccountActive(supabase, params.workerId, body.active);
   response.status(200).json({ data: result });
 };
 

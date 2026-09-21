@@ -13,9 +13,13 @@ export function readBearerToken(authorizationHeader?: string) {
 
 export const verifySupabaseAccessToken: AccessTokenVerifier = async (accessToken) => {
   const authClient = createUserSupabaseClient();
-  const { data: userData, error: authError } = await authClient.auth.getUser(accessToken);
+  const [userResult, claimsResult] = await Promise.all([
+    authClient.auth.getUser(accessToken),
+    authClient.auth.getClaims(accessToken),
+  ]);
+  const { data: userData, error: authError } = userResult;
 
-  if (authError || !userData.user) {
+  if (authError || !userData.user || claimsResult.error || !claimsResult.data?.claims) {
     throw new AppError("La sesión no es válida o expiró", 401, "INVALID_SESSION");
   }
 
@@ -39,6 +43,7 @@ export const verifySupabaseAccessToken: AccessTokenVerifier = async (accessToken
 
   return {
     accessToken,
+    assuranceLevel: claimsResult.data.claims.aal === "aal2" ? "aal2" : "aal1",
     user: userData.user,
     profile: {
       id: profile.id,

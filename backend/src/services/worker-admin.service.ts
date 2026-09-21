@@ -43,6 +43,7 @@ export async function createWorkerAccount(
     dinerId?: string;
     fullName?: string;
     employeeCode?: string;
+    actorId: string;
     passwordSetupRedirectTo: string;
   },
 ) {
@@ -134,8 +135,19 @@ export async function createWorkerAccount(
       dinerCreatedId = diner.id;
     }
 
+    const workerId = existingDiner?.id ?? dinerCreatedId!;
+    const { error: auditError } = await admin.from("audit_events").insert({
+      organization_id: organizationId,
+      actor_id: input.actorId,
+      entity_type: "diner",
+      entity_id: workerId,
+      action: "worker.account_created",
+      metadata: { auth_user_id: authUserId },
+    });
+    if (auditError) throwSupabaseError(auditError, "No fue posible auditar la cuenta");
+
     return {
-      id: existingDiner?.id ?? dinerCreatedId!,
+      id: workerId,
       fullName,
       employeeCode: existingDiner?.employee_code ?? input.employeeCode?.trim() ?? null,
       email,
@@ -165,6 +177,7 @@ export async function sendWorkerPasswordSetupEmail(
   admin: AdminClient,
   organizationId: string,
   workerId: string,
+  actorId: string,
   redirectTo: string,
 ) {
   const { data: diner, error: dinerError } = await admin
@@ -200,6 +213,16 @@ export async function sendWorkerPasswordSetupEmail(
   }
 
   const email = authData.user.email;
+  const { error: auditError } = await admin.from("audit_events").insert({
+    organization_id: organizationId,
+    actor_id: actorId,
+    entity_type: "diner",
+    entity_id: diner.id,
+    action: "worker.password_setup_requested",
+    metadata: { auth_user_id: diner.auth_user_id },
+  });
+  if (auditError) throwSupabaseError(auditError, "No fue posible auditar el reenvio");
+
   const { error: emailError } = await admin.auth.resetPasswordForEmail(email, {
     redirectTo,
   });
@@ -214,6 +237,19 @@ export async function sendWorkerPasswordSetupEmail(
   }
 
   return { email };
+}
+
+export async function setWorkerAccountActive(
+  supabase: AdminClient,
+  workerId: string,
+  active: boolean,
+) {
+  const { data, error } = await supabase.rpc("set_worker_account_active", {
+    target_diner_id: workerId,
+    is_active: active,
+  });
+  if (error) throwSupabaseError(error, "No fue posible actualizar al trabajador");
+  return { id: data.id, active: data.active };
 }
 
 async function getAvailableDiner(

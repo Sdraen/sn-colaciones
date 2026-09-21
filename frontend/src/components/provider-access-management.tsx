@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Building2, CheckCircle2, Mail, Search, Send, ShieldCheck, Truck, UserPlus } from "lucide-react";
+import { Building2, CheckCircle2, Mail, Search, Send, ShieldCheck, Truck, UserCheck, UserPlus, UserX } from "lucide-react";
 import { FormSelect } from "@/components/ui/form-select";
 import { SuccessDialog } from "@/components/ui/success-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { browserApiRequest } from "@/lib/api/client";
 import type { ProviderAccessAccountDto, ProviderManagedRole } from "@/lib/api/contracts";
 
@@ -16,6 +17,7 @@ export function ProviderAccessManagement({
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [statusId, setStatusId] = useState<string | null>(null);
   const [role, setRole] = useState<ProviderManagedRole>("delivery");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -28,7 +30,7 @@ export function ProviderAccessManagement({
     );
   }, [accounts, search]);
 
-  const activeAccounts = accounts.filter((account) => account.accessActivated).length;
+  const activeAccounts = accounts.filter((account) => account.active).length;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,6 +92,33 @@ export function ProviderAccessManagement({
       );
     } finally {
       setSendingId(null);
+    }
+  }
+
+  async function updateAccountStatus(account: ProviderAccessAccountDto) {
+    const nextActive = !account.active;
+    setStatusId(account.id);
+    setMessage("");
+    setError("");
+    try {
+      const result = await browserApiRequest<{ id: string; active: boolean }>(
+        `/api/v1/provider/access-users/${account.id}/status`,
+        { method: "PATCH", body: JSON.stringify({ active: nextActive }) },
+      );
+      setAccounts((current) =>
+        current.map((item) =>
+          item.id === result.id ? { ...item, active: result.active } : item,
+        ),
+      );
+      setMessage(
+        nextActive
+          ? `El acceso de ${account.fullName} fue reactivado.`
+          : `El acceso de ${account.fullName} fue desactivado.`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cambiar el acceso.");
+    } finally {
+      setStatusId(null);
     }
   }
 
@@ -228,12 +257,18 @@ export function ProviderAccessManagement({
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${
-                        account.accessActivated
+                        !account.active
+                          ? "bg-red-50 text-[var(--danger)]"
+                          : account.accessActivated
                           ? "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
                           : "bg-[var(--accent-soft)] text-[var(--warning)]"
                       }`}
                     >
-                      {account.accessActivated ? (
+                      {!account.active ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <UserX size={14} aria-hidden="true" /> Desactivado
+                        </span>
+                      ) : account.accessActivated ? (
                         <span className="inline-flex items-center gap-1.5">
                           <CheckCircle2 size={14} aria-hidden="true" /> Activo
                         </span>
@@ -241,7 +276,7 @@ export function ProviderAccessManagement({
                         "Invitación pendiente"
                       )}
                     </span>
-                    {account.email ? (
+                    {account.active && account.email ? (
                       <button
                         type="button"
                         onClick={() => void sendPasswordSetup(account)}
@@ -252,6 +287,35 @@ export function ProviderAccessManagement({
                         {sendingId === account.id ? "Enviando…" : "Reenviar clave"}
                       </button>
                     ) : null}
+                    <ConfirmDialog
+                      title={account.active ? "Desactivar este acceso?" : "Reactivar este acceso?"}
+                      description={
+                        account.active
+                          ? `${account.fullName} dejara de poder ingresar y operar en el sistema.`
+                          : `${account.fullName} recuperara el acceso correspondiente a su rol.`
+                      }
+                      confirmLabel={account.active ? "Si, desactivar" : "Si, reactivar"}
+                      tone={account.active ? "danger" : "brand"}
+                      onConfirm={() => updateAccountStatus(account)}
+                      trigger={
+                        <button
+                          type="button"
+                          disabled={statusId === account.id}
+                          className={`focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-extrabold disabled:cursor-wait disabled:opacity-60 ${
+                            account.active
+                              ? "bg-red-50 text-[var(--danger)]"
+                              : "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
+                          }`}
+                        >
+                          {account.active ? <UserX size={14} /> : <UserCheck size={14} />}
+                          {statusId === account.id
+                            ? "Guardando..."
+                            : account.active
+                              ? "Desactivar"
+                              : "Reactivar"}
+                        </button>
+                      }
+                    />
                   </div>
                 </li>
               ))}

@@ -43,6 +43,7 @@ export async function createProviderAccessAccount(
     email: string;
     fullName: string;
     role: ProviderManagedRole;
+    actorId: string;
     passwordSetupRedirectTo: string;
   },
 ) {
@@ -88,6 +89,16 @@ export async function createProviderAccessAccount(
       .single();
     if (profileError) throwSupabaseError(profileError, "No fue posible crear el perfil de acceso");
 
+    const { error: auditError } = await admin.from("audit_events").insert({
+      organization_id: organizationId,
+      actor_id: input.actorId,
+      entity_type: "profile",
+      entity_id: profile.id,
+      action: "access.account_created",
+      metadata: { role: input.role },
+    });
+    if (auditError) throwSupabaseError(auditError, "No fue posible auditar la cuenta");
+
     return {
       id: profile.id,
       fullName: profile.full_name,
@@ -107,6 +118,7 @@ export async function sendProviderAccessPasswordSetupEmail(
   admin: AdminClient,
   organizationId: string,
   accessUserId: string,
+  actorId: string,
   redirectTo: string,
 ) {
   const { data: profile, error: profileError } = await admin
@@ -126,6 +138,16 @@ export async function sendProviderAccessPasswordSetupEmail(
     throw new AppError("No fue posible consultar el correo de acceso", 503, "AUTH_USER_READ_FAILED");
   }
 
+  const { error: auditError } = await admin.from("audit_events").insert({
+    organization_id: organizationId,
+    actor_id: actorId,
+    entity_type: "profile",
+    entity_id: profile.id,
+    action: "access.password_setup_requested",
+    metadata: {},
+  });
+  if (auditError) throwSupabaseError(auditError, "No fue posible auditar el reenvio");
+
   const { error: emailError } = await admin.auth.resetPasswordForEmail(
     authData.user.email,
     { redirectTo },
@@ -141,6 +163,19 @@ export async function sendProviderAccessPasswordSetupEmail(
   }
 
   return { email: authData.user.email };
+}
+
+export async function setProviderAccessAccountActive(
+  supabase: AdminClient,
+  accessUserId: string,
+  active: boolean,
+) {
+  const { data, error } = await supabase.rpc("set_provider_access_active", {
+    target_profile_id: accessUserId,
+    is_active: active,
+  });
+  if (error) throwSupabaseError(error, "No fue posible actualizar el acceso");
+  return { id: data.id, active: data.active };
 }
 
 async function findAuthUserByEmail(admin: AdminClient, email: string) {

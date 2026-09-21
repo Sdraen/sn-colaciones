@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createProviderAccessAccount,
   sendProviderAccessPasswordSetupEmail,
+  setProviderAccessAccountActive,
 } from "../src/services/provider-access.service.js";
 import { createProviderAccessRequestSchema } from "../src/schemas/provider-access.schema.js";
 import type { Database } from "../src/types/database.js";
 
 const organizationId = "00000000-0000-4000-8000-000000000001";
 const deliveryUserId = "00000000-0000-4000-8000-000000000002";
+const actorId = "00000000-0000-4000-8000-000000000004";
 const redirectTo = "https://colaciones.example.cl/auth/activar";
 
 describe("administración de accesos autorizados por la proveedora", () => {
@@ -68,6 +70,7 @@ describe("administración de accesos autorizados por la proveedora", () => {
       email: " Despacho@Empresa.cl ",
       fullName,
       role,
+      actorId,
       passwordSetupRedirectTo: redirectTo,
     });
 
@@ -103,6 +106,7 @@ describe("administración de accesos autorizados por la proveedora", () => {
     query.select.mockReturnValue(query);
     query.eq.mockReturnValue(query);
     query.in.mockReturnValue(query);
+    const auditInsert = vi.fn().mockResolvedValue({ error: null });
     const admin = {
       auth: {
         admin: {
@@ -113,13 +117,16 @@ describe("administración de accesos autorizados por la proveedora", () => {
         },
         resetPasswordForEmail,
       },
-      from: vi.fn(() => query),
+      from: vi.fn((table: string) =>
+        table === "audit_events" ? { insert: auditInsert } : query,
+      ),
     } as unknown as SupabaseClient<Database>;
 
     const result = await sendProviderAccessPasswordSetupEmail(
       admin,
       organizationId,
       deliveryUserId,
+      actorId,
       redirectTo,
     );
 
@@ -130,5 +137,21 @@ describe("administración de accesos autorizados por la proveedora", () => {
       { redirectTo },
     );
     expect(result).toEqual({ email: "despacho@empresa.cl" });
+  });
+
+  it("revokes a managed account through the audited RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { id: deliveryUserId, active: false },
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    await expect(
+      setProviderAccessAccountActive(client, deliveryUserId, false),
+    ).resolves.toEqual({ id: deliveryUserId, active: false });
+    expect(rpc).toHaveBeenCalledWith("set_provider_access_active", {
+      target_profile_id: deliveryUserId,
+      is_active: false,
+    });
   });
 });

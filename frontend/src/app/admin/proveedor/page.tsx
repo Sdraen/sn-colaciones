@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { ProviderOperationsClient } from "@/components/provider-operations-client";
 import type { DailySummaryDto, MenuWeekDto, OrdersReportDto, ProviderAccessAccountDto, ProviderOperationsDto } from "@/lib/api/contracts";
 import { backendRequest, backendRequestOrNull, requireApiRole } from "@/lib/api/server";
+import { mfaPath } from "@/lib/auth-flow";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProviderAdminPage() {
   const user = await requireApiRole("provider_admin");
   if (!user) redirect("/login?next=/admin/proveedor");
+  if (user.assuranceLevel !== "aal2") redirect(mfaPath("/admin/proveedor"));
   const today = chileDate(new Date()); const currentStartsOn = mondayOf(today); const nextStartsOn = addDays(currentStartsOn, 7);
   const [operations, currentMenu, nextMenu, report, summary, accessAccounts] = await Promise.all([
     backendRequestOrNull<ProviderOperationsDto>(`/api/v1/provider/operations?startsOn=${currentStartsOn}`),

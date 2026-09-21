@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SN Colaciones API
-  version: 0.6.0
+  version: 0.8.0
   description: API autenticada para menús, reservas y operación de colaciones.
 servers:
   - url: http://localhost:4000
@@ -187,6 +187,62 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429":
           description: Límite temporal de correos alcanzado
+  /api/v1/company/workers/{workerId}/status:
+    patch:
+      tags: [Securitas]
+      summary: Desactiva o reactiva el acceso de un trabajador
+      parameters:
+        - name: workerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountStatusInput" }
+      responses:
+        "200": { description: Estado actualizado y auditado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { description: Limite temporal de gestion de accesos alcanzado }
+  /api/v1/provider/access-users:
+    get:
+      tags: [Proveedora]
+      summary: Lista administradoras Securitas y usuarios de despacho
+      responses:
+        "200": { description: Accesos administrados por la proveedora }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Proveedora]
+      summary: Crea e invita una administradora Securitas o usuario de despacho
+      responses:
+        "201": { description: Cuenta creada y auditada }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { description: Limite temporal de gestion de accesos alcanzado }
+  /api/v1/provider/access-users/{accessUserId}/status:
+    patch:
+      tags: [Proveedora]
+      summary: Desactiva o reactiva una cuenta administrada
+      parameters:
+        - name: accessUserId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountStatusInput" }
+      responses:
+        "200": { description: Estado actualizado y auditado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { description: Limite temporal de gestion de accesos alcanzado }
   /api/v1/company/operations:
     get:
       tags: [Securitas]
@@ -770,7 +826,7 @@ components:
   schemas:
     CurrentUser:
       type: object
-      required: [id, email, fullName, organizationId, role]
+      required: [id, email, fullName, organizationId, role, assuranceLevel, mfaRequired]
       properties:
         id: { type: string, format: uuid }
         email:
@@ -781,6 +837,16 @@ components:
         organizationId: { type: string, format: uuid }
         role:
           enum: [worker, company_admin, provider_admin, delivery]
+        assuranceLevel:
+          type: string
+          enum: [aal1, aal2]
+        mfaRequired: { type: boolean }
+    AccountStatusInput:
+      type: object
+      additionalProperties: false
+      required: [active]
+      properties:
+        active: { type: boolean }
     WorkerAccount:
       type: object
       required: [id, fullName, employeeCode, email, accountCreated, accessActivated, active, createdAt]

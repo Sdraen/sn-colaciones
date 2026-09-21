@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { createClient } from "@/lib/supabase/client";
+import { continuationPath } from "@/lib/auth-flow";
 
 type LoginMode = "password" | "magic_link" | "recovery";
 
@@ -53,7 +54,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         return;
       }
 
-      window.location.assign(nextPath);
+      window.location.assign(continuationPath(nextPath));
       return;
     }
 
@@ -77,7 +78,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     }
 
     const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("next", nextPath);
+    callback.searchParams.set("next", continuationPath(nextPath));
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {

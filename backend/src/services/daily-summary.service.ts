@@ -8,11 +8,22 @@ type UserDatabaseClient = SupabaseClient<Database>;
 
 export async function getDailySummary(
   supabase: UserDatabaseClient,
+  organizationId: string,
   serviceDate = chileIsoDate(new Date()),
 ) {
+  const { data: menuWeek, error: menuWeekError } = await supabase
+    .from("menu_weeks")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("starts_on", weekStartsOn(serviceDate))
+    .maybeSingle();
+  if (menuWeekError) throwSupabaseError(menuWeekError, "No fue posible consultar la semana");
+  if (!menuWeek) throw new AppError("No existe un menu para la fecha indicada", 404, "SERVICE_DAY_NOT_FOUND");
+
   const { data: day, error: dayError } = await supabase
     .from("service_days")
     .select("id, service_date, delivery_closes_at, disabled")
+    .eq("menu_week_id", menuWeek.id)
     .eq("service_date", serviceDate)
     .maybeSingle();
   if (dayError) throwSupabaseError(dayError, "No fue posible consultar el día de servicio");
@@ -67,7 +78,11 @@ export async function getDailySummary(
       ? supabase.from("training_sessions").select("id, name, expected_attendees").in("id", trainingIds)
       : Promise.resolve({ data: [], error: null }),
     deliveryActorIds.length
-      ? supabase.from("profiles").select("id, organization_id, full_name, role").in("id", deliveryActorIds)
+      ? supabase
+          .from("profiles")
+          .select("id, organization_id, full_name, role")
+          .eq("organization_id", organizationId)
+          .in("id", deliveryActorIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (dinersResult.error) throwSupabaseError(dinersResult.error, "No fue posible consultar los trabajadores");
@@ -242,4 +257,11 @@ function chileIsoDate(date: Date) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function weekStartsOn(serviceDate: string) {
+  const selected = new Date(`${serviceDate}T12:00:00.000Z`);
+  const weekday = selected.getUTCDay() || 7;
+  selected.setUTCDate(selected.getUTCDate() - weekday + 1);
+  return selected.toISOString().slice(0, 10);
 }

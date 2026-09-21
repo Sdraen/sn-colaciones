@@ -9,12 +9,15 @@ import { companyRouter } from "./company.routes.js";
 import { notificationRouter } from "./notification.routes.js";
 import { summaryRouter } from "./summary.routes.js";
 import { deliveryRouter } from "./delivery.routes.js";
+import { authenticatedRateLimit } from "../middleware/rate-limit.js";
+import { requireAdministrativeMfa } from "../middleware/require-administrative-mfa.js";
 
 export const apiRouter = Router();
 
 apiRouter.use("/health", healthRouter);
-apiRouter.use("/v1", authenticate);
+apiRouter.use("/v1", authenticate, authenticatedRateLimit);
 apiRouter.use("/v1/auth", authRouter);
+apiRouter.use("/v1", requireAdministrativeMfa);
 apiRouter.use("/v1/menus", menuRouter);
 apiRouter.use("/v1/orders", orderRouter);
 apiRouter.use("/v1/notifications", notificationRouter);

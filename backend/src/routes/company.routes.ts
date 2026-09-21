@@ -10,6 +10,7 @@ import {
   postTrainingOrder,
   postWorker,
   postWorkerPasswordSetup,
+  patchWorkerStatus,
   patchServiceReceipt,
   patchCompanyArrival,
   putServiceReceiptCheck,
@@ -32,7 +33,12 @@ import {
   createWorkerAccountRequestSchema,
   listWorkerAccountsRequestSchema,
   sendWorkerPasswordSetupRequestSchema,
+  updateWorkerStatusRequestSchema,
 } from "../schemas/worker-admin.schema.js";
+import {
+  accountManagementRateLimit,
+  reportRateLimit,
+} from "../middleware/rate-limit.js";
 import {
   confirmServiceReceiptRequestSchema,
   recordCompanyArrivalRequestSchema,
@@ -49,21 +55,31 @@ companyRouter.get(
 );
 companyRouter.post(
   "/workers",
+  accountManagementRateLimit,
   validateRequest(createWorkerAccountRequestSchema),
   postWorker,
 );
+companyRouter.patch(
+  "/workers/:workerId/status",
+  accountManagementRateLimit,
+  validateRequest(updateWorkerStatusRequestSchema),
+  patchWorkerStatus,
+);
 companyRouter.post(
   "/workers/:workerId/password-setup",
+  accountManagementRateLimit,
   validateRequest(sendWorkerPasswordSetupRequestSchema),
   postWorkerPasswordSetup,
 );
 companyRouter.get(
   "/reports/pdf",
+  reportRateLimit,
   validateRequest(reportRequestSchema),
   getCompanyReportPdf,
 );
 companyRouter.get(
   "/reports",
+  reportRateLimit,
   validateRequest(reportRequestSchema),
   getCompanyReport,
 );

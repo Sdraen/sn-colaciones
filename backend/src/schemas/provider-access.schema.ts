@@ -25,10 +25,19 @@ export const sendProviderAccessPasswordSetupRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const updateProviderAccessStatusRequestSchema = z.object({
+  body: z.object({ active: z.boolean() }),
+  params: z.object({ accessUserId: uuidSchema }),
+  query: z.object({}),
+});
+
 export type ProviderManagedRole = z.infer<typeof providerManagedRoleSchema>;
 export type CreateProviderAccessRequest = z.infer<
   typeof createProviderAccessRequestSchema
 >;
 export type SendProviderAccessPasswordSetupRequest = z.infer<
   typeof sendProviderAccessPasswordSetupRequestSchema
+>;
+export type UpdateProviderAccessStatusRequest = z.infer<
+  typeof updateProviderAccessStatusRequestSchema
 >;

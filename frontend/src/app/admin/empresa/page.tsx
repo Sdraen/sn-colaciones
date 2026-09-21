@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { CompanyOperationsClient } from "@/components/company-operations-client";
 import type { CompanyOperationsDto, DailySummaryDto, MenuWeekDto, OrdersReportDto, WorkerAccountDto } from "@/lib/api/contracts";
 import { backendRequest, backendRequestOrNull, requireApiRole } from "@/lib/api/server";
+import { mfaPath } from "@/lib/auth-flow";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function CompanyAdminPage({
   const { section } = await searchParams;
   const user = await requireApiRole("company_admin");
   if (!user) redirect("/login?next=/admin/empresa");
+  if (user.assuranceLevel !== "aal2") redirect(mfaPath("/admin/empresa"));
   const [menu, operations, report, summary, workers] = await Promise.all([
     backendRequestOrNull<MenuWeekDto>("/api/v1/menus/current"),
     backendRequestOrNull<CompanyOperationsDto>("/api/v1/company/operations"),

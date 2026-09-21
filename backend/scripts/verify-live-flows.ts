@@ -114,6 +114,30 @@ const reservableDay = reservableDays[0];
 const order = orders[0];
 assert(reservableDay && order, "No fue posible elegir una reserva de referencia");
 
+const deliveryToken = tokens.get("delivery");
+assert(deliveryToken, "No existe token de despacho para probar RLS");
+const deliveryDirectClient = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    global: { headers: { Authorization: `Bearer ${deliveryToken}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  },
+);
+const { data: directOrders, error: directOrdersError } = await deliveryDirectClient
+  .from("orders")
+  .select("id")
+  .eq("id", order.id);
+assert(!directOrdersError, `La prueba RLS de despacho fallo: ${directOrdersError?.message}`);
+assert(directOrders?.length === 0, "Despacho pudo consultar pedidos directamente por PostgREST");
+
+const { data: directDiners, error: directDinersError } = await deliveryDirectClient
+  .from("diners")
+  .select("id")
+  .limit(1);
+assert(!directDinersError, `La prueba RLS de personas fallo: ${directDinersError?.message}`);
+assert(directDiners?.length === 0, "Despacho pudo consultar personas directamente por PostgREST");
+
 await api("provider_admin", `/provider/operations?startsOn=${workerMenu.startsOn}`);
 await api("company_admin", `/company/operations?startsOn=${workerMenu.startsOn}`);
 await api("provider_admin", `/provider/reports?period=weekly&date=${reservableDay.serviceDate}`);

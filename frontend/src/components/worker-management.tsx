@@ -8,11 +8,14 @@ import {
   Send,
   ShieldCheck,
   UserPlus,
+  UserCheck,
+  UserX,
   UsersRound,
 } from "lucide-react";
 import { browserApiRequest } from "@/lib/api/client";
 import { FormSelect } from "@/components/ui/form-select";
 import { SuccessDialog } from "@/components/ui/success-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { WorkerAccountDto } from "@/lib/api/contracts";
 
 export function WorkerManagement({
@@ -27,6 +30,7 @@ export function WorkerManagement({
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendingWorkerId, setSendingWorkerId] = useState<string | null>(null);
+  const [statusWorkerId, setStatusWorkerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -42,7 +46,7 @@ export function WorkerManagement({
       ).includes(term),
     );
   }, [search, workers]);
-  const activatedAccounts = workers.filter((worker) => worker.accessActivated).length;
+  const activatedAccounts = workers.filter((worker) => worker.active && worker.accessActivated).length;
   const creatingNewWorker = selectedDinerId === "new";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -112,6 +116,33 @@ export function WorkerManagement({
       );
     } finally {
       setSendingWorkerId(null);
+    }
+  }
+
+  async function updateWorkerStatus(worker: WorkerAccountDto) {
+    const nextActive = !worker.active;
+    setStatusWorkerId(worker.id);
+    setMessage("");
+    setError("");
+    try {
+      const result = await browserApiRequest<{ id: string; active: boolean }>(
+        `/api/v1/company/workers/${worker.id}/status`,
+        { method: "PATCH", body: JSON.stringify({ active: nextActive }) },
+      );
+      setWorkers((current) =>
+        current.map((item) =>
+          item.id === result.id ? { ...item, active: result.active } : item,
+        ),
+      );
+      setMessage(
+        nextActive
+          ? `El acceso de ${worker.fullName} fue reactivado.`
+          : `El acceso de ${worker.fullName} fue desactivado.`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cambiar el acceso.");
+    } finally {
+      setStatusWorkerId(null);
     }
   }
 
@@ -256,12 +287,18 @@ export function WorkerManagement({
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <span
                         className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${
-                          worker.accessActivated
+                          !worker.active
+                            ? "bg-red-50 text-[var(--danger)]"
+                            : worker.accessActivated
                             ? "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
                             : "bg-[var(--accent-soft)] text-[var(--warning)]"
                         }`}
                       >
-                        {worker.accessActivated ? (
+                        {!worker.active ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <UserX size={14} aria-hidden="true" /> Desactivado
+                          </span>
+                        ) : worker.accessActivated ? (
                           <span className="inline-flex items-center gap-1.5">
                             <CheckCircle2 size={14} aria-hidden="true" /> Activo
                           </span>
@@ -271,7 +308,7 @@ export function WorkerManagement({
                           "Sin acceso"
                         )}
                       </span>
-                      {worker.accountCreated && worker.email ? (
+                      {worker.active && worker.accountCreated && worker.email ? (
                         <button
                           type="button"
                           onClick={() => void sendPasswordSetup(worker)}
@@ -281,6 +318,37 @@ export function WorkerManagement({
                           <Send size={14} aria-hidden="true" />
                           {sendingWorkerId === worker.id ? "Enviando…" : "Reenviar clave"}
                         </button>
+                      ) : null}
+                      {worker.accountCreated ? (
+                        <ConfirmDialog
+                          title={worker.active ? "Desactivar este trabajador?" : "Reactivar este trabajador?"}
+                          description={
+                            worker.active
+                              ? `${worker.fullName} dejara de poder ingresar y reservar colaciones.`
+                              : `${worker.fullName} recuperara su acceso y podra volver a reservar.`
+                          }
+                          confirmLabel={worker.active ? "Si, desactivar" : "Si, reactivar"}
+                          tone={worker.active ? "danger" : "brand"}
+                          onConfirm={() => updateWorkerStatus(worker)}
+                          trigger={
+                            <button
+                              type="button"
+                              disabled={statusWorkerId === worker.id}
+                              className={`focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-extrabold disabled:cursor-wait disabled:opacity-60 ${
+                                worker.active
+                                  ? "bg-red-50 text-[var(--danger)]"
+                                  : "bg-[var(--herb-soft)] text-[var(--herb-strong)]"
+                              }`}
+                            >
+                              {worker.active ? <UserX size={14} /> : <UserCheck size={14} />}
+                              {statusWorkerId === worker.id
+                                ? "Guardando..."
+                                : worker.active
+                                  ? "Desactivar"
+                                  : "Reactivar"}
+                            </button>
+                          }
+                        />
                       ) : null}
                     </div>
                   </li>

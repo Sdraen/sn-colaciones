@@ -6,6 +6,8 @@ export interface CurrentUser {
   fullName: string;
   organizationId: string;
   role: AppRole;
+  assuranceLevel: "aal1" | "aal2";
+  mfaRequired: boolean;
 }
 
 export interface ApiErrorPayload {

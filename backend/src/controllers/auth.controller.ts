@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import { getRequestAuth } from "../lib/request-data.js";
 
 export const getCurrentUser: RequestHandler = (request, response) => {
-  const { user, profile } = getRequestAuth(request);
+  const { assuranceLevel, user, profile } = getRequestAuth(request);
   response.status(200).json({
     data: {
       id: user.id,
@@ -10,6 +10,8 @@ export const getCurrentUser: RequestHandler = (request, response) => {
       fullName: profile.fullName,
       organizationId: profile.organizationId,
       role: profile.role,
+      assuranceLevel,
+      mfaRequired: profile.role === "provider_admin" || profile.role === "company_admin",
     },
   });
 };

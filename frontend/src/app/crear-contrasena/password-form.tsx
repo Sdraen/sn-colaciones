@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle } from "lucide-react";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { createClient } from "@/lib/supabase/client";
+import { continuationPath } from "@/lib/auth-flow";
 
-const minimumPasswordLength = 10;
+const minimumPasswordLength = 12;
+const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 export function CreatePasswordForm({ email }: { email: string }) {
   const [password, setPassword] = useState("");
@@ -21,6 +23,10 @@ export function CreatePasswordForm({ email }: { email: string }) {
 
     if (password.length < minimumPasswordLength) {
       setError(`La contraseña debe tener al menos ${minimumPasswordLength} caracteres.`);
+      return;
+    }
+    if (!strongPasswordPattern.test(password)) {
+      setError("Incluye una mayuscula, una minuscula, un numero y un simbolo.");
       return;
     }
     if (password !== confirmation) {
@@ -65,7 +71,8 @@ export function CreatePasswordForm({ email }: { email: string }) {
 
       <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]">
         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[var(--herb)]" />
-        Usa al menos {minimumPasswordLength} caracteres y no compartas tu clave.
+        Usa {minimumPasswordLength} o mas caracteres, con mayuscula, minuscula,
+        numero y simbolo. No compartas tu clave.
       </p>
 
       {error ? (
@@ -90,7 +97,7 @@ export function CreatePasswordForm({ email }: { email: string }) {
       <SuccessDialog
         message={message}
         title="Contraseña creada"
-        onClose={() => window.location.replace("/")}
+        onClose={() => window.location.replace(continuationPath("/"))}
       />
     </form>
   );

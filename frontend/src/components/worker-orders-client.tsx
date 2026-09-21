@@ -78,7 +78,9 @@ export function WorkerOrdersClient({
 
   useEffect(() => {
     let active = true;
+    let timer: number | undefined;
     const refresh = async () => {
+      if (document.visibilityState !== "visible") return;
       setCurrentTime(Date.now());
       try {
         const latest = await browserApiRequest<WorkerOrdersDto>(
@@ -91,10 +93,22 @@ export function WorkerOrdersClient({
         // La validación final de cupos permanece en la base de datos.
       }
     };
-    const timer = window.setInterval(refresh, 30_000);
+    const schedule = () => {
+      const jitter = 0.85 + Math.random() * 0.3;
+      timer = window.setTimeout(async () => {
+        await refresh();
+        if (active) schedule();
+      }, Math.round(30_000 * jitter));
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    schedule();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [initialData.menuWeek.startsOn]);
 

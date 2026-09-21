@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createWorkerAccount,
   sendWorkerPasswordSetupEmail,
+  setWorkerAccountActive,
 } from "../src/services/worker-admin.service.js";
 import type { Database } from "../src/types/database.js";
 
 const organizationId = "00000000-0000-4000-8000-000000000001";
 const authUserId = "00000000-0000-4000-8000-000000000002";
 const dinerId = "00000000-0000-4000-8000-000000000003";
+const actorId = "00000000-0000-4000-8000-000000000004";
 const redirectTo = "https://colaciones.example.cl/auth/activar";
 
 describe("acceso con contraseña de trabajadores", () => {
@@ -34,6 +36,7 @@ describe("acceso con contraseña de trabajadores", () => {
       from: vi.fn((table: string) => {
         if (table === "profiles") return { insert: profileInsert };
         if (table === "diners") return { insert: dinerInsert };
+        if (table === "audit_events") return { insert: vi.fn().mockResolvedValue({ error: null }) };
         throw new Error(`Tabla inesperada: ${table}`);
       }),
     } as unknown as SupabaseClient<Database>;
@@ -41,6 +44,7 @@ describe("acceso con contraseña de trabajadores", () => {
     const worker = await createWorkerAccount(admin, organizationId, {
       email: " Trabajador@Empresa.cl ",
       fullName: "Trabajador Prueba",
+      actorId,
       passwordSetupRedirectTo: redirectTo,
     });
 
@@ -72,6 +76,7 @@ describe("acceso con contraseña de trabajadores", () => {
     };
     query.select.mockReturnValue(query);
     query.eq.mockReturnValue(query);
+    const auditInsert = vi.fn().mockResolvedValue({ error: null });
     const admin = {
       auth: {
         admin: {
@@ -82,13 +87,16 @@ describe("acceso con contraseña de trabajadores", () => {
         },
         resetPasswordForEmail,
       },
-      from: vi.fn(() => query),
+      from: vi.fn((table: string) =>
+        table === "audit_events" ? { insert: auditInsert } : query,
+      ),
     } as unknown as SupabaseClient<Database>;
 
     const result = await sendWorkerPasswordSetupEmail(
       admin,
       organizationId,
       dinerId,
+      actorId,
       redirectTo,
     );
 
@@ -98,5 +106,22 @@ describe("acceso con contraseña de trabajadores", () => {
       { redirectTo },
     );
     expect(result).toEqual({ email: "trabajador@empresa.cl" });
+  });
+
+  it("revokes the worker profile and diner atomically", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { id: dinerId, active: false },
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    await expect(setWorkerAccountActive(client, dinerId, false)).resolves.toEqual({
+      id: dinerId,
+      active: false,
+    });
+    expect(rpc).toHaveBeenCalledWith("set_worker_account_active", {
+      target_diner_id: dinerId,
+      is_active: false,
+    });
   });
 });

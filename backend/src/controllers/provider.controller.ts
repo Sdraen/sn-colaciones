@@ -39,14 +39,17 @@ import { createNominalOrdersPdf } from "../services/report-pdf.service.js";
 import type {
   CreateProviderAccessRequest,
   SendProviderAccessPasswordSetupRequest,
+  UpdateProviderAccessStatusRequest,
 } from "../schemas/provider-access.schema.js";
 import { createAdminSupabaseClient } from "../lib/supabase.js";
 import {
   createProviderAccessAccount,
   listProviderAccessAccounts,
   sendProviderAccessPasswordSetupEmail,
+  setProviderAccessAccountActive,
 } from "../services/provider-access.service.js";
 import { getAppUrlEnv } from "../config/env.js";
+import { recordSecurityAuditEvent } from "../services/security-audit.service.js";
 
 export const getProviderAccessAccounts: RequestHandler = async (request, response) => {
   const { profile } = getRequestAuth(request);
@@ -65,6 +68,7 @@ export const postProviderAccessAccount: RequestHandler = async (request, respons
     profile.organizationId,
     {
       ...body,
+      actorId: profile.id,
       passwordSetupRedirectTo: getPasswordSetupRedirectUrl(),
     },
   );
@@ -78,7 +82,19 @@ export const postProviderAccessPasswordSetup: RequestHandler = async (request, r
     createAdminSupabaseClient(),
     profile.organizationId,
     params.accessUserId,
+    profile.id,
     getPasswordSetupRedirectUrl(),
+  );
+  response.status(200).json({ data: result });
+};
+
+export const patchProviderAccessStatus: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { params, body } = getValidatedRequest<UpdateProviderAccessStatusRequest>(request);
+  const result = await setProviderAccessAccountActive(
+    supabase,
+    params.accessUserId,
+    body.active,
   );
   response.status(200).json({ data: result });
 };
@@ -109,10 +125,17 @@ export const getProviderReport: RequestHandler = async (request, response) => {
 };
 
 export const getProviderReportPdf: RequestHandler = async (request, response) => {
-  const { supabase } = getRequestAuth(request);
+  const { profile, supabase } = getRequestAuth(request);
   const { query } = getValidatedRequest<ReportRequest>(request);
   const report = await getNominalOrdersReport(supabase, query);
   const pdf = await createNominalOrdersPdf(report);
+  await recordSecurityAuditEvent(createAdminSupabaseClient(), {
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    entityType: "report",
+    action: "report.nominal_pdf_downloaded",
+    metadata: { period: query.period, from: report.range.from, to: report.range.to },
+  });
   const fileName = `reporte-nominal-colaciones-${query.period}-${report.range.from}-${report.range.to}.pdf`;
 
   response.set({

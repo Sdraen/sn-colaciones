@@ -10,6 +10,7 @@ export interface AuthenticatedProfile {
 
 export interface RequestAuth {
   accessToken: string;
+  assuranceLevel: "aal1" | "aal2";
   user: User;
   profile: AuthenticatedProfile;
   supabase: SupabaseClient<Database>;

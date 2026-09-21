@@ -34,6 +34,7 @@ Copiar `.env.example` como `.env.local`:
 NODE_ENV=development
 PORT=4000
 CORS_ORIGIN=http://localhost:3000
+TRUST_PROXY_HOPS=0
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=sb_secret_...
@@ -42,7 +43,8 @@ EMAIL_FROM=SN Colaciones <notificaciones@tu-dominio.cl>
 APP_URL=https://tu-dominio.cl
 ```
 
-`SUPABASE_SECRET_KEY` es opcional mientras no se ejecuten tareas administrativas.
+`SUPABASE_SECRET_KEY` es obligatoria para la gestion de accesos, la auditoria de
+reportes y el resumen seguro de despacho. Nunca debe exponerse al frontend.
 
 ## Migraciones requeridas
 
@@ -65,6 +67,11 @@ Ejecutar en orden:
 15. `0015_controlled_published_menu_edits.sql`
 16. `0016_safe_operational_capacity_adjustments.sql`
 17. `0017_training_capacity_guard.sql`
+18. `0018_worker_meal_selection_rules.sql`
+19. `0019_company_receipt_control.sql`
+20. `0020_company_arrival_confirmation.sql`
+21. `0021_security_hardening.sql`
+22. `0022_admin_totp_mfa.sql`
 
 La API de pedidos, disponibilidad, capacitaciones, extras y excepciones necesita
 las funciones RPC creadas desde `0004` y actualizadas por las migraciones
@@ -77,6 +84,10 @@ Todos, excepto `/api/health`, reciben:
 ```http
 Authorization: Bearer <supabase-access-token>
 ```
+
+`provider_admin` y `company_admin` necesitan una sesion MFA `aal2` para todos
+los endpoints excepto `/api/v1/auth/me`. Trabajadores y despacho pueden operar
+con `aal1`. Si falta el segundo factor, la API responde `403 MFA_REQUIRED`.
 
 | Método | Ruta | Rol |
 | --- | --- | --- |
@@ -91,6 +102,7 @@ Authorization: Bearer <supabase-access-token>
 | PATCH | `/api/v1/notifications/:notificationId/read` | Destinatario |
 | GET | `/api/v1/company/workers` | Administradora Securitas |
 | POST | `/api/v1/company/workers` | Administradora Securitas |
+| PATCH | `/api/v1/company/workers/:workerId/status` | Administradora Securitas |
 | POST | `/api/v1/company/workers/:workerId/password-setup` | Administradora Securitas |
 | GET | `/api/v1/company/operations` | Administradora Securitas |
 | POST | `/api/v1/company/training-sessions` | Administradora Securitas |
@@ -111,6 +123,9 @@ Authorization: Bearer <supabase-access-token>
 | DELETE | `/api/v1/provider/calendar-blocks/:blockId` | Proveedora |
 | PATCH | `/api/v1/provider/menu-options/:menuOptionId/availability` | Proveedora |
 | PATCH | `/api/v1/provider/extra-requests/:requestId` | Proveedora |
+| GET/POST | `/api/v1/provider/access-users` | Proveedora |
+| PATCH | `/api/v1/provider/access-users/:accessUserId/status` | Proveedora |
+| POST | `/api/v1/provider/access-users/:accessUserId/password-setup` | Proveedora |
 | GET | `/api/v1/summaries/daily` | Proveedora, Securitas y despacho |
 | GET | `/api/v1/provider/operations` | Proveedora |
 | GET | `/api/v1/provider/reports/weekly` | Proveedora |

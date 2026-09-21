@@ -48,15 +48,25 @@ export function useAutoRefresh(
   useEffect(() => {
     if (!enabled) return;
 
+    let timer: number | undefined;
+    let stopped = false;
+    const schedule = () => {
+      const jitter = 0.85 + Math.random() * 0.3;
+      timer = window.setTimeout(async () => {
+        if (document.visibilityState === "visible") await refreshNow();
+        if (!stopped) schedule();
+      }, Math.round(intervalMs * jitter));
+    };
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void refreshNow();
     };
-    const timer = window.setInterval(refreshWhenVisible, intervalMs);
+    schedule();
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener("focus", refreshWhenVisible);
 
     return () => {
-      window.clearInterval(timer);
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenVisible);
     };

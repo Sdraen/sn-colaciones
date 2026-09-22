@@ -36,7 +36,7 @@ export async function getDailySummary(
       .eq("service_day_id", day.id),
     supabase
       .from("orders")
-      .select("id, menu_option_id, diner_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at, created_at")
+      .select("id, menu_option_id, diner_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at")
       .eq("service_day_id", day.id)
       .order("created_at", { ascending: true }),
     supabase
@@ -72,7 +72,7 @@ export async function getDailySummary(
   ]);
   const [dinersResult, trainingsResult, deliveryActorsResult] = await Promise.all([
     dinerIds.length
-      ? supabase.from("diners").select("id, full_name, employee_code").in("id", dinerIds)
+      ? supabase.from("diners").select("id, full_name").in("id", dinerIds)
       : Promise.resolve({ data: [], error: null }),
     trainingIds.length
       ? supabase.from("training_sessions").select("id, name, expected_attendees").in("id", trainingIds)
@@ -106,6 +106,7 @@ export async function getDailySummary(
   const sides = { ensalada: 0, fruta: 0, postre: 0, ninguno: 0 } satisfies Record<SideChoice, number>;
   let bread = 0;
   let tea = 0;
+  let juice = 0;
 
   const manifest = confirmed.map((order) => {
     const quantity = order.quantity;
@@ -114,6 +115,10 @@ export async function getDailySummary(
     const publicKind = legacyKind === "exceptional" ? "extra" : legacyKind;
     byKind[publicKind] += quantity;
     sides[order.side] += quantity;
+    if (order.training_package) {
+      sides.fruta += quantity;
+      juice += quantity;
+    }
     if (order.bread) bread += quantity;
     if (order.tea) tea += quantity;
     const menu = menuTotals.get(order.menu_option_id) ?? {
@@ -124,8 +129,10 @@ export async function getDailySummary(
     };
     menu.quantity += quantity;
     menuTotals.set(order.menu_option_id, menu);
-    addComponent(componentTotals, option?.dessert, quantity);
-    addComponent(componentTotals, option?.beverage, quantity);
+    if (!order.training_package) {
+      addComponent(componentTotals, option?.dessert, quantity);
+      addComponent(componentTotals, option?.beverage, quantity);
+    }
 
     const diner = order.diner_id ? dinersById.get(order.diner_id) : undefined;
     const training = order.training_session_id
@@ -134,16 +141,16 @@ export async function getDailySummary(
     return {
       orderId: order.id,
       beneficiary: diner?.full_name ?? order.beneficiary_label ?? training?.name ?? "Sin identificar",
-      employeeCode: diner?.employee_code ?? null,
       kind: publicKind,
       quantity,
       menuLabel: option?.label ?? "Menú sin identificar",
       menuDescription: option?.description ?? "",
-      dessert: option?.dessert ?? null,
-      beverage: option?.beverage ?? null,
+      dessert: order.training_package ? null : option?.dessert ?? null,
+      beverage: order.training_package ? "Jugo" : option?.beverage ?? null,
       side: order.side,
       bread: order.bread,
       tea: order.tea,
+      trainingPackage: order.training_package,
       fulfilledAt: order.fulfilled_at,
     };
   });
@@ -177,6 +184,9 @@ export async function getDailySummary(
       : []),
     ...(tea > 0
       ? [{ key: "complement:tea", type: "complement" as const, label: "Tés", expectedQuantity: tea }]
+      : []),
+    ...(juice > 0
+      ? [{ key: "complement:juice", type: "complement" as const, label: "Jugos de capacitación", expectedQuantity: juice }]
       : []),
   ].map((item) => {
     const savedItem = savedReceiptByKey.get(item.key);
@@ -226,6 +236,7 @@ export async function getDailySummary(
       sides,
       bread,
       tea,
+      juice,
     },
     menuBreakdown: [...menuTotals.values()].sort((a, b) => b.quantity - a.quantity),
     components: [...componentTotals.values()].sort((a, b) => b.quantity - a.quantity),

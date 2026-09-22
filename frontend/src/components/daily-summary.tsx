@@ -121,6 +121,7 @@ export function DailySummary({
             <Breakdown title="Complementos y componentes" rows={[
               { label: "Ensaladas", quantity: summary.totals.sides.ensalada },
               { label: "Frutas", quantity: summary.totals.sides.fruta },
+              { label: "Jugos de capacitación", quantity: summary.totals.juice },
               { label: "Postres elegidos", quantity: summary.totals.sides.postre },
               { label: "Panes", quantity: summary.totals.bread },
               { label: "Tés", quantity: summary.totals.tea },
@@ -139,7 +140,7 @@ export function DailySummary({
               <div className="mobile-scroll-tabs max-w-full overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]"><tr><th className="p-3">Nombre / grupo</th><th className="p-3">Tipo</th><th className="p-3">Menú</th><th className="p-3">Complemento</th><th className="p-3 text-right">Cantidad</th></tr></thead>
-                  <tbody>{summary.manifest.map((item) => <tr key={item.orderId} className="border-t border-[var(--line)]"><td className="p-3 font-bold">{item.beneficiary}{item.employeeCode ? <span className="block text-xs font-normal text-[var(--muted)]">{item.employeeCode}</span> : null}</td><td className="p-3">{kindLabel(item.kind)}</td><td className="p-3"><span className="font-bold">{item.menuLabel}</span><span className="block text-xs text-[var(--muted)]">{item.menuDescription}</span></td><td className="p-3">{sideLabel(item.side)} · {complementLabel(item)}</td><td className="p-3 text-right text-lg font-black">{item.quantity}</td></tr>)}</tbody>
+                  <tbody>{summary.manifest.map((item) => <tr key={item.orderId} className="border-t border-[var(--line)]"><td className="p-3 font-bold">{item.beneficiary}</td><td className="p-3">{kindLabel(item.kind)}</td><td className="p-3"><span className="font-bold">{item.menuLabel}</span><span className="block text-xs text-[var(--muted)]">{item.menuDescription}</span></td><td className="p-3">{item.trainingPackage ? `Ensalada, fruta, jugo y pan${item.tea ? ", té" : ""}` : `${sideLabel(item.side)} · ${complementLabel(item)}`}</td><td className="p-3 text-right text-lg font-black">{item.quantity}</td></tr>)}</tbody>
                 </table>
                 {summary.manifest.length === 0 ? <p className="p-8 text-center text-sm text-[var(--muted)]">Aún no hay colaciones confirmadas.</p> : null}
               </div>

@@ -67,8 +67,8 @@ export function OperationalOrderActions({
           menuOptionId,
           name,
           attendeeCount: training ? Number(attendeeCount) : null,
-          side,
-          bread,
+          side: training ? "ensalada" : side,
+          bread: training ? true : bread,
           tea,
         }),
       });
@@ -187,20 +187,32 @@ export function OperationalOrderActions({
                 </label>
               )}
 
-              <MealSelectionFields
-                side={side}
-                bread={bread}
-                tea={tea}
-                onSideChange={setSide}
-                onBreadChange={setBread}
-                onTeaChange={setTea}
-              />
+              {training ? (
+                <div className="rounded-xl bg-[var(--herb-soft)] p-4 text-sm">
+                  <p className="font-extrabold">Paquete por alumno</p>
+                  <p className="mt-1 text-[var(--muted)]">Almuerzo, ensalada, fruta, jugo y pan para cada uno.</p>
+                  <p className="mt-2 font-bold">{Number(attendeeCount) || 0} de cada uno en el conteo.</p>
+                  <label className="mt-3 flex items-center gap-2 font-bold">
+                    <input type="checkbox" checked={tea} onChange={(event) => setTea(event.target.checked)} className="accent-[var(--brand)]" />
+                    Agregar té para todos (opcional)
+                  </label>
+                </div>
+              ) : (
+                <MealSelectionFields
+                  side={side}
+                  bread={bread}
+                  tea={tea}
+                  onSideChange={setSide}
+                  onBreadChange={setBread}
+                  onTeaChange={setTea}
+                />
+              )}
 
               {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
 
               <button
                 type="submit"
-                disabled={saving || (!bread && !tea) || (training && trainingMaximum === null)}
+                disabled={saving || (!training && !bread && !tea) || (training && trainingMaximum === null)}
                 className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50"
               >
                 <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}

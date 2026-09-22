@@ -24,6 +24,7 @@ function dateTimeInChile(now: Date) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hourCycle: "h23",
   }).formatToParts(now);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
@@ -31,6 +32,11 @@ function dateTimeInChile(now: Date) {
   return {
     date: `${values.year}-${values.month}-${values.day}`,
     minutes: Number(values.hour) * 60 + Number(values.minute),
+    seconds:
+      Number(values.hour) * 3600 +
+      Number(values.minute) * 60 +
+      Number(values.second) +
+      now.getMilliseconds() / 1000,
   };
 }
 
@@ -76,5 +82,6 @@ export function isTrainingWindowOpen(
   if (!isTrainingDateAllowed(serviceDate, blocked)) return false;
   const current = dateTimeInChile(now);
   if (serviceDate < current.date) return false;
-  return current.minutes <= 9 * 60 || current.minutes >= 14 * 60;
+  return current.seconds <= 9 * 3600 ||
+    (serviceDate > current.date && current.seconds >= 14 * 3600);
 }

@@ -235,6 +235,51 @@ describe("contrato de migraciones de Supabase", () => {
     expect(migration).toContain("before insert or update or delete on public.profiles");
     expect(migration).toContain("expected_role not in ('company_admin', 'provider_admin')");
   });
+
+  it("marks new training orders as a fixed package without rewriting historical orders", () => {
+    const migration = readMigration("0023_training_package.sql");
+    expect(migration).toContain("add column training_package boolean not null default false");
+    expect(migration).toContain("create trigger orders_apply_training_package");
+    expect(migration).toContain("new.side := 'ensalada'");
+    expect(migration).toContain("new.bread := true");
+    expect(migration).toContain("'complement:juice'");
+    expect(migration).toContain("and order_record.training_package");
+  });
+
+  it("checks reserved capacity without granting menu edits to workers or Securitas", () => {
+    const migration = readMigration("0024_fix_capacity_guard_rls.sql");
+
+    expect(migration).toContain(
+      "alter function private.enforce_menu_option_capacity() security definer",
+    );
+    expect(migration).toContain(
+      "alter function private.enforce_menu_option_capacity() set search_path = ''",
+    );
+    expect(migration).toContain(
+      "revoke all on function private.enforce_menu_option_capacity() from public, anon, authenticated",
+    );
+    expect(migration).not.toContain("create policy");
+  });
+
+  it("shows training availability to Securitas without exposing it to workers", () => {
+    const migration = readMigration("0025_training_menu_availability.sql");
+
+    expect(migration).toContain("function public.get_menu_option_availability(target_menu_week_id uuid)");
+    expect(migration).toContain("menu_option.available_for_training");
+    expect(migration).toContain("private.current_user_has_role('company_admin')");
+    expect(migration).toContain("menu_option.available_for_workers or");
+    expect(migration).toContain("order_record.status = 'confirmed'");
+  });
+
+  it("limits the afternoon training reopening to future service dates", () => {
+    const migration = readMigration("0026_training_reopening_future_only.sql");
+
+    expect(migration).toContain("private.enforce_order_business_rules()");
+    expect(migration).toContain("matches_found <> 1");
+    expect(migration).toContain(
+      "organization_now::time < time ''14:00'' or target_day.service_date = organization_now::date",
+    );
+  });
 });
 
 function readMigration(fileName: string) {

@@ -13,6 +13,7 @@ type ReportOrder = Pick<
   | "side"
   | "bread"
   | "tea"
+  | "training_package"
   | "status"
   | "fulfilled_at"
 >;
@@ -30,6 +31,7 @@ type NominalReportOrder = Pick<
   | "side"
   | "bread"
   | "tea"
+  | "training_package"
   | "status"
   | "fulfilled_at"
 >;
@@ -43,6 +45,7 @@ export type ReportTotals = {
   sides: { salad: number; fruit: number; dessert: number; none: number };
   bread: number;
   tea: number;
+  juice: number;
 };
 
 export async function getOrdersReport(
@@ -66,7 +69,7 @@ export async function getOrdersReport(
         supabase
           .from("orders")
           .select(
-            "service_day_id, menu_option_id, kind, quantity, side, bread, tea, status, fulfilled_at",
+            "service_day_id, menu_option_id, kind, quantity, side, bread, tea, training_package, status, fulfilled_at",
           )
           .in("service_day_id", dayIds),
         supabase
@@ -129,6 +132,7 @@ export async function getOrdersReport(
             extra: optionTotals.byKind.extra + optionTotals.byKind.exceptional,
             salad: optionTotals.sides.salad,
             fruit: optionTotals.sides.fruit,
+            juice: optionTotals.juice,
             bread: optionTotals.bread,
             tea: optionTotals.tea,
           };
@@ -186,7 +190,7 @@ export async function getNominalOrdersReport(
     supabase
       .from("orders")
       .select(
-        "id, service_day_id, menu_option_id, diner_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at",
+        "id, service_day_id, menu_option_id, diner_id, training_session_id, kind, beneficiary_label, quantity, side, bread, tea, training_package, status, fulfilled_at",
       )
       .in("service_day_id", dayIds),
     supabase
@@ -206,9 +210,9 @@ export async function getNominalOrdersReport(
   const trainingIds = uniqueValues(orders.map((order) => order.training_session_id));
   const [dinersResult, trainingResult] = await Promise.all([
     dinerIds.length
-      ? supabase.from("diners").select("id, full_name, employee_code").in("id", dinerIds)
+      ? supabase.from("diners").select("id, full_name").in("id", dinerIds)
       : Promise.resolve({
-          data: [] as Array<{ id: string; full_name: string; employee_code: string | null }>,
+          data: [] as Array<{ id: string; full_name: string }>,
           error: null,
         }),
     trainingIds.length
@@ -240,7 +244,6 @@ export async function getNominalOrdersReport(
         orderId: order.id,
         serviceDate: datesByDay.get(order.service_day_id) ?? range.from,
         beneficiaryName: resolveBeneficiaryName(order, diner?.full_name, training?.name),
-        employeeCode: diner?.employee_code ?? "",
         kind: order.kind,
         menuLabel: option?.label ?? "Alternativa no disponible",
         preparation: option?.description || option?.label || "Sin preparación informada",
@@ -248,6 +251,7 @@ export async function getNominalOrdersReport(
         side: order.side,
         bread: order.bread,
         tea: order.tea,
+        trainingPackage: order.training_package,
         status: order.status,
         fulfilled: Boolean(order.fulfilled_at),
       };
@@ -299,6 +303,7 @@ export function summarizeReportOrders(orders: ReportOrder[]): ReportTotals {
     sides: { salad: 0, fruit: 0, dessert: 0, none: 0 },
     bread: 0,
     tea: 0,
+    juice: 0,
   };
 
   for (const order of orders) {
@@ -312,6 +317,10 @@ export function summarizeReportOrders(orders: ReportOrder[]): ReportTotals {
     if (order.fulfilled_at) totals.fulfilled += order.quantity;
     if (order.side === "ensalada") totals.sides.salad += order.quantity;
     if (order.side === "fruta") totals.sides.fruit += order.quantity;
+    if (order.training_package) {
+      totals.sides.fruit += order.quantity;
+      totals.juice += order.quantity;
+    }
     if (order.side === "postre") totals.sides.dessert += order.quantity;
     if (order.side === "ninguno") totals.sides.none += order.quantity;
     if (order.bread) totals.bread += order.quantity;
@@ -364,7 +373,6 @@ export type NominalReportRow = {
   orderId: string;
   serviceDate: string;
   beneficiaryName: string;
-  employeeCode: string;
   kind: OrderKind;
   menuLabel: string;
   preparation: string;
@@ -372,6 +380,7 @@ export type NominalReportRow = {
   side: Database["public"]["Tables"]["orders"]["Row"]["side"];
   bread: boolean;
   tea: boolean;
+  trainingPackage: boolean;
   status: Database["public"]["Tables"]["orders"]["Row"]["status"];
   fulfilled: boolean;
 };

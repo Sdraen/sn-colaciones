@@ -32,6 +32,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
       tableHeader("Total"),
       tableHeader("Ensalada"),
       tableHeader("Fruta"),
+      tableHeader("Jugo"),
       tableHeader("Pan"),
       tableHeader("Té"),
     ],
@@ -41,6 +42,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
       { text: String(item.total), alignment: "right", bold: true },
       { text: String(item.salad), alignment: "right" },
       { text: String(item.fruit), alignment: "right" },
+      { text: String(item.juice), alignment: "right" },
       { text: String(item.bread), alignment: "right" },
       { text: String(item.tea), alignment: "right" },
     ]),
@@ -49,7 +51,6 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
     [
       tableHeader("Fecha"),
       tableHeader("Trabajador o beneficiario"),
-      tableHeader("Código"),
       tableHeader("Tipo"),
       tableHeader("Preparación"),
       tableHeader("Acomp."),
@@ -64,12 +65,12 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
     body.push([
       {
         text: "No existen solicitudes para el período seleccionado.",
-        colSpan: 9,
+        colSpan: 8,
         alignment: "center",
         color: MUTED,
         margin: [0, 16],
       },
-      {}, {}, {}, {}, {}, {}, {}, {},
+      {}, {}, {}, {}, {}, {}, {},
     ]);
   }
 
@@ -155,7 +156,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
         table: {
           headerRows: 1,
           dontBreakRows: true,
-          widths: [50, 150, 45, 42, 42, 38, 38],
+          widths: [50, 150, 45, 42, 42, 42, 38, 38],
           body: preparationBody,
         },
         layout: reportTableLayout,
@@ -186,7 +187,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
         table: {
           headerRows: 1,
           dontBreakRows: true,
-          widths: [47, 116, 43, 50, 150, 48, 45, 27, 48],
+          widths: [47, 137, 50, 172, 48, 45, 27, 48],
           body,
         },
         layout: {
@@ -234,6 +235,7 @@ function summarizePreparations(rows: NominalReportRow[]) {
     total: number;
     salad: number;
     fruit: number;
+    juice: number;
     bread: number;
     tea: number;
   }>();
@@ -246,12 +248,17 @@ function summarizePreparations(rows: NominalReportRow[]) {
       total: 0,
       salad: 0,
       fruit: 0,
+      juice: 0,
       bread: 0,
       tea: 0,
     };
     group.total += row.quantity;
     if (row.side === "ensalada") group.salad += row.quantity;
     if (row.side === "fruta") group.fruit += row.quantity;
+    if (row.trainingPackage) {
+      group.fruit += row.quantity;
+      group.juice += row.quantity;
+    }
     if (row.bread) group.bread += row.quantity;
     if (row.tea) group.tea += row.quantity;
     groups.set(key, group);
@@ -288,10 +295,9 @@ function reportRow(row: NominalReportRow): TableCell[] {
   return [
     { text: formatDate(row.serviceDate), noWrap: true },
     { text: row.beneficiaryName, bold: row.kind === "regular" },
-    { text: row.employeeCode || "—" },
     { text: kindLabel(row.kind) },
     { stack: [{ text: row.menuLabel, bold: true }, { text: row.preparation, color: MUTED, margin: [0, 2, 0, 0] }] },
-    { text: sideLabel(row.side) },
+    { text: row.trainingPackage ? "Ensalada y fruta" : sideLabel(row.side) },
     { text: complementLabel(row) },
     { text: String(row.quantity), alignment: "right", bold: true },
     { text: statusLabel(row), color: statusColor(row), bold: true },
@@ -326,6 +332,7 @@ function sideLabel(side: NominalReportRow["side"]) {
 }
 
 function complementLabel(row: NominalReportRow) {
+  if (row.trainingPackage) return row.tea ? "Pan, jugo y té" : "Pan y jugo";
   if (row.bread && row.tea) return "Pan y té";
   if (row.bread) return "Pan";
   if (row.tea) return "Té";

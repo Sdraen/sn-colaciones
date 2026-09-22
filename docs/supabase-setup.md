@@ -124,6 +124,25 @@ cantidades esperadas y recibidas por preparación o complemento, informe
 faltantes y observaciones, y notifique a la proveedora dentro del sistema y por
 correo. La confirmación completa queda bloqueada mientras existan faltantes.
 
+Después de `0021_security_hardening.sql` y `0022_admin_totp_mfa.sql`, ejecutar
+`0023_training_package.sql` antes de desplegar el nuevo formulario. Esta
+migración incorpora el paquete fijo de capacitación y actualiza el conteo de
+recepción; no cambia automáticamente los pedidos históricos.
+
+Luego ejecutar `supabase/migrations/0024_fix_capacity_guard_rls.sql`. Corrige
+la verificación atómica de cupos para que Securitas y los trabajadores puedan
+registrar pedidos sin recibir un falso error de disponibilidad, manteniendo
+exclusiva de la proveedora la edición de menús.
+
+Luego ejecutar `supabase/migrations/0025_training_menu_availability.sql`. La
+disponibilidad que ve Securitas en el formulario de capacitación reflejará
+las reservas confirmadas; los trabajadores seguirán viendo únicamente las
+alternativas que pueden pedir.
+
+Luego ejecutar `supabase/migrations/0026_training_reopening_future_only.sql`.
+Desde las 14:00 Securitas sólo puede crear capacitaciones para fechas futuras;
+el registro para el mismo día sigue permitido hasta las 09:00.
+
 ## 3. Estado y pendientes antes de producción
 
 - Las migraciones `0001` a `0020` ya fueron ejecutadas en el proyecto remoto.

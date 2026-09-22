@@ -30,6 +30,7 @@ describe("reportes por período", () => {
         side: "ensalada",
         bread: true,
         tea: true,
+        training_package: false,
         status: "confirmed",
         fulfilled_at: "2026-08-26T16:00:00.000Z",
       },
@@ -41,6 +42,7 @@ describe("reportes por período", () => {
         side: "postre",
         bread: false,
         tea: true,
+        training_package: false,
         status: "confirmed",
         fulfilled_at: null,
       },
@@ -52,6 +54,7 @@ describe("reportes por período", () => {
         side: "fruta",
         bread: true,
         tea: false,
+        training_package: false,
         status: "confirmed",
         fulfilled_at: null,
       },
@@ -63,6 +66,7 @@ describe("reportes por período", () => {
         side: "ninguno",
         bread: true,
         tea: false,
+        training_package: false,
         status: "cancelled",
         fulfilled_at: null,
       },
@@ -78,5 +82,26 @@ describe("reportes por período", () => {
       byKind: { regular: 1, training: 20, extra: 2, exceptional: 0 },
       sides: { salad: 1, fruit: 2, dessert: 20, none: 0 },
     });
+  });
+
+  it("cuenta ensalada, fruta, jugo y pan por cada alumno del paquete de capacitación", () => {
+    const totals = summarizeReportOrders([{
+      service_day_id: "day-1",
+      menu_option_id: "training-menu",
+      kind: "training",
+      quantity: 25,
+      side: "ensalada",
+      bread: true,
+      tea: false,
+      training_package: true,
+      status: "confirmed",
+      fulfilled_at: null,
+    }]);
+
+    expect(totals.sides.salad).toBe(25);
+    expect(totals.sides.fruit).toBe(25);
+    expect(totals.juice).toBe(25);
+    expect(totals.bread).toBe(25);
+    expect(totals.tea).toBe(0);
   });
 });

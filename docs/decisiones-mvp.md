@@ -5,6 +5,7 @@
 ## Reglas confirmadas
 
 - Existen cuatro roles: trabajador, administradora Securitas, administradora proveedora y despacho.
+- Las capacitaciones nuevas incluyen por cada alumno almuerzo, ensalada, fruta, jugo y pan. Securitas sólo decide si añade té al grupo; todos los componentes se multiplican por la cantidad de alumnos y aparecen en los reportes y en el control de recepción.
 - La administradora proveedora crea los accesos individuales de despacho y de
   las administradoras Securitas, y puede reenviar la invitación para definir la
   contraseña. Cada persona usa su propia cuenta; no se comparten claves entre
@@ -39,7 +40,7 @@
   día” sólo contrae visualmente el formulario y no guarda, bloquea ni modifica
   pedidos, cupos o ventanas horarias.
 - La proveedora puede definir un menú semanal opcional para capacitaciones, en un apartado separado del menú de trabajadores. Debe informar un cupo que se aplica y consume por separado en cada día hábil.
-- Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana, sin superar la disponibilidad restante de ese día. El ingreso está habilitado hasta las 09:00 y vuelve a abrir desde las 14:00; entre ambos horarios permanece cerrado. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
+- Marcia Sepúlveda, como administradora Securitas, puede registrar capacitaciones para cualquier fecha hábil actual o futura de la semana, sin superar la disponibilidad restante de ese día. Hasta las 09:00 puede registrar para hoy o fechas futuras; entre las 09:00 y las 14:00 no puede crear nuevas capacitaciones; desde las 14:00 sólo puede hacerlo para fechas futuras. Los alumnos no necesitan cuentas y todo el grupo recibe el menú definido por la proveedora.
 - Al modificar una capacitación se valida la diferencia de cupos y al eliminarla se liberan automáticamente. La base de datos serializa registros simultáneos para impedir sobrecupos.
 - La forma de operar durante feriados y vacaciones sigue pendiente de
   confirmación. Es posible que exista servicio con una cantidad menor informada

@@ -86,7 +86,7 @@ export async function listWorkerOrders(
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
-      "id, service_day_id, menu_option_id, diner_id, kind, quantity, side, bread, tea, status, fulfilled_at, created_at, updated_at",
+      "id, service_day_id, menu_option_id, diner_id, kind, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at, updated_at",
     )
     .eq("diner_id", diner.id)
     .in("service_day_id", serviceDayIds)
@@ -117,6 +117,7 @@ type SerializableOrder = Pick<
   | "side"
   | "bread"
   | "tea"
+  | "training_package"
   | "status"
   | "fulfilled_at"
   | "created_at"
@@ -134,6 +135,7 @@ function serializeOrder(order: SerializableOrder) {
     side: order.side,
     bread: order.bread,
     tea: order.tea,
+    trainingPackage: order.training_package,
     status: order.status,
     fulfilledAt: order.fulfilled_at,
     createdAt: order.created_at,

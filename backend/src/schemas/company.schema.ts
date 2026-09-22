@@ -21,12 +21,13 @@ function requireBreadOrTea<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
 }
 
 export const createTrainingRequestSchema = z.object({
-  body: requireBreadOrTea(
-    mealSelectionSchema.extend({
-      name: z.string().trim().min(3).max(120),
-      attendeeCount: z.number().int().min(1).max(500),
-    }),
-  ),
+  body: z.object({
+    serviceDayId: uuidSchema,
+    menuOptionId: uuidSchema,
+    name: z.string().trim().min(3).max(120),
+    attendeeCount: z.number().int().min(1).max(500),
+    tea: z.boolean().default(false),
+  }).strict(),
   params: z.object({}),
   query: z.object({}),
 });

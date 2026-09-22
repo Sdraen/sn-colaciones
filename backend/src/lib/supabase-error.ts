@@ -64,7 +64,7 @@ const domainErrors: Record<string, { status: number; message: string }> = {
   TRAINING_CAPACITY_EXCEEDED: { status: 409, message: "La cantidad de alumnos supera los cupos de capacitación disponibles para ese día" },
   TRAINING_MENU_REQUIRED: { status: 409, message: "La proveedora todavía no ha definido el menú de capacitación para ese día" },
   TRAINING_SESSION_MISMATCH: { status: 409, message: "La capacitación no corresponde al día seleccionado" },
-  TRAINING_WINDOW_CLOSED: { status: 409, message: "Las capacitaciones para fechas actuales o futuras se registran hasta las 09:00 y desde las 14:00" },
+  TRAINING_WINDOW_CLOSED: { status: 409, message: "Hasta las 09:00 se permiten capacitaciones para hoy o fechas futuras; desde las 14:00, solo para fechas futuras" },
   WORKER_ROLE_REQUIRED: { status: 403, message: "Esta acción requiere el rol de trabajador" },
   WORKER_NOT_FOUND: { status: 404, message: "No se encontro el trabajador" },
 };

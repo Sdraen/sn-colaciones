@@ -100,7 +100,7 @@ export function OperationsReports({
       if (kindFilter !== "all" && kindFilter !== "extra" && row.kind !== kindFilter) return false;
       if (menuFilter !== "all" && row.menuLabel !== menuFilter) return false;
       if (!query) return true;
-      return normalizeSearch(`${row.beneficiaryName} ${row.employeeCode}`).includes(query);
+      return normalizeSearch(row.beneficiaryName).includes(query);
     });
   }, [dayFilter, kindFilter, menuFilter, report.nominalRows, search]);
   const legacyNominalRows = useMemo(() => {
@@ -109,7 +109,7 @@ export function OperationsReports({
       if (row.status !== "confirmed") return false;
       if (!query) return true;
       const values = {
-        worker: `${row.beneficiaryName} ${row.employeeCode}`,
+        worker: row.beneficiaryName,
         menu: `${row.menuLabel} ${row.preparation}`,
         kind: kindLabel(row.kind),
       };
@@ -355,6 +355,7 @@ export function OperationsReports({
         <div className="provider-stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Ensaladas" value={report.totals.sides.salad} />
           <Metric label="Frutas" value={report.totals.sides.fruit} />
+          <Metric label="Jugos capacitación" value={report.totals.juice} />
           <Metric label="Pan" value={report.totals.bread} />
           <Metric label="Té" value={report.totals.tea} />
         </div>
@@ -375,6 +376,7 @@ export function OperationsReports({
               <th className="px-4 py-3 text-right">Final</th>
               <th className="px-4 py-3 text-right">Ensalada</th>
               <th className="px-4 py-3 text-right">Fruta</th>
+              <th className="px-4 py-3 text-right">Jugo</th>
               <th className="px-4 py-3 text-right">Pan</th>
               <th className="px-5 py-3 text-right">Té</th>
             </tr>
@@ -388,13 +390,14 @@ export function OperationsReports({
                 <td className="px-4 py-4 text-right font-black">{item.confirmed}</td>
                 <td className="px-4 py-4 text-right">{item.salad}</td>
                 <td className="px-4 py-4 text-right">{item.fruit}</td>
+                <td className="px-4 py-4 text-right">{item.juice}</td>
                 <td className="px-4 py-4 text-right">{item.bread}</td>
                 <td className="px-5 py-4 text-right">{item.tea}</td>
               </tr>
             )))}
             {report.days.every((day) => day.menuBreakdown.length === 0) ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-[var(--muted)]">
+                <td colSpan={9} className="p-8 text-center text-[var(--muted)]">
                   No hay registros en el período.
                 </td>
               </tr>
@@ -445,10 +448,10 @@ export function OperationsReports({
                 {legacyNominalRows.map((row) => (
                   <tr key={row.orderId}>
                     <td className="p-3 font-bold">{formatChileanDate(row.serviceDate)}</td>
-                    <td className="p-3"><strong>{row.beneficiaryName}</strong>{row.employeeCode ? <span className="block text-xs text-[var(--muted)]">{row.employeeCode}</span> : null}</td>
+                    <td className="p-3"><strong>{row.beneficiaryName}</strong></td>
                     <td className="p-3">{kindLabel(row.kind)}</td>
                     <td className="p-3"><strong>{row.menuLabel}</strong><span className="block text-xs text-[var(--muted)]">{row.preparation}</span></td>
-                    <td className="p-3">{sideLabel(row.side)}</td>
+                    <td className="p-3">{row.trainingPackage ? "Ensalada y fruta · Jugo" : sideLabel(row.side)}</td>
                     <td className="p-3">{row.bread ? "Sí" : "No"}</td>
                     <td className="p-3">{row.tea ? "Sí" : "No"}</td>
                     <td className="p-3 text-right font-black">{row.quantity}</td>
@@ -493,6 +496,7 @@ function ProviderSummary({ report }: { report: OrdersReportDto }) {
           items={[
             { label: "Ensaladas", value: report.totals.sides.salad },
             { label: "Frutas", value: report.totals.sides.fruit },
+            { label: "Jugos de capacitación", value: report.totals.juice },
             { label: "Postres", value: report.totals.sides.dessert },
             { label: "Pan", value: report.totals.bread },
             { label: "Té", value: report.totals.tea },
@@ -580,6 +584,7 @@ function GroupedPreparations({
                           <th className="px-4 py-3 text-right">Final</th>
                           <th className="px-4 py-3 text-right">Ensalada</th>
                           <th className="px-4 py-3 text-right">Fruta</th>
+                          <th className="px-4 py-3 text-right">Jugo</th>
                           <th className="px-4 py-3 text-right">Pan</th>
                           <th className="px-5 py-3 text-right">Té</th>
                         </tr>
@@ -595,6 +600,7 @@ function GroupedPreparations({
                             <td className="px-4 py-4 text-right font-black">{item.confirmed}</td>
                             <td className="px-4 py-4 text-right">{item.salad}</td>
                             <td className="px-4 py-4 text-right">{item.fruit}</td>
+                            <td className="px-4 py-4 text-right">{item.juice}</td>
                             <td className="px-4 py-4 text-right">{item.bread}</td>
                             <td className="px-5 py-4 text-right">{item.tea}</td>
                           </tr>
@@ -614,6 +620,7 @@ function GroupedPreparations({
                           <CompactValue label="Final" value={item.confirmed} strong />
                           <CompactValue label="Ensalada" value={item.salad} />
                           <CompactValue label="Fruta" value={item.fruit} />
+                          <CompactValue label="Jugo" value={item.juice} />
                           <CompactValue label="Pan" value={item.bread} />
                           <CompactValue label="Té" value={item.tea} />
                         </dl>
@@ -701,7 +708,7 @@ function ProviderNominalReport({
               type="search"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Nombre o código"
+              placeholder="Nombre del funcionario o grupo"
               className="form-control min-h-11 pl-10 pr-3 text-sm"
             />
           </label>
@@ -760,14 +767,13 @@ function ProviderNominalReport({
                 <td className="p-3 font-bold">{formatChileanDate(row.serviceDate)}</td>
                 <td className="p-3">
                   <strong>{row.beneficiaryName}</strong>
-                  {row.employeeCode ? <span className="block text-xs text-[var(--muted)]">{row.employeeCode}</span> : null}
                 </td>
                 <td className="p-3">{kindLabel(row.kind)}</td>
                 <td className="p-3">
                   <strong>{row.menuLabel}</strong>
                   <span className="block text-xs text-[var(--muted)]">{row.preparation}</span>
                 </td>
-                <td className="p-3">{sideLabel(row.side)}</td>
+                <td className="p-3">{row.trainingPackage ? "Ensalada y fruta · Jugo" : sideLabel(row.side)}</td>
                 <td className="p-3">{row.bread ? "Sí" : "No"}</td>
                 <td className="p-3">{row.tea ? "Sí" : "No"}</td>
                 <td className="p-3 text-right font-black">{row.quantity}</td>
@@ -786,9 +792,7 @@ function ProviderNominalReport({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h4 className="font-black">{row.beneficiaryName}</h4>
-                <p className="text-xs text-[var(--muted)]">
-                  {row.employeeCode || "Sin código"} · {formatChileanDate(row.serviceDate)}
-                </p>
+                <p className="text-xs text-[var(--muted)]">{formatChileanDate(row.serviceDate)}</p>
               </div>
               <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold">
                 x{row.quantity}
@@ -800,7 +804,7 @@ function ProviderNominalReport({
               <p className="text-xs text-[var(--muted)]">{row.preparation}</p>
             </div>
             <p className="mt-3 text-xs font-bold text-[var(--muted)]">
-              {sideLabel(row.side)} · {row.bread ? "Con pan" : "Sin pan"} · {row.tea ? "Con té" : "Sin té"}
+              {row.trainingPackage ? "Ensalada, fruta y jugo" : sideLabel(row.side)} · {row.bread ? "Con pan" : "Sin pan"} · {row.tea ? "Con té" : "Sin té"}
             </p>
           </article>
         ))}

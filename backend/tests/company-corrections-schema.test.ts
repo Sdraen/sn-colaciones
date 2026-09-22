@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createTrainingRequestSchema,
   deleteExtraRequestRequestSchema,
   deleteOperationalOrderRequestSchema,
   updateExtraRequestRequestSchema,
@@ -10,6 +11,28 @@ const validId = "11111111-1111-4111-8111-111111111111";
 const validOptionId = "22222222-2222-4222-8222-222222222222";
 
 describe("correcciones operacionales de Securitas", () => {
+  it("registra capacitación con paquete fijo y té opcional", () => {
+    const request = {
+      body: {
+        serviceDayId: validId,
+        menuOptionId: validOptionId,
+        name: "Guardias nuevos",
+        attendeeCount: 25,
+        tea: false,
+      },
+      params: {},
+      query: {},
+    };
+    expect(createTrainingRequestSchema.safeParse(request).success).toBe(true);
+    expect(createTrainingRequestSchema.parse({
+      ...request,
+      body: { serviceDayId: validId, menuOptionId: validOptionId, name: "Guardias nuevos", attendeeCount: 25 },
+    }).body.tea).toBe(false);
+    expect(createTrainingRequestSchema.safeParse({
+      ...request,
+      body: { ...request.body, side: "fruta" },
+    }).success).toBe(false);
+  });
   it("acepta la edición de una capacitación o extra con selección completa", () => {
     const result = updateOperationalOrderRequestSchema.safeParse({
       body: {

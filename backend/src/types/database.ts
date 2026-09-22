@@ -400,6 +400,7 @@ export interface Database {
           side: SideChoice;
           bread: boolean;
           tea: boolean;
+          training_package: boolean;
           status: OrderStatus;
           fulfilled_at: string | null;
           created_at: string;
@@ -419,6 +420,7 @@ export interface Database {
           side: SideChoice;
           bread?: boolean;
           tea?: boolean;
+          training_package?: boolean;
           status?: OrderStatus;
           fulfilled_at?: string | null;
           created_at?: string;

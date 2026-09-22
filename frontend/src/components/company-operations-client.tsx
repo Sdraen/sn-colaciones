@@ -48,7 +48,7 @@ const modes = [
   {
     value: "training",
     label: "Capacitación",
-    schedule: "Hasta 09:00 · desde 14:00",
+    schedule: "Hasta 09:00 · desde 14:00 solo futuras",
     description: "Registra a todos los alumnos como un solo grupo.",
     icon: GraduationCap,
   },
@@ -88,6 +88,7 @@ export function CompanyOperationsClient({
   const [operations, setOperations] = useState(initialOperations);
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [mode, setMode] = useState<Mode>("training");
+  const [trainingQuantity, setTrainingQuantity] = useState("1");
   const [view, setView] = useState<View>(initialView ?? "operations");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -179,7 +180,7 @@ export function CompanyOperationsClient({
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const complements = form.getAll("complement").map(String);
-    if (complements.length === 0) {
+    if (mode === "extra" && complements.length === 0) {
       setError("Selecciona pan, té o ambos.");
       return;
     }
@@ -187,9 +188,6 @@ export function CompanyOperationsClient({
       serviceDayId: activeDay.id,
       menuOptionId:
         mode === "training" ? trainingMenu?.id : String(form.get("menuOptionId")),
-      side: String(form.get("side")) as SideChoice,
-      bread: complements.includes("bread"),
-      tea: complements.includes("tea"),
     };
 
     setSaving(true);
@@ -198,12 +196,12 @@ export function CompanyOperationsClient({
     try {
       if (mode === "training") {
         const name = String(form.get("name"));
-        const attendeeCount = Number(form.get("quantity"));
+        const attendeeCount = Number(trainingQuantity);
         await browserApiRequest(
           "/api/v1/company/training-sessions",
           {
             method: "POST",
-            body: JSON.stringify({ ...common, name, attendeeCount }),
+            body: JSON.stringify({ ...common, name, attendeeCount, tea: form.has("trainingTea") }),
           },
         );
       } else {
@@ -211,6 +209,9 @@ export function CompanyOperationsClient({
           method: "POST",
           body: JSON.stringify({
             ...common,
+            side: String(form.get("side")) as SideChoice,
+            bread: complements.includes("bread"),
+            tea: complements.includes("tea"),
             beneficiaryLabel: String(form.get("name")),
             ...(lateExtra ? { reason: String(form.get("reason")) } : {}),
           }),
@@ -218,6 +219,7 @@ export function CompanyOperationsClient({
       }
       await refreshOperations();
       formElement.reset();
+      setTrainingQuantity("1");
       setMessage(
         mode === "extra" && lateExtra
           ? "Solicitud de colación extra enviada a la proveedora."
@@ -511,6 +513,8 @@ export function CompanyOperationsClient({
                               : 500
                           }
                           disabled={!trainingOpen}
+                          value={trainingQuantity}
+                          onChange={(event) => setTrainingQuantity(event.target.value)}
                           required
                           placeholder="Ej.: 30"
                           className="company-input form-control px-4"
@@ -564,45 +568,46 @@ export function CompanyOperationsClient({
                     </Field>
                   )}
 
-                  <Field label="Acompañamiento">
-                    <FormSelect
-                      name="side"
-                      required
-                      ariaLabel="Acompañamiento"
-                      defaultValue="ensalada"
-                      options={[
-                        { value: "ensalada", label: "Ensalada" },
-                        { value: "fruta", label: "Fruta" },
-                      ]}
-                      className="company-input text-sm font-semibold"
-                    />
-                  </Field>
-
-                  <fieldset>
-                    <legend className="text-sm font-extrabold">Complementos</legend>
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      Selecciona pan, té o ambos.
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
-                      {[
-                        ["bread", "Pan"],
-                        ["tea", "Té"],
-                      ].map(([value, label]) => (
-                        <label
-                          key={value}
-                          className="company-choice cursor-pointer rounded-xl border border-[var(--line)] bg-white p-3 font-bold"
-                        >
-                          <input
-                            name="complement"
-                            type="checkbox"
-                            value={value}
-                            className="mr-2 accent-[var(--brand)]"
-                          />
-                          {label}
-                        </label>
-                      ))}
+                  {mode === "training" ? (
+                    <div className="rounded-xl bg-[var(--herb-soft)] p-4 text-sm">
+                      <p className="font-extrabold">Incluido para cada alumno</p>
+                      <p className="mt-1 text-[var(--muted)]">Almuerzo, ensalada, fruta, jugo y pan.</p>
+                      <p className="mt-2 font-bold">{Number(trainingQuantity) || 0} de cada uno en el conteo.</p>
+                      <label className="mt-3 flex items-center gap-2 font-bold">
+                        <input name="trainingTea" type="checkbox" className="accent-[var(--brand)]" />
+                        Agregar té para todos los alumnos (opcional)
+                      </label>
                     </div>
-                  </fieldset>
+                  ) : (
+                    <>
+                      <Field label="Acompañamiento">
+                        <FormSelect
+                          name="side"
+                          required
+                          ariaLabel="Acompañamiento"
+                          defaultValue="ensalada"
+                          options={[
+                            { value: "ensalada", label: "Ensalada" },
+                            { value: "fruta", label: "Fruta" },
+                          ]}
+                          className="company-input text-sm font-semibold"
+                        />
+                      </Field>
+
+                      <fieldset>
+                        <legend className="text-sm font-extrabold">Complementos</legend>
+                        <p className="mt-1 text-xs text-[var(--muted)]">Selecciona pan, té o ambos.</p>
+                        <div className="mt-2 grid grid-cols-2 gap-3">
+                          {[["bread", "Pan"], ["tea", "Té"]].map(([value, label]) => (
+                            <label key={value} className="company-choice cursor-pointer rounded-xl border border-[var(--line)] bg-white p-3 font-bold">
+                              <input name="complement" type="checkbox" value={value} className="mr-2 accent-[var(--brand)]" />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    </>
+                  )}
 
                   {mode === "extra" && lateExtra ? (
                     <Field label="Motivo de la solicitud tardía">
@@ -701,7 +706,9 @@ export function CompanyOperationsClient({
                             <div className="flex justify-between gap-3">
                               <dt>Selección</dt>
                               <dd className="text-right font-bold text-[var(--ink)]">
-                                {sideLabel(order.side)} · {complementLabel(order)}
+                                {order.trainingPackage
+                                  ? `Ensalada · Fruta · Jugo · Pan${order.tea ? " · Té" : ""}`
+                                  : `${sideLabel(order.side)} · ${complementLabel(order)}`}
                               </dd>
                             </div>
                           </dl>
@@ -859,7 +866,7 @@ function complementLabel(order: { bread: boolean; tea: boolean }) {
 function closedWindowMessage(mode: Mode, blocked: boolean) {
   if (blocked) return "La fecha está bloqueada por feriado, vacaciones o día sin servicio.";
   if (mode === "training") {
-    return "Puedes registrar fechas actuales o futuras hasta las 09:00 y nuevamente desde las 14:00.";
+    return "Hasta las 09:00 puedes registrar capacitaciones para hoy o fechas futuras. Desde las 14:00, solo para fechas futuras.";
   }
   return "Las colaciones extra abren a las 08:00 y cierran por completo a las 13:00.";
 }

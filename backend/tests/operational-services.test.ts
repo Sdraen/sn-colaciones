@@ -27,6 +27,7 @@ const orderRow: Database["public"]["Tables"]["orders"]["Row"] = {
   side: "ensalada",
   bread: true,
   tea: false,
+  training_package: true,
   status: "confirmed",
   fulfilled_at: null,
   created_at: "2026-08-26T12:00:00.000Z",
@@ -64,8 +65,6 @@ describe("servicios operacionales atómicos", () => {
       menuOptionId: orderRow.menu_option_id,
       name: "Inducción agosto",
       attendeeCount: 30,
-      side: "ensalada",
-      bread: true,
       tea: false,
     });
 
@@ -79,7 +78,7 @@ describe("servicios operacionales atómicos", () => {
       include_bread: true,
       include_tea: false,
     });
-    expect(result).toMatchObject({ kind: "training", quantity: 30 });
+    expect(result).toMatchObject({ kind: "training", quantity: 30, trainingPackage: true });
   });
 
   it("conserva la selección de comida en la solicitud extraordinaria", async () => {

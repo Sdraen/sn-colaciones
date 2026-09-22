@@ -15,15 +15,15 @@ type MealSelection = {
 
 export async function createTrainingOrder(
   supabase: UserDatabaseClient,
-  input: MealSelection & { name: string; attendeeCount: number },
+  input: { serviceDayId: string; menuOptionId: string; name: string; attendeeCount: number; tea: boolean },
 ) {
   const { data, error } = await supabase.rpc("create_training_order", {
     target_service_day_id: input.serviceDayId,
     target_menu_option_id: input.menuOptionId,
     training_name: input.name,
     attendee_count: input.attendeeCount,
-    selected_side: input.side,
-    include_bread: input.bread,
+    selected_side: "ensalada",
+    include_bread: true,
     include_tea: input.tea,
   });
   if (error) throwSupabaseError(error, "No fue posible registrar la capacitación");
@@ -196,7 +196,7 @@ export async function getCompanyOperations(
       ? supabase
           .from("orders")
           .select(
-            "id, service_day_id, menu_option_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at, created_at",
+            "id, service_day_id, menu_option_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at",
           )
           .in("service_day_id", serviceDayIds)
           .in("kind", ["training", "extra", "exceptional"])
@@ -245,6 +245,7 @@ type OperationalOrder = Pick<
   | "side"
   | "bread"
   | "tea"
+  | "training_package"
   | "status"
   | "fulfilled_at"
   | "created_at"
@@ -284,6 +285,7 @@ function serializeOperationalOrder(order: OperationalOrder) {
     side: order.side,
     bread: order.bread,
     tea: order.tea,
+    trainingPackage: order.training_package,
     status: order.status,
     fulfilledAt: order.fulfilled_at,
     createdAt: order.created_at,

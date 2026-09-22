@@ -123,7 +123,7 @@ export async function getWeeklyProviderReport(
     ? await supabase
         .from("orders")
         .select(
-          "id, service_day_id, menu_option_id, kind, quantity, side, bread, tea, status, fulfilled_at, created_at",
+          "id, service_day_id, menu_option_id, kind, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at",
         )
         .in("service_day_id", serviceDayIds)
     : { data: [], error: null };
@@ -187,7 +187,7 @@ export async function getProviderOperations(
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
-      "id, service_day_id, menu_option_id, diner_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, status, fulfilled_at, created_at, updated_at",
+      "id, service_day_id, menu_option_id, diner_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at, updated_at",
     )
     .in("service_day_id", serviceDayIds)
     .order("created_at", { ascending: false });
@@ -302,6 +302,7 @@ export async function getProviderOperations(
         side: order.side,
         bread: order.bread,
         tea: order.tea,
+        trainingPackage: order.training_package,
         status: order.status,
         fulfilledAt: order.fulfilled_at,
         createdAt: order.created_at,
@@ -340,11 +341,12 @@ type ReportTotals = {
   sides: { salad: number; fruit: number; dessert: number; none: number };
   bread: number;
   tea: number;
+  juice: number;
 };
 
 type ReportOrder = Pick<
   Database["public"]["Tables"]["orders"]["Row"],
-  "kind" | "quantity" | "side" | "bread" | "tea" | "status" | "fulfilled_at"
+  "kind" | "quantity" | "side" | "bread" | "tea" | "training_package" | "status" | "fulfilled_at"
 >;
 
 function createEmptyTotals(): ReportTotals {
@@ -357,6 +359,7 @@ function createEmptyTotals(): ReportTotals {
     sides: { salad: 0, fruit: 0, dessert: 0, none: 0 },
     bread: 0,
     tea: 0,
+    juice: 0,
   };
 }
 
@@ -372,6 +375,10 @@ function addOrderToTotals(totals: ReportTotals, order: ReportOrder) {
   if (order.fulfilled_at) totals.fulfilled += order.quantity;
   if (order.side === "ensalada") totals.sides.salad += order.quantity;
   if (order.side === "fruta") totals.sides.fruit += order.quantity;
+  if (order.training_package) {
+    totals.sides.fruit += order.quantity;
+    totals.juice += order.quantity;
+  }
   if (order.side === "postre") totals.sides.dessert += order.quantity;
   if (order.side === "ninguno") totals.sides.none += order.quantity;
   if (order.bread) totals.bread += order.quantity;

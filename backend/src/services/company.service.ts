@@ -8,6 +8,7 @@ type UserDatabaseClient = SupabaseClient<Database>;
 type MealSelection = {
   serviceDayId: string;
   menuOptionId: string;
+  quantity: number;
   side: SideChoice;
   bread: boolean;
   tea: boolean;
@@ -29,6 +30,21 @@ export async function createTrainingOrder(
   if (error) throwSupabaseError(error, "No fue posible registrar la capacitación");
   if (!data) throw new AppError("No se generó el pedido de capacitación", 503, "TRAINING_SAVE_EMPTY");
   return serializeOperationalOrder(data);
+}
+
+export async function createTrainingBatch(
+  supabase: UserDatabaseClient,
+  input: { serviceDayId: string; name: string; tea: boolean; items: { menuOptionId: string; quantity: number }[] },
+) {
+  const { data, error } = await supabase.rpc("create_company_training_batch", {
+    target_service_day_id: input.serviceDayId,
+    training_name: input.name,
+    include_tea: input.tea,
+    requested_items: input.items,
+  });
+  if (error) throwSupabaseError(error, "No fue posible registrar las preparaciones de capacitaciÃ³n");
+  if (!Array.isArray(data)) throw new AppError("No se generÃ³ la capacitaciÃ³n", 503, "TRAINING_SAVE_EMPTY");
+  return data.map((row) => serializeOperationalOrder(row as Database["public"]["Tables"]["orders"]["Row"]));
 }
 
 export async function createExtraOrder(
@@ -64,10 +80,11 @@ export async function createExtraOrder(
     return { outcome: "pending" as const, request };
   }
 
-  const { data, error } = await supabase.rpc("create_extra_order", {
+  const { data, error } = await supabase.rpc("create_extra_order_with_quantity", {
     target_service_day_id: input.serviceDayId,
     target_menu_option_id: input.menuOptionId,
     beneficiary_name: input.beneficiaryLabel,
+    requested_quantity: input.quantity,
     selected_side: input.side,
     include_bread: input.bread,
     include_tea: input.tea,
@@ -77,15 +94,44 @@ export async function createExtraOrder(
   return { outcome: "confirmed" as const, order: serializeOperationalOrder(data) };
 }
 
+export async function createExtraBatch(
+  supabase: UserDatabaseClient,
+  input: {
+    serviceDayId: string;
+    beneficiaryLabel: string;
+    side: SideChoice;
+    bread: boolean;
+    tea: boolean;
+    reason?: string;
+    items: { menuOptionId: string; quantity: number }[];
+  },
+) {
+  const { data, error } = await supabase.rpc("create_company_extra_batch", {
+    target_service_day_id: input.serviceDayId,
+    beneficiary_name: input.beneficiaryLabel,
+    selected_side: input.side,
+    include_bread: input.bread,
+    include_tea: input.tea,
+    request_reason: input.reason ?? null,
+    requested_items: input.items,
+  });
+  if (error) throwSupabaseError(error, "No fue posible registrar las preparaciones extra");
+  if (!data || Array.isArray(data) || typeof data !== "object") {
+    throw new AppError("No se generaron las colaciones extra", 503, "EXTRA_SAVE_EMPTY");
+  }
+  return data;
+}
+
 export async function createExceptionalRequest(
   supabase: UserDatabaseClient,
   input: MealSelection & { beneficiaryLabel: string; reason: string },
 ) {
-  const { data, error } = await supabase.rpc("request_exceptional_order", {
+  const { data, error } = await supabase.rpc("request_exceptional_order_with_quantity", {
     target_service_day_id: input.serviceDayId,
     target_menu_option_id: input.menuOptionId,
     beneficiary_name: input.beneficiaryLabel,
     request_reason: input.reason,
+    requested_quantity: input.quantity,
     selected_side: input.side,
     include_bread: input.bread,
     include_tea: input.tea,
@@ -103,11 +149,12 @@ export async function updateCompanyOperationalOrder(
     attendeeCount: number | null;
   },
 ) {
-  const { data, error } = await supabase.rpc("update_company_operational_order", {
+  const { data, error } = await supabase.rpc("update_company_operational_order_with_quantity", {
     target_order_id: input.orderId,
     target_menu_option_id: input.menuOptionId,
     record_name: input.name,
     attendee_count: input.attendeeCount,
+    requested_quantity: input.quantity,
     selected_side: input.side,
     include_bread: input.bread,
     include_tea: input.tea,
@@ -137,11 +184,12 @@ export async function updateCompanyExtraRequest(
     reason: string;
   },
 ) {
-  const { data, error } = await supabase.rpc("update_company_extra_request", {
+  const { data, error } = await supabase.rpc("update_company_extra_request_with_quantity", {
     target_request_id: input.requestId,
     target_menu_option_id: input.menuOptionId,
     beneficiary_name: input.beneficiaryLabel,
     request_reason: input.reason,
+    requested_quantity: input.quantity,
     selected_side: input.side,
     include_bread: input.bread,
     include_tea: input.tea,
@@ -187,7 +235,7 @@ export async function getCompanyOperations(
       ? supabase
           .from("exception_requests")
           .select(
-            "id, service_day_id, menu_option_id, beneficiary_label, reason, side, bread, tea, status, resolution_note, requested_at, resolved_at",
+            "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at",
           )
           .in("service_day_id", serviceDayIds)
           .order("requested_at", { ascending: false })
@@ -258,6 +306,7 @@ type ExceptionalRequest = Pick<
   | "menu_option_id"
   | "beneficiary_label"
   | "reason"
+  | "quantity"
   | "side"
   | "bread"
   | "tea"
@@ -299,6 +348,7 @@ function serializeException(request: ExceptionalRequest) {
     menuOptionId: request.menu_option_id,
     beneficiaryLabel: request.beneficiary_label,
     reason: request.reason,
+    quantity: request.quantity,
     side: request.side,
     bread: request.bread,
     tea: request.tea,

@@ -10,6 +10,7 @@ import {
   Clock3,
   GraduationCap,
   Plus,
+  Trash2,
   RefreshCw,
   UserPlus,
   UsersRound,
@@ -43,6 +44,7 @@ import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 type Mode = "training" | "extra";
 type View = "operations" | "summary" | "reports" | "workers";
+type PreparationItem = { key: string; menuOptionId: string; quantity: string };
 
 const modes = [
   {
@@ -88,7 +90,12 @@ export function CompanyOperationsClient({
   const [operations, setOperations] = useState(initialOperations);
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [mode, setMode] = useState<Mode>("training");
-  const [trainingQuantity, setTrainingQuantity] = useState("1");
+  const [trainingItems, setTrainingItems] = useState<PreparationItem[]>([
+    { key: "training-initial", menuOptionId: "", quantity: "1" },
+  ]);
+  const [extraItems, setExtraItems] = useState<PreparationItem[]>([
+    { key: "extra-initial", menuOptionId: "", quantity: "1" },
+  ]);
   const [view, setView] = useState<View>(initialView ?? "operations");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -133,12 +140,16 @@ export function CompanyOperationsClient({
   );
   const editableMenuOptions =
     activeDay?.options.filter((option) => option.visible && option.availableForWorkers) ?? [];
-  const trainingMenu = activeDay?.options.find(
+  const trainingMenus = activeDay?.options.filter(
     (option) => option.trainingMenu && option.visible,
+  ) ?? [];
+  const extraHasAvailability = editableMenuOptions.some(
+    (option) => option.remainingQuantity === null || option.remainingQuantity > 0,
   );
-  const trainingRemaining = trainingMenu?.remainingQuantity;
-  const trainingHasAvailability =
-    typeof trainingRemaining === "number" && trainingRemaining > 0;
+  const trainingMenu = trainingMenus[0];
+  const trainingHasAvailability = trainingMenus.some(
+    (option) => typeof option.remainingQuantity === "number" && option.remainingQuantity > 0,
+  );
   const now = new Date(currentTime);
   const blocked =
     operations?.calendarBlocks.some(
@@ -152,13 +163,13 @@ export function CompanyOperationsClient({
     activeDay &&
       !activeDay.disabled &&
       isTrainingRegistrationOpen(activeDay.serviceDate, now, blocked) &&
-      trainingMenu &&
       trainingHasAvailability,
   );
   const extraOpen = Boolean(
     activeDay &&
       !activeDay.disabled &&
       !blocked &&
+      extraHasAvailability &&
       now >= new Date(activeDay.sameDayOpensAt) &&
       now < new Date(activeDay.deliveryClosesAt),
   );
@@ -169,9 +180,11 @@ export function CompanyOperationsClient({
       ? trainingClosedMessage({
           blocked: blocked || Boolean(activeDay?.disabled),
           trainingMenu,
-          remainingQuantity: trainingRemaining,
+          remainingQuantity: trainingMenus.reduce((sum, option) => sum + (option.remainingQuantity ?? 0), 0),
         })
-      : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled));
+      : !extraHasAvailability && !blocked && !activeDay?.disabled
+        ? "No quedan cupos de colaciones extra para este día."
+        : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled));
   const selectedMode = modes.find((item) => item.value === mode) ?? modes[0];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -184,11 +197,20 @@ export function CompanyOperationsClient({
       setError("Selecciona pan, té o ambos.");
       return;
     }
-    const common = {
-      serviceDayId: activeDay.id,
-      menuOptionId:
-        mode === "training" ? trainingMenu?.id : String(form.get("menuOptionId")),
-    };
+    const availableOptions = mode === "training" ? trainingMenus : editableMenuOptions;
+    const selectedItems = mode === "training" ? trainingItems : extraItems;
+    const items = selectedItems.map((item) => ({
+      menuOptionId: item.menuOptionId || availableOptions.find((option) => option.remainingQuantity !== 0)?.id || "",
+      quantity: Number(item.quantity),
+    }));
+    if (items.length === 0 || items.some((item) => {
+      const option = availableOptions.find((candidate) => candidate.id === item.menuOptionId);
+      return !option || !Number.isInteger(item.quantity) || item.quantity < 1 ||
+        item.quantity > Math.min(500, option.remainingQuantity ?? 500);
+    }) || new Set(items.map((item) => item.menuOptionId)).size !== items.length) {
+      setError("Selecciona preparaciones distintas y cantidades dentro de sus cupos disponibles.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -196,19 +218,19 @@ export function CompanyOperationsClient({
     try {
       if (mode === "training") {
         const name = String(form.get("name"));
-        const attendeeCount = Number(trainingQuantity);
         await browserApiRequest(
-          "/api/v1/company/training-sessions",
+          "/api/v1/company/training-sessions/batch",
           {
             method: "POST",
-            body: JSON.stringify({ ...common, name, attendeeCount, tea: form.has("trainingTea") }),
+            body: JSON.stringify({ serviceDayId: activeDay.id, name, items, tea: form.has("trainingTea") }),
           },
         );
       } else {
-        await browserApiRequest("/api/v1/company/extras", {
+        await browserApiRequest("/api/v1/company/extras/batch", {
           method: "POST",
           body: JSON.stringify({
-            ...common,
+            serviceDayId: activeDay.id,
+            items,
             side: String(form.get("side")) as SideChoice,
             bread: complements.includes("bread"),
             tea: complements.includes("tea"),
@@ -219,7 +241,8 @@ export function CompanyOperationsClient({
       }
       await refreshOperations();
       formElement.reset();
-      setTrainingQuantity("1");
+      setTrainingItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
+      setExtraItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
       setMessage(
         mode === "extra" && lateExtra
           ? "Solicitud de colación extra enviada a la proveedora."
@@ -366,6 +389,8 @@ export function CompanyOperationsClient({
                 type="button"
                 onClick={() => {
                   setActiveDayId(day.id);
+                  setTrainingItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
+                  setExtraItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
                   setMessage("");
                   setError("");
                 }}
@@ -500,79 +525,19 @@ export function CompanyOperationsClient({
                     />
                   </Field>
 
-                  {mode === "training" ? (
-                    <>
-                      <Field label="Cantidad de alumnos">
-                        <input
-                          name="quantity"
-                          type="number"
-                          min="1"
-                          max={
-                            typeof trainingRemaining === "number"
-                              ? Math.min(500, trainingRemaining)
-                              : 500
-                          }
-                          disabled={!trainingOpen}
-                          value={trainingQuantity}
-                          onChange={(event) => setTrainingQuantity(event.target.value)}
-                          required
-                          placeholder="Ej.: 30"
-                          className="company-input form-control px-4"
-                        />
-                      </Field>
-                      <div className="rounded-xl bg-[var(--surface-muted)] p-3">
-                        <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                          Menú de capacitación
-                        </p>
-                        <p className="mt-1 text-sm font-bold">
-                          {trainingMenu
-                            ? `${trainingMenu.label} · ${trainingMenu.description}`
-                            : "La proveedora aún no lo ha definido"}
-                        </p>
-                        {trainingMenu ? (
-                          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                            <TrainingAvailability
-                              label="Cupo diario"
-                              value={trainingMenu.capacity}
-                            />
-                            <TrainingAvailability
-                              label="Reservadas"
-                              value={trainingMenu.reservedQuantity}
-                            />
-                            <TrainingAvailability
-                              label="Disponibles"
-                              value={trainingMenu.remainingQuantity}
-                              highlight
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                    </>
-                  ) : (
-                    <Field label="Menú solicitado">
-                      <FormSelect
-                        name="menuOptionId"
-                        required
-                        ariaLabel="Menú solicitado"
-                        defaultValue={activeDay?.options.find(
-                          (option) => option.visible && option.availableForWorkers,
-                        )?.id}
-                        options={(activeDay?.options
-                          .filter((option) => option.visible && option.availableForWorkers)
-                          .map((option) => ({
-                            value: option.id,
-                            label: `${option.label} · ${option.description}`,
-                          }))) ?? []}
-                        className="company-input text-sm font-semibold"
-                      />
-                    </Field>
-                  )}
+                  <PreparationSelector
+                    label={mode === "training" ? "Preparaciones de capacitación" : "Menús solicitados"}
+                    options={mode === "training" ? trainingMenus : editableMenuOptions}
+                    items={mode === "training" ? trainingItems : extraItems}
+                    onChange={mode === "training" ? setTrainingItems : setExtraItems}
+                    disabled={!modeOpen || saving}
+                  />
 
                   {mode === "training" ? (
                     <div className="rounded-xl bg-[var(--herb-soft)] p-4 text-sm">
                       <p className="font-extrabold">Incluido para cada alumno</p>
                       <p className="mt-1 text-[var(--muted)]">Almuerzo, ensalada, fruta, jugo y pan.</p>
-                      <p className="mt-2 font-bold">{Number(trainingQuantity) || 0} de cada uno en el conteo.</p>
+                      <p className="mt-2 font-bold">{trainingItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)} de cada uno en el conteo.</p>
                       <label className="mt-3 flex items-center gap-2 font-bold">
                         <input name="trainingTea" type="checkbox" className="accent-[var(--brand)]" />
                         Agregar té para todos los alumnos (opcional)
@@ -738,6 +703,7 @@ export function CompanyOperationsClient({
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <strong>{item.beneficiaryLabel}</strong>
+                            <p className="mt-1 text-xs font-bold">{item.quantity} colaciones</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">{item.reason}</p>
                           </div>
                           <StatusBadge status={item.status} />
@@ -782,6 +748,96 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function PreparationSelector({
+  label,
+  options,
+  items,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  options: MenuWeekDto["days"][number]["options"];
+  items: PreparationItem[];
+  onChange: (items: PreparationItem[]) => void;
+  disabled: boolean;
+}) {
+  const selectedIds = items.map((item, index) => {
+    const selected = options.find((option) => option.id === item.menuOptionId);
+    if (selected) return selected.id;
+    const used = items.slice(0, index).map((previous) => previous.menuOptionId);
+    return options.find((option) => option.remainingQuantity !== 0 && !used.includes(option.id))?.id ?? "";
+  });
+  const availableToAdd = options.find((option) =>
+    option.remainingQuantity !== 0 && !selectedIds.includes(option.id),
+  );
+
+  return (
+    <fieldset className="space-y-3">
+      <legend className="text-sm font-extrabold">{label}</legend>
+      {items.map((item, index) => {
+        const selectedId = selectedIds[index];
+        const selectedOption = options.find((option) => option.id === selectedId);
+        return (
+          <div key={item.key} className="rounded-xl border border-[var(--line)] bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-extrabold">Preparación {index + 1}</p>
+              {items.length > 1 ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(items.filter((candidate) => candidate.key !== item.key))}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-red-50 px-2 text-xs font-bold text-[var(--danger)] disabled:opacity-40"
+                ><Trash2 size={14} /> Quitar</button>
+              ) : null}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+              <label className="block text-xs font-extrabold">Menú
+                <FormSelect
+                  value={selectedId || undefined}
+                  onValueChange={(value) => onChange(items.map((candidate) => candidate.key === item.key ? { ...candidate, menuOptionId: value } : candidate))}
+                  ariaLabel={`Menú de preparación ${index + 1}`}
+                  options={options.map((option) => ({
+                    value: option.id,
+                    label: `${option.label} · ${option.description}${option.remainingQuantity === null ? "" : ` · ${option.remainingQuantity} disponibles`}`,
+                    disabled: option.remainingQuantity === 0 || selectedIds.some((id, itemIndex) => itemIndex !== index && id === option.id),
+                  }))}
+                  disabled={disabled}
+                  className="company-input mt-2 text-sm font-semibold"
+                />
+              </label>
+              <label className="block text-xs font-extrabold">Cantidad
+                <input
+                  type="number"
+                  min="1"
+                  max={Math.min(500, selectedOption?.remainingQuantity ?? 500)}
+                  value={item.quantity}
+                  onChange={(event) => onChange(items.map((candidate) => candidate.key === item.key ? { ...candidate, quantity: event.target.value } : candidate))}
+                  disabled={disabled || !selectedOption}
+                  required
+                  className="company-input form-control mt-2 px-3"
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-[var(--muted)]">
+              {selectedOption
+                ? selectedOption.remainingQuantity === null
+                  ? "Cupo diario no informado."
+                  : `${selectedOption.remainingQuantity} disponibles de ${selectedOption.capacity} para este día.`
+                : "No hay preparaciones disponibles para este día."}
+            </p>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        disabled={disabled || !availableToAdd || items.length >= 10}
+        onClick={() => availableToAdd && onChange([...items, { key: crypto.randomUUID(), menuOptionId: availableToAdd.id, quantity: "1" }])}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--brand)] px-4 text-sm font-extrabold text-[var(--brand)] disabled:opacity-40"
+      ><Plus size={17} /> Agregar otra preparación</button>
+    </fieldset>
+  );
+}
+
 function Metric({
   icon: Icon,
   label,
@@ -818,31 +874,6 @@ function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-xl border border-dashed border-[var(--line)] p-5 text-center">
       <p className="text-sm text-[var(--muted)]">{text}</p>
-    </div>
-  );
-}
-
-function TrainingAvailability({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: number | null;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg border px-2 py-2 ${
-        highlight
-          ? "border-[var(--herb)] bg-[var(--herb-soft)]"
-          : "border-[var(--line)] bg-white"
-      }`}
-    >
-      <strong className="block text-base">{value ?? "—"}</strong>
-      <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -17,6 +17,7 @@ import { browserApiRequest } from "@/lib/api/client";
 import { FormSelect } from "@/components/ui/form-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SuccessDialog } from "@/components/ui/success-dialog";
+import { ProviderDailyTrainingEditor } from "@/components/provider-daily-training-editor";
 import type { MenuWeekDto } from "@/lib/api/contracts";
 import { formatChileanDate, formatChileanDateWithWeekday } from "@/lib/date-format";
 
@@ -58,6 +59,8 @@ const MENU_ALTERNATIVES = [
   { label: "Handroll vegetariano", category: "vegetariano" },
 ] as const;
 
+const MemoizedProviderDailyTrainingEditor = memo(ProviderDailyTrainingEditor);
+
 export function ProviderMenuEditor({
   initialMenu,
   startsOn,
@@ -79,33 +82,30 @@ export function ProviderMenuEditor({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [trainingEditorRevision, setTrainingEditorRevision] = useState(0);
 
   const serviceDays = days;
   const readyDays = serviceDays.filter((day) => day.disabled || isDayComplete(day)).length;
-  const trainingDraft = days
-    .flatMap((day) => day.options)
-    .find((option) => option.trainingMenu && !option.availableForWorkers);
-  const trainingComplete = !trainingDraft || (
-    trainingDraft.label.trim().length >= 2 &&
-    trainingDraft.description.trim().length >= 3 &&
-    trainingDraft.capacity !== null
-  );
+  const trainingComplete = days.flatMap((day) => day.options)
+    .filter((option) => option.trainingMenu && !option.availableForWorkers)
+    .every((option) => option.label.trim().length >= 2 &&
+      option.description.trim().length >= 3 && option.capacity !== null);
   const weekComplete = readyDays === serviceDays.length && trainingComplete;
   const published = Boolean(menu?.publishedAt);
 
-  function updateDay(dayIndex: number, patch: Partial<DraftDay>) {
+  const updateDay = useCallback((dayIndex: number, patch: Partial<DraftDay>) => {
     setDays((current) =>
       current.map((day, index) => (index === dayIndex ? { ...day, ...patch } : day)),
     );
     setDirty(true);
     setFeedback(null);
-  }
+  }, []);
 
-  function updateOption(
+  const updateOption = useCallback((
     dayIndex: number,
     optionIndex: number,
     patch: Partial<DraftOption>,
-  ) {
+  ) => {
     setDays((current) =>
       current.map((day, index) =>
         index === dayIndex
@@ -120,28 +120,25 @@ export function ProviderMenuEditor({
     );
     setDirty(true);
     setFeedback(null);
-  }
+  }, []);
 
-  const trainingMenu = trainingDraft;
+  const closeEditingDay = useCallback(() => setEditingDay(null), []);
 
-  function updateTrainingMenu(patch: Partial<DraftOption> | null) {
-    setDays((current) => current.map((day, index) => {
-      const regularOptions = day.options
-        .filter((option) => option.availableForWorkers)
-        .map((option) => ({ ...option, trainingMenu: false }));
-      if (patch === null || index >= 5) return { ...day, options: regularOptions };
-      const existing = day.options.find(
-        (option) => option.trainingMenu && !option.availableForWorkers,
-      );
-      const base = existing ?? trainingOption();
-      return {
+  const handleTrainingMenuChange = useCallback((saved: MenuWeekDto) => {
+    setMenu(saved);
+    onMenuChange?.(saved);
+    const savedDays = toDraftDays(saved);
+    setDays((current) => current.map((day) => {
+      const nextDay = savedDays.find((item) => item.serviceDate === day.serviceDate);
+      return nextDay ? {
         ...day,
-        options: [...regularOptions, { ...base, ...patch, trainingMenu: true, availableForWorkers: false }],
-      };
+        options: [
+          ...day.options.filter((option) => option.availableForWorkers),
+          ...nextDay.options.filter((option) => option.trainingMenu),
+        ],
+      } : day;
     }));
-    setDirty(true);
-    setFeedback(null);
-  }
+  }, [onMenuChange]);
 
   async function persistDraft(confirmImpact = false) {
     const endpoint = menu
@@ -154,6 +151,7 @@ export function ProviderMenuEditor({
     setMenu(saved);
     onMenuChange?.(saved);
     setDays(toDraftDays(saved));
+    setTrainingEditorRevision((current) => current + 1);
     setDirty(false);
     return saved;
   }
@@ -213,46 +211,6 @@ export function ProviderMenuEditor({
       });
     } catch (error) {
       setFeedback({ kind: "error", text: errorMessage(error, "No fue posible publicar") });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function savePublishedTrainingMenu() {
-    if (!menu || !published || !trainingMenu) return;
-    if (trainingMenu.capacity === null) {
-      setFeedback({
-        kind: "error",
-        text: "Ingresa la disponibilidad diaria antes de guardar el menú de capacitación.",
-      });
-      return;
-    }
-    setSaving(true);
-    setFeedback(null);
-    try {
-      const saved = await browserApiRequest<MenuWeekDto>(
-        `/api/v1/provider/menu-weeks/${menu.id}/training-menu`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            description: trainingMenu.description,
-            capacity: trainingMenu.capacity,
-          }),
-        },
-      );
-      setMenu(saved);
-      onMenuChange?.(saved);
-      setDays(toDraftDays(saved));
-      setDirty(false);
-      setFeedback({
-        kind: "success",
-        text: "Menú de capacitación guardado. Securitas ya puede utilizarlo.",
-      });
-    } catch (error) {
-      setFeedback({
-        kind: "error",
-        text: errorMessage(error, "No fue posible guardar el menú de capacitación"),
-      });
     } finally {
       setSaving(false);
     }
@@ -349,16 +307,17 @@ export function ProviderMenuEditor({
         </p>
       ) : null}
 
-      <TrainingMenuEditor
-        option={trainingMenu}
-        published={published}
-        onEnable={() => updateTrainingMenu(trainingOption())}
-        onDisable={() => updateTrainingMenu(null)}
-        onChange={(patch) => updateTrainingMenu(patch)}
-        onSave={savePublishedTrainingMenu}
-        saving={saving}
-        dirty={dirty}
-      />
+      {menu ? (
+        <MemoizedProviderDailyTrainingEditor
+          key={`${menu.id}-${trainingEditorRevision}`}
+          menu={menu}
+          onMenuChange={handleTrainingMenuChange}
+        />
+      ) : (
+        <p className="rounded-xl border border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]">
+          Guarda primero el borrador semanal. Después podrás agregar preparaciones de capacitación por día.
+        </p>
+      )}
 
       <div className="menu-week-list card divide-y divide-[var(--line)] overflow-hidden">
         {serviceDays.map((day, dayIndex) => {
@@ -417,13 +376,13 @@ export function ProviderMenuEditor({
                 inert={!expanded}
               >
                 <div className="min-h-0 overflow-hidden">
-                  <DayEditor
+                  <MemoizedDayEditor
                     day={day}
                     dayIndex={dayIndex}
                     published={published}
                     onUpdateDay={updateDay}
                     onUpdateOption={updateOption}
-                    onDone={() => setEditingDay(null)}
+                    onDone={closeEditingDay}
                   />
                 </div>
               </div>
@@ -546,118 +505,6 @@ function PublishedMenuActions({
         ) : saveButton}
       </div>
     </div>
-  );
-}
-
-function TrainingMenuEditor({
-  option,
-  published,
-  onEnable,
-  onDisable,
-  onChange,
-  onSave,
-  saving,
-  dirty,
-}: {
-  option: DraftOption | undefined;
-  published: boolean;
-  onEnable: () => void;
-  onDisable: () => void;
-  onChange: (patch: Partial<DraftOption>) => void;
-  onSave: () => void;
-  saving: boolean;
-  dirty: boolean;
-}) {
-  const [expanded, setExpanded] = useState(Boolean(option));
-
-  return (
-    <section className="provider-card-motion card overflow-hidden">
-      <div className="grid gap-4 p-5 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-        <div>
-          <p className="eyebrow">Apartado independiente</p>
-          <h3 className="mt-1 text-xl font-black">Menú de capacitaciones</h3>
-          <p className="mt-1 text-base text-[var(--muted)]">Opcional y común para los días hábiles de esta semana.</p>
-        </div>
-        {option ? (
-          <div className={`grid w-full gap-2 sm:flex sm:w-auto ${published ? "grid-cols-1" : "grid-cols-[1fr_auto]"}`}>
-            {!published ? (
-              <button
-                type="button"
-                onClick={onDisable}
-                className="menu-action min-h-11 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-[var(--danger)]"
-              >
-                Quitar menú
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setExpanded((current) => !current)}
-              aria-expanded={expanded}
-              aria-controls="training-menu-form"
-              aria-label={expanded ? "Cerrar menú de capacitaciones" : "Abrir menú de capacitaciones"}
-              className="menu-action inline-flex size-11 items-center justify-center rounded-xl bg-[var(--herb-soft)] text-[var(--herb-strong)]"
-            >
-              <ChevronDown
-                size={20}
-                aria-hidden="true"
-                className={`menu-day-chevron transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
-              />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              onEnable();
-              setExpanded(true);
-            }}
-            className="menu-action min-h-11 w-full rounded-xl bg-[var(--herb)] px-4 text-sm font-extrabold text-white sm:min-h-10 sm:w-auto"
-          >
-            Agregar menú
-          </button>
-        )}
-      </div>
-      <div
-        id="training-menu-form"
-        className={`menu-collapsible grid ${
-          option && expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-        aria-hidden={!option || !expanded}
-        inert={!option || !expanded}
-      >
-        <div className="min-h-0 overflow-hidden">
-          {option ? (
-            <div className="grid gap-5 border-t border-[var(--line)] bg-[var(--cream)] p-5 md:grid-cols-2">
-              <label className="text-base font-extrabold md:col-span-2">Preparación
-                <textarea required value={option.description} onChange={(event) => onChange({ description: event.target.value })} rows={3} placeholder="Ej.: Espirales con salsa" className="form-control mt-2 p-4 text-base font-normal" />
-              </label>
-              <label className="text-base font-extrabold">Cupo diario para capacitaciones
-                <input type="number" min="0" required value={option.capacity ?? ""} onChange={(event) => onChange({ capacity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ej.: 30" className="form-control mt-2 px-4 text-base font-normal" />
-                <span className="mt-2 block text-sm font-semibold leading-5 text-[var(--muted)]">
-                  Se aplica por separado a cada día hábil; Securitas verá y consumirá este cupo.
-                </span>
-              </label>
-              {published ? (
-                <div className="flex items-end md:justify-end">
-                  <button
-                    type="button"
-                    onClick={onSave}
-                    disabled={saving || !dirty || option.description.trim().length < 3 || option.capacity === null}
-                    className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-5 text-sm font-extrabold text-white disabled:opacity-40 md:w-auto"
-                  >
-                    <Save size={18} />
-                    {saving ? "Guardando..." : "Guardar capacitación"}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
-      {!option ? (
-        <p className="border-t border-[var(--line)] p-5 text-sm text-[var(--muted)]">Si no se agrega, Securitas no podrá registrar capacitaciones para esa semana.</p>
-      ) : null}
-    </section>
   );
 }
 
@@ -865,6 +712,8 @@ function DayEditor({
   );
 }
 
+const MemoizedDayEditor = memo(DayEditor);
+
 function toDraftDays(menu: MenuWeekDto): DraftDay[] {
   return menu.days.map((day) => ({
     serviceDate: day.serviceDate,
@@ -942,23 +791,6 @@ function emptyOption(sortOrder: number, usedLabels = new Set<string>()): DraftOp
     availableForWorkers: true,
     visible: true,
     sortOrder,
-    reservedQuantity: 0,
-  };
-}
-
-function trainingOption(): DraftOption {
-  return {
-    category: "especial",
-    label: "Menú capacitación",
-    description: "",
-    dessert: null,
-    beverage: null,
-    notes: null,
-    capacity: null,
-    trainingMenu: true,
-    availableForWorkers: false,
-    visible: true,
-    sortOrder: 99,
     reservedQuantity: 0,
   };
 }

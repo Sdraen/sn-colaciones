@@ -4,6 +4,7 @@ import { isoDateSchema, uuidSchema } from "./common.schema.js";
 const mealSelectionSchema = z.object({
   serviceDayId: uuidSchema,
   menuOptionId: uuidSchema,
+  quantity: z.number().int().min(1).max(500),
   side: z.enum(["ensalada", "fruta"]),
   bread: z.boolean().default(false),
   tea: z.boolean().default(false),
@@ -32,6 +33,25 @@ export const createTrainingRequestSchema = z.object({
   query: z.object({}),
 });
 
+const preparationItemsSchema = z.array(z.object({
+  menuOptionId: uuidSchema,
+  quantity: z.number().int().min(1).max(500),
+}).strict()).min(1).max(10).refine(
+  (items) => new Set(items.map((item) => item.menuOptionId)).size === items.length,
+  "No repitas una preparaciÃ³n en la misma solicitud",
+);
+
+export const createTrainingBatchRequestSchema = z.object({
+  body: z.object({
+    serviceDayId: uuidSchema,
+    name: z.string().trim().min(3).max(120),
+    tea: z.boolean().default(false),
+    items: preparationItemsSchema,
+  }).strict(),
+  params: z.object({}),
+  query: z.object({}),
+});
+
 export const createExtraRequestSchema = z.object({
   body: requireBreadOrTea(
     mealSelectionSchema.extend({
@@ -39,6 +59,20 @@ export const createExtraRequestSchema = z.object({
       reason: z.string().trim().min(5).max(500).optional(),
     }),
   ),
+  params: z.object({}),
+  query: z.object({}),
+});
+
+export const createExtraBatchRequestSchema = z.object({
+  body: requireBreadOrTea(z.object({
+    serviceDayId: uuidSchema,
+    beneficiaryLabel: z.string().trim().min(2).max(120),
+    side: z.enum(["ensalada", "fruta"]),
+    bread: z.boolean().default(false),
+    tea: z.boolean().default(false),
+    reason: z.string().trim().min(5).max(500).optional(),
+    items: preparationItemsSchema,
+  }).strict()),
   params: z.object({}),
   query: z.object({}),
 });
@@ -86,7 +120,9 @@ export const companyOperationsRequestSchema = z.object({
 });
 
 export type CreateTrainingRequest = z.infer<typeof createTrainingRequestSchema>;
+export type CreateTrainingBatchRequest = z.infer<typeof createTrainingBatchRequestSchema>;
 export type CreateExtraRequest = z.infer<typeof createExtraRequestSchema>;
+export type CreateExtraBatchRequest = z.infer<typeof createExtraBatchRequestSchema>;
 export type UpdateOperationalOrderRequest = z.infer<typeof updateOperationalOrderRequestSchema>;
 export type DeleteOperationalOrderRequest = z.infer<typeof deleteOperationalOrderRequestSchema>;
 export type UpdateExtraRequestRequest = z.infer<typeof updateExtraRequestRequestSchema>;

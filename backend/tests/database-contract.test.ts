@@ -280,6 +280,32 @@ describe("contrato de migraciones de Supabase", () => {
       "organization_now::time < time ''14:00'' or target_day.service_date = organization_now::date",
     );
   });
+
+  it("keeps grouped extras atomic and checks quantity when approving late requests", () => {
+    const migration = readMigration("0027_grouped_extra_meals.sql");
+
+    expect(migration).toContain("add column quantity integer not null default 1");
+    expect(migration).toContain("quantity between 1 and 500");
+    expect(migration).toContain("function public.create_extra_order_with_quantity");
+    expect(migration).toContain("function public.request_exceptional_order_with_quantity");
+    expect(migration).toContain("function public.update_company_operational_order_with_quantity");
+    expect(migration).toContain("function public.update_company_extra_request_with_quantity");
+    expect(migration).toContain("saved_request.quantity, saved_request.side");
+    expect(migration).toContain("deferrable initially deferred");
+    expect(migration).toContain("MENU_OPTION_CAPACITY_EXCEEDED");
+  });
+
+  it("crea varias preparaciones en una transacción y habilita menús de capacitación por día", () => {
+    const batch = readMigration("0028_multiple_extra_preparations.sql");
+    const training = readMigration("0029_daily_training_preparations.sql");
+    expect(batch).toContain("function public.create_company_extra_batch");
+    expect(batch).toContain("function public.create_company_training_batch");
+    expect(batch).toContain("create_extra_order_with_quantity");
+    expect(batch).toContain("create_training_order(");
+    expect(training).toContain("drop index if exists public.menu_options_one_training_menu_per_day");
+    expect(training).toContain("function public.set_training_menus_for_day");
+    expect(training).toContain("MENU_OPTION_HAS_RESERVATIONS");
+  });
 });
 
 function readMigration(fileName: string) {

@@ -299,7 +299,7 @@ export async function saveMenuWeekDraft(
   if (error) throwSupabaseError(error, "No fue posible guardar el borrador semanal");
   if (!data) throw new AppError("No se generó el borrador semanal", 503, "MENU_SAVE_EMPTY");
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
 }
 
 async function updatePublishedMenuWeek(
@@ -336,7 +336,7 @@ async function updatePublishedMenuWeek(
     throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
   }
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
 }
 
 export async function publishMenuWeek(
@@ -391,7 +391,7 @@ export async function publishMenuWeek(
   if (error) throwSupabaseError(error, "No fue posible publicar el menú semanal");
   if (!data) throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
 }
 
 export async function upsertTrainingMenu(
@@ -414,7 +414,32 @@ export async function upsertTrainingMenu(
     );
   }
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true });
+  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
+}
+
+export async function upsertDailyTrainingMenus(
+  supabase: UserDatabaseClient,
+  input: {
+    serviceDayId: string;
+    options: { id?: string; label: string; description: string; capacity: number }[];
+    confirmImpact: boolean;
+  },
+) {
+  const { data, error } = await supabase.rpc("set_training_menus_for_day", {
+    target_service_day_id: input.serviceDayId,
+    requested_options: input.options,
+    confirm_impact: input.confirmImpact,
+  });
+  if (error) throwSupabaseError(error, "No fue posible guardar las preparaciones de capacitaciÃ³n");
+  if (!data) throw new AppError("No se encontrÃ³ el dÃ­a de servicio", 404, "SERVICE_DAY_NOT_FOUND");
+  return getMenuWeek(supabase, { startsOn: weekStart(data.service_date), includeDrafts: true, includeAvailability: true });
+}
+
+function weekStart(serviceDate: string) {
+  const date = new Date(`${serviceDate}T00:00:00.000Z`);
+  const day = date.getUTCDay();
+  date.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+  return date.toISOString().slice(0, 10);
 }
 
 async function findMenuWeekById(

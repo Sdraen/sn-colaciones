@@ -3,6 +3,8 @@ import { getRequestAuth, getValidatedRequest } from "../lib/request-data.js";
 import type {
   CompanyOperationsRequest,
   CreateExtraRequest,
+  CreateExtraBatchRequest,
+  CreateTrainingBatchRequest,
   CreateTrainingRequest,
   DeleteExtraRequestRequest,
   DeleteOperationalOrderRequest,
@@ -11,7 +13,9 @@ import type {
 } from "../schemas/company.schema.js";
 import {
   createExtraOrder,
+  createExtraBatch,
   createTrainingOrder,
+  createTrainingBatch,
   deleteCompanyExtraRequest,
   deleteCompanyOperationalOrder,
   getCompanyOperations,
@@ -53,10 +57,24 @@ export const postTrainingOrder: RequestHandler = async (request, response) => {
   response.status(201).json({ data: order });
 };
 
+export const postTrainingBatch: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CreateTrainingBatchRequest>(request);
+  const orders = await createTrainingBatch(supabase, body);
+  response.status(201).json({ data: orders });
+};
+
 export const postExtraOrder: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { body } = getValidatedRequest<CreateExtraRequest>(request);
   const result = await createExtraOrder(supabase, body);
+  response.status(201).json({ data: result });
+};
+
+export const postExtraBatch: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CreateExtraBatchRequest>(request);
+  const result = await createExtraBatch(supabase, body);
   response.status(201).json({ data: result });
 };
 

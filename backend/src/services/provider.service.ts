@@ -223,7 +223,7 @@ export async function getProviderOperations(
     supabase
       .from("exception_requests")
       .select(
-        "id, service_day_id, menu_option_id, beneficiary_label, reason, side, bread, tea, status, resolution_note, requested_at, resolved_at",
+        "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at",
       )
       .in("service_day_id", serviceDayIds)
       .order("requested_at", { ascending: false }),
@@ -249,6 +249,7 @@ export async function getProviderOperations(
       menuOptionId: request.menu_option_id,
       beneficiaryLabel: request.beneficiary_label,
       reason: request.reason,
+      quantity: request.quantity,
       side: request.side,
       bread: request.bread,
       tea: request.tea,

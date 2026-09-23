@@ -356,6 +356,7 @@ export interface Database {
           menu_option_id: string;
           beneficiary_label: string;
           reason: string;
+          quantity: number;
           side: SideChoice;
           bread: boolean;
           tea: boolean;
@@ -372,6 +373,7 @@ export interface Database {
           menu_option_id: string;
           beneficiary_label: string;
           reason: string;
+          quantity?: number;
           side?: SideChoice;
           bread?: boolean;
           tea?: boolean;
@@ -455,6 +457,47 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };
+      create_extra_order_with_quantity: {
+        Args: {
+          target_service_day_id: string;
+          target_menu_option_id: string;
+          beneficiary_name: string;
+          requested_quantity: number;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
+      create_company_extra_batch: {
+        Args: {
+          target_service_day_id: string;
+          beneficiary_name: string;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+          request_reason: string | null;
+          requested_items: Json;
+        };
+        Returns: Json;
+      };
+      create_company_training_batch: {
+        Args: {
+          target_service_day_id: string;
+          training_name: string;
+          include_tea: boolean;
+          requested_items: Json;
+        };
+        Returns: Json;
+      };
+      set_training_menus_for_day: {
+        Args: {
+          target_service_day_id: string;
+          requested_options: Json;
+          confirm_impact: boolean;
+        };
+        Returns: Database["public"]["Tables"]["service_days"]["Row"];
+      };
       create_training_order: {
         Args: {
           target_service_day_id: string;
@@ -479,6 +522,19 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };
+      update_company_operational_order_with_quantity: {
+        Args: {
+          target_order_id: string;
+          target_menu_option_id: string;
+          record_name: string;
+          attendee_count: number | null;
+          requested_quantity: number;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
       delete_company_operational_order: {
         Args: { target_order_id: string };
         Returns: Json;
@@ -489,6 +545,19 @@ export interface Database {
           target_menu_option_id: string;
           beneficiary_name: string;
           request_reason: string;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["exception_requests"]["Row"];
+      };
+      update_company_extra_request_with_quantity: {
+        Args: {
+          target_request_id: string;
+          target_menu_option_id: string;
+          beneficiary_name: string;
+          request_reason: string;
+          requested_quantity: number;
           selected_side: SideChoice;
           include_bread: boolean;
           include_tea: boolean;
@@ -509,6 +578,19 @@ export interface Database {
           target_menu_option_id: string;
           beneficiary_name: string;
           request_reason: string;
+          selected_side: SideChoice;
+          include_bread: boolean;
+          include_tea: boolean;
+        };
+        Returns: Database["public"]["Tables"]["exception_requests"]["Row"];
+      };
+      request_exceptional_order_with_quantity: {
+        Args: {
+          target_service_day_id: string;
+          target_menu_option_id: string;
+          beneficiary_name: string;
+          request_reason: string;
+          requested_quantity: number;
           selected_side: SideChoice;
           include_bread: boolean;
           include_tea: boolean;

@@ -33,6 +33,7 @@ export function OperationalOrderActions({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(order.beneficiaryLabel ?? "");
   const [attendeeCount, setAttendeeCount] = useState(String(order.quantity));
+  const [extraQuantity, setExtraQuantity] = useState(String(order.quantity));
   const [menuOptionId, setMenuOptionId] = useState(order.menuOptionId);
   const [side, setSide] = useState<SideChoice>(order.side);
   const [bread, setBread] = useState(order.bread);
@@ -44,10 +45,19 @@ export function OperationalOrderActions({
     training && typeof trainingMenu?.remainingQuantity === "number"
       ? Math.min(500, trainingMenu.remainingQuantity + order.quantity)
       : null;
+  const selectedExtraOption = menuOptions.find((option) => option.id === menuOptionId);
+  const extraMaximum = Math.min(
+    500,
+    (selectedExtraOption?.remainingQuantity ?? 500) +
+      (selectedExtraOption?.remainingQuantity !== null && menuOptionId === order.menuOptionId
+        ? order.quantity
+        : 0),
+  );
 
   function resetForm() {
     setName(order.beneficiaryLabel ?? "");
     setAttendeeCount(String(order.quantity));
+    setExtraQuantity(String(order.quantity));
     setMenuOptionId(order.menuOptionId);
     setSide(order.side);
     setBread(order.bread);
@@ -67,6 +77,7 @@ export function OperationalOrderActions({
           menuOptionId,
           name,
           attendeeCount: training ? Number(attendeeCount) : null,
+          quantity: training ? Number(attendeeCount) : Number(extraQuantity),
           side: training ? "ensalada" : side,
           bread: training ? true : bread,
           tea,
@@ -172,19 +183,39 @@ export function OperationalOrderActions({
                   </p>
                 </div>
               ) : (
-                <label className="block text-sm font-extrabold">
-                  Menú solicitado
-                  <FormSelect
-                    value={menuOptionId}
-                    onValueChange={setMenuOptionId}
-                    options={menuOptions.map((option) => ({
-                      value: option.id,
-                      label: `${option.label} · ${option.description}`,
-                    }))}
-                    ariaLabel="Menú solicitado"
-                    className="mt-2 text-sm font-semibold"
-                  />
-                </label>
+                <div className="space-y-4">
+                  <label className="block text-sm font-extrabold">
+                    Menú solicitado
+                    <FormSelect
+                      value={menuOptionId}
+                      onValueChange={setMenuOptionId}
+                      options={menuOptions.map((option) => ({
+                        value: option.id,
+                        label: `${option.label} · ${option.description}`,
+                      }))}
+                      ariaLabel="Menú solicitado"
+                      className="mt-2 text-sm font-semibold"
+                    />
+                  </label>
+                  <label className="block text-sm font-extrabold">
+                    Cantidad de colaciones
+                    <input
+                      value={extraQuantity}
+                      onChange={(event) => setExtraQuantity(event.target.value)}
+                      type="number"
+                      min="1"
+                      max={extraMaximum}
+                      required
+                      disabled={!selectedExtraOption || extraMaximum < 1}
+                      className="form-control mt-2 px-4 font-normal"
+                    />
+                  </label>
+                  <p className="text-xs font-semibold text-[var(--muted)]">
+                    {selectedExtraOption?.remainingQuantity === null
+                      ? "Cupo diario no informado para esta preparación."
+                      : `Puedes dejar este registro en hasta ${extraMaximum} colaciones.`}
+                  </p>
+                </div>
               )}
 
               {training ? (
@@ -212,7 +243,7 @@ export function OperationalOrderActions({
 
               <button
                 type="submit"
-                disabled={saving || (!training && !bread && !tea) || (training && trainingMaximum === null)}
+                disabled={saving || (!training && (!bread && !tea || !selectedExtraOption || extraMaximum < 1)) || (training && trainingMaximum === null)}
                 className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50"
               >
                 <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}
@@ -253,16 +284,20 @@ export function ExtraRequestActions({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(request.beneficiaryLabel);
   const [reason, setReason] = useState(request.reason);
+  const [quantity, setQuantity] = useState(String(request.quantity));
   const [menuOptionId, setMenuOptionId] = useState(request.menuOptionId);
   const [side, setSide] = useState<SideChoice>(request.side);
   const [bread, setBread] = useState(request.bread);
   const [tea, setTea] = useState(request.tea);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const selectedOption = menuOptions.find((option) => option.id === menuOptionId);
+  const maximum = Math.min(500, selectedOption?.remainingQuantity ?? 500);
 
   function resetForm() {
     setName(request.beneficiaryLabel);
     setReason(request.reason);
+    setQuantity(String(request.quantity));
     setMenuOptionId(request.menuOptionId);
     setSide(request.side);
     setBread(request.bread);
@@ -282,6 +317,7 @@ export function ExtraRequestActions({
           menuOptionId,
           beneficiaryLabel: name,
           reason,
+          quantity: Number(quantity),
           side,
           bread,
           tea,
@@ -359,6 +395,24 @@ export function ExtraRequestActions({
                     className="mt-2 text-sm font-semibold"
                   />
                 </label>
+                <label className="block text-sm font-extrabold">
+                  Cantidad de colaciones
+                  <input
+                    value={quantity}
+                    onChange={(event) => setQuantity(event.target.value)}
+                    type="number"
+                    min="1"
+                    max={maximum}
+                    required
+                    disabled={!selectedOption || maximum < 1}
+                    className="form-control mt-2 px-4 font-normal"
+                  />
+                </label>
+                <p className="text-xs font-semibold text-[var(--muted)]">
+                  {selectedOption?.remainingQuantity === null
+                    ? "Cupo diario no informado para esta preparación."
+                    : `${selectedOption?.remainingQuantity ?? 0} disponibles para este día.`}
+                </p>
                 <MealSelectionFields
                   side={side}
                   bread={bread}
@@ -372,7 +426,7 @@ export function ExtraRequestActions({
                   <textarea value={reason} onChange={(event) => setReason(event.target.value)} required minLength={5} maxLength={500} rows={3} className="form-control mt-2 p-4 font-normal" />
                 </label>
                 {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
-                <button type="submit" disabled={saving || (!bread && !tea)} className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50">
+                <button type="submit" disabled={saving || (!bread && !tea) || !selectedOption || maximum < 1} className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 text-sm font-extrabold text-white disabled:opacity-50">
                   <Save size={17} aria-hidden="true" /> {saving ? "Guardando…" : "Guardar cambios"}
                 </button>
               </form>

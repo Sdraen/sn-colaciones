@@ -17,7 +17,7 @@ import {
   postProviderAccessPasswordSetup,
   removeCalendarBlock,
   removeMenuWeek,
-  putTrainingMenu,
+  putDailyTrainingMenus,
   putMenuWeek,
 } from "../controllers/provider.controller.js";
 import { requireRole } from "../middleware/require-role.js";
@@ -35,7 +35,7 @@ import {
   createMenuWeekRequestSchema,
   deleteMenuWeekRequestSchema,
   publishMenuWeekRequestSchema,
-  updateTrainingMenuRequestSchema,
+  updateDailyTrainingMenusRequestSchema,
   updateMenuWeekRequestSchema,
 } from "../schemas/menu.schema.js";
 import { reportRequestSchema } from "../schemas/report.schema.js";
@@ -124,9 +124,9 @@ providerRouter.post(
   postCopyMenuWeek,
 );
 providerRouter.put(
-  "/menu-weeks/:weekId/training-menu",
-  validateRequest(updateTrainingMenuRequestSchema),
-  putTrainingMenu,
+  "/service-days/:serviceDayId/training-menus",
+  validateRequest(updateDailyTrainingMenusRequestSchema),
+  putDailyTrainingMenus,
 );
 providerRouter.put(
   "/menu-weeks/:weekId",

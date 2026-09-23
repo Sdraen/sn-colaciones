@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  createExtraRequestSchema,
+  createExtraBatchRequestSchema,
   createTrainingRequestSchema,
+  createTrainingBatchRequestSchema,
   deleteExtraRequestRequestSchema,
   deleteOperationalOrderRequestSchema,
   updateExtraRequestRequestSchema,
@@ -39,6 +42,7 @@ describe("correcciones operacionales de Securitas", () => {
         menuOptionId: validOptionId,
         name: "Inducción guardias",
         attendeeCount: 24,
+        quantity: 24,
         side: "ensalada",
         bread: true,
         tea: false,
@@ -56,6 +60,7 @@ describe("correcciones operacionales de Securitas", () => {
         menuOptionId: validOptionId,
         name: "Visita externa",
         attendeeCount: null,
+        quantity: 12,
         side: "fruta",
         bread: true,
         tea: true,
@@ -71,6 +76,7 @@ describe("correcciones operacionales de Securitas", () => {
           menuOptionId: validOptionId,
           name: "Visita externa",
           attendeeCount: null,
+          quantity: 12,
           side: "fruta",
           bread: false,
           tea: false,
@@ -87,6 +93,7 @@ describe("correcciones operacionales de Securitas", () => {
         menuOptionId: validOptionId,
         beneficiaryLabel: "Visita externa",
         reason: "",
+        quantity: 12,
         side: "fruta",
         bread: false,
         tea: true,
@@ -96,6 +103,59 @@ describe("correcciones operacionales de Securitas", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("exige una cantidad entera y positiva para colaciones extra", () => {
+    const request = {
+      body: {
+        serviceDayId: validId,
+        menuOptionId: validOptionId,
+        beneficiaryLabel: "Visita externa",
+        quantity: 3,
+        side: "fruta",
+        bread: true,
+        tea: false,
+      },
+      params: {},
+      query: {},
+    };
+    expect(createExtraRequestSchema.safeParse(request).success).toBe(true);
+    for (const quantity of [0, 1.5, 501]) {
+      expect(createExtraRequestSchema.safeParse({
+        ...request,
+        body: { ...request.body, quantity },
+      }).success).toBe(false);
+    }
+  });
+
+  it("acepta varias preparaciones con cupos propios y rechaza duplicados", () => {
+    const items = [
+      { menuOptionId: validOptionId, quantity: 4 },
+      { menuOptionId: "33333333-3333-4333-8333-333333333333", quantity: 3 },
+    ];
+    const extra = {
+      body: {
+        serviceDayId: validId,
+        beneficiaryLabel: "Visita externa",
+        side: "fruta",
+        bread: true,
+        tea: false,
+        items,
+      },
+      params: {}, query: {},
+    };
+    const training = {
+      body: { serviceDayId: validId, name: "Guardias nuevos", tea: false, items },
+      params: {}, query: {},
+    };
+    expect(createExtraBatchRequestSchema.safeParse(extra).success).toBe(true);
+    expect(createTrainingBatchRequestSchema.safeParse(training).success).toBe(true);
+    expect(createExtraBatchRequestSchema.safeParse({
+      ...extra, body: { ...extra.body, items: [items[0], items[0]] },
+    }).success).toBe(false);
+    expect(createTrainingBatchRequestSchema.safeParse({
+      ...training, body: { ...training.body, items: [{ ...items[0], quantity: 0 }] },
+    }).success).toBe(false);
   });
 
   it("valida los identificadores al eliminar", () => {

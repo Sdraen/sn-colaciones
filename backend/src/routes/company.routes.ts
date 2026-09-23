@@ -7,7 +7,9 @@ import {
   deleteExtraRequest,
   deleteOperationalOrder,
   postExtraOrder,
+  postExtraBatch,
   postTrainingOrder,
+  postTrainingBatch,
   postWorker,
   postWorkerPasswordSetup,
   patchWorkerStatus,
@@ -22,7 +24,9 @@ import { validateRequest } from "../middleware/validate-request.js";
 import {
   companyOperationsRequestSchema,
   createExtraRequestSchema,
+  createExtraBatchRequestSchema,
   createTrainingRequestSchema,
+  createTrainingBatchRequestSchema,
   deleteExtraRequestRequestSchema,
   deleteOperationalOrderRequestSchema,
   updateExtraRequestRequestSchema,
@@ -94,9 +98,19 @@ companyRouter.post(
   postTrainingOrder,
 );
 companyRouter.post(
+  "/training-sessions/batch",
+  validateRequest(createTrainingBatchRequestSchema),
+  postTrainingBatch,
+);
+companyRouter.post(
   "/extras",
   validateRequest(createExtraRequestSchema),
   postExtraOrder,
+);
+companyRouter.post(
+  "/extras/batch",
+  validateRequest(createExtraBatchRequestSchema),
+  postExtraBatch,
 );
 companyRouter.patch(
   "/orders/:orderId",

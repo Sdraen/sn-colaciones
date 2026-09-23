@@ -414,9 +414,19 @@ function ProductionView({
           <h2 className="text-xl font-black">Solicitudes pendientes</h2>
           <div className="provider-list-enter mt-4 space-y-4">
             {pending.length ? (
-              pending.map((request) => (
+              pending.map((request) => {
+                const requestDay = operations?.menu.days.find((day) => day.id === request.serviceDayId);
+                const option = requestDay?.options.find((item) => item.id === request.menuOptionId);
+                return (
                 <div key={request.id} className="rounded-xl border border-[var(--line)] p-4">
                   <strong>{request.beneficiaryLabel}</strong>
+                  <p className="mt-1 text-sm font-bold">{request.quantity} colaciones solicitadas</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Fecha: {requestDay?.serviceDate ?? "Sin fecha"}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    {option?.label ?? "Preparación"}
+                    {" · "}
+                    {option?.description ?? "Sin detalle"}
+                  </p>
                   <p className="mt-1 text-sm text-[var(--muted)]">{request.reason}</p>
                   <input
                     value={rejectionNotes[request.id] ?? ""}
@@ -442,7 +452,8 @@ function ProductionView({
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : (
               <p className="text-sm text-[var(--muted)]">No hay solicitudes pendientes.</p>
             )}

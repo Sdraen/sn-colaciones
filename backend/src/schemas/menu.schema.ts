@@ -95,6 +95,25 @@ export const updateTrainingMenuRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const updateDailyTrainingMenusRequestSchema = z.object({
+  body: z.object({
+    options: z.array(z.object({
+      id: uuidSchema.optional(),
+      label: z.string().trim().min(2).max(80),
+      description: z.string().trim().min(3).max(300),
+      capacity: z.number().int().min(0).max(10_000),
+    }).strict()).max(10),
+    confirmImpact: z.boolean().default(false),
+  }).strict().superRefine((body, context) => {
+    const ids = body.options.flatMap((option) => option.id ? [option.id] : []);
+    if (new Set(ids).size !== ids.length) {
+      context.addIssue({ code: "custom", path: ["options"], message: "No repitas una preparaciÃ³n" });
+    }
+  }),
+  params: z.object({ serviceDayId: uuidSchema }),
+  query: z.object({}),
+});
+
 export type GetMenuWeekRequest = z.infer<typeof getMenuWeekRequestSchema>;
 export type CreateMenuWeekRequest = z.infer<typeof createMenuWeekRequestSchema>;
 export type UpdateMenuWeekRequest = z.infer<typeof updateMenuWeekRequestSchema>;
@@ -102,6 +121,7 @@ export type DeleteMenuWeekRequest = z.infer<typeof deleteMenuWeekRequestSchema>;
 export type CopyMenuWeekRequest = z.infer<typeof copyMenuWeekRequestSchema>;
 export type PublishMenuWeekRequest = z.infer<typeof publishMenuWeekRequestSchema>;
 export type UpdateTrainingMenuRequest = z.infer<typeof updateTrainingMenuRequestSchema>;
+export type UpdateDailyTrainingMenusRequest = z.infer<typeof updateDailyTrainingMenusRequestSchema>;
 
 function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
   return schema.superRefine((request, context) => {
@@ -145,13 +165,6 @@ function validateMenuWeekDraft<Schema extends z.ZodType>(schema: Schema) {
           code: "custom",
           path: ["body", "days", index, "options"],
           message: "Un día con servicio necesita al menos una alternativa",
-        });
-      }
-      if (day.options.filter((option) => option.trainingMenu).length > 1) {
-        context.addIssue({
-          code: "custom",
-          path: ["body", "days", index, "options"],
-          message: "Solo puede existir un menú de capacitación por día",
         });
       }
     });

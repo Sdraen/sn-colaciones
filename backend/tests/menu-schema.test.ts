@@ -4,6 +4,7 @@ import {
   createMenuWeekRequestSchema,
   deleteMenuWeekRequestSchema,
   updateTrainingMenuRequestSchema,
+  updateDailyTrainingMenusRequestSchema,
   updateMenuWeekRequestSchema,
 } from "../src/schemas/menu.schema.js";
 
@@ -74,7 +75,7 @@ describe("contrato del menú semanal", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rechaza más de un menú de capacitación en el mismo día", () => {
+  it("permite más de un menú de capacitación en el mismo día", () => {
     const input = weeklyDraft();
     input.body.days[0]!.options = [
       { ...input.body.days[0]!.options[0]!, trainingMenu: true },
@@ -89,7 +90,23 @@ describe("contrato del menú semanal", () => {
 
     const result = createMenuWeekRequestSchema.safeParse(input);
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+  });
+
+  it("valida las preparaciones de capacitación por día", () => {
+    const valid = updateDailyTrainingMenusRequestSchema.safeParse({
+      body: { options: [
+        { label: "Principal", description: "Pollo con arroz", capacity: 30 },
+        { label: "Hipocalórico", description: "Ensalada con pollo", capacity: 15 },
+      ] },
+      params: { serviceDayId: "11111111-1111-4111-8111-111111111111" },
+      query: {},
+    });
+    expect(valid.success).toBe(true);
+    expect(updateDailyTrainingMenusRequestSchema.safeParse({
+      ...valid.data,
+      body: { options: [{ label: "M", description: "", capacity: -1 }] },
+    }).success).toBe(false);
   });
 
   it("valida el identificador al editar o eliminar", () => {

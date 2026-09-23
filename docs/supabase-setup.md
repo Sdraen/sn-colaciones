@@ -143,6 +143,17 @@ Luego ejecutar `supabase/migrations/0026_training_reopening_future_only.sql`.
 Desde las 14:00 Securitas sólo puede crear capacitaciones para fechas futuras;
 el registro para el mismo día sigue permitido hasta las 09:00.
 
+Luego ejecutar `supabase/migrations/0027_grouped_extra_meals.sql` antes de
+desplegar el formulario de colaciones extra con cantidad. La migración conserva
+los registros existentes con cantidad 1 y permite solicitar, corregir y
+aprobar varios cupos de una misma preparación en un solo registro.
+
+Después ejecutar, en orden, `supabase/migrations/0028_multiple_extra_preparations.sql`
+y `supabase/migrations/0029_daily_training_preparations.sql`. La primera registra
+varias preparaciones extra o de capacitación en una sola transacción; si alguna
+supera su cupo, no guarda ninguna. La segunda permite que la proveedora defina
+varios menús de capacitación por día hábil, cada uno con cupo independiente.
+
 ## 3. Estado y pendientes antes de producción
 
 - Las migraciones `0001` a `0020` ya fueron ejecutadas en el proyecto remoto.

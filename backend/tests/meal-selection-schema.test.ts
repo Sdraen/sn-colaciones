@@ -14,7 +14,7 @@ const request = {
 };
 
 describe("selección de pan y té", () => {
-  it("acepta una alternativa o ambas", () => {
+  it("acepta exactamente una alternativa", () => {
     expect(saveRegularOrderRequestSchema.safeParse(request).success).toBe(true);
     expect(
       saveRegularOrderRequestSchema.safeParse({
@@ -22,15 +22,15 @@ describe("selección de pan y té", () => {
         body: { ...request.body, bread: false, tea: true },
       }).success,
     ).toBe(true);
+  });
+
+  it("rechaza seleccionar ambas alternativas o ninguna", () => {
     expect(
       saveRegularOrderRequestSchema.safeParse({
         ...request,
         body: { ...request.body, bread: true, tea: true },
       }).success,
-    ).toBe(true);
-  });
-
-  it("rechaza no seleccionar ningún complemento", () => {
+    ).toBe(false);
     expect(
       saveRegularOrderRequestSchema.safeParse({
         ...request,
@@ -39,7 +39,7 @@ describe("selección de pan y té", () => {
     ).toBe(false);
   });
 
-  it("acepta fruta y rechaza la antigua opción sin acompañamiento para trabajadores", () => {
+  it("acepta fruta o postre y rechaza la opción sin acompañamiento", () => {
     expect(
       saveRegularOrderRequestSchema.safeParse({
         ...request,
@@ -57,6 +57,6 @@ describe("selección de pan y té", () => {
         ...request,
         body: { ...request.body, side: "postre" },
       }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 });

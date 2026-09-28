@@ -6,13 +6,13 @@ export const saveRegularOrderRequestSchema = z.object({
     .object({
       serviceDayId: uuidSchema,
       menuOptionId: uuidSchema,
-      side: z.enum(["ensalada", "fruta"]),
+      side: z.enum(["ensalada", "fruta", "postre"]),
       bread: z.boolean().default(false),
       tea: z.boolean().default(false),
     })
-    .refine((body) => body.bread || body.tea, {
+    .refine((body) => body.bread !== body.tea, {
       path: ["bread"],
-      message: "Debes elegir pan, té o ambos",
+      message: "Debes elegir pan o té",
     }),
   params: z.object({}),
   query: z.object({}),

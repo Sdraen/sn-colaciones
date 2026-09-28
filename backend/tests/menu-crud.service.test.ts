@@ -15,6 +15,7 @@ type UserDatabaseClient = SupabaseClient<Database>;
 const draftDays = Array.from({ length: 7 }, (_, index) => ({
   serviceDate: addDays("2026-08-31", index),
   disabled: index >= 5,
+  dessert: null,
   options:
     index >= 5
       ? []
@@ -52,6 +53,9 @@ describe("CRUD de borradores semanales", () => {
       same_day_closes_at: "2026-09-15T11:00:00.000Z",
       delivery_closes_at: "2026-09-15T13:00:00.000Z",
       availability_published_at: null,
+      dessert_name: "Leche asada",
+      dessert_capacity: 20,
+      dessert_capacity_updated_at: "2026-09-14T12:00:00.000Z",
       disabled: false,
     };
     const trainingOption = {
@@ -97,16 +101,20 @@ describe("CRUD de borradores semanales", () => {
       }
       return { select: () => ({ in: () => ({ order: () => optionQuery }) }) };
     });
-    const rpc = vi.fn().mockResolvedValue({
-      data: [
-        {
-          menu_option_id: trainingOption.id,
-          reserved_quantity: 15,
-          remaining_quantity: 20,
-        },
-      ],
+    const rpc = vi.fn((name: string) => Promise.resolve({
+      data: name === "get_menu_option_availability"
+        ? [{
+            menu_option_id: trainingOption.id,
+            reserved_quantity: 15,
+            remaining_quantity: 20,
+          }]
+        : [{
+            service_day_id: day.id,
+            reserved_quantity: 4,
+            remaining_quantity: 16,
+          }],
       error: null,
-    });
+    }));
     const client = { from, rpc } as unknown as UserDatabaseClient;
 
     const menu = await getMenuWeek(client, {
@@ -120,6 +128,12 @@ describe("CRUD de borradores semanales", () => {
       capacity: 35,
       reservedQuantity: 15,
       remainingQuantity: 20,
+    });
+    expect(menu.days[0]?.dessert).toMatchObject({
+      name: "Leche asada",
+      capacity: 20,
+      reservedQuantity: 4,
+      remainingQuantity: 16,
     });
     expect(optionQuery.eq).toHaveBeenCalledOnce();
     expect(optionQuery.eq).toHaveBeenCalledWith("visible", true);
@@ -165,7 +179,7 @@ describe("CRUD de borradores semanales", () => {
       }),
     ).rejects.toMatchObject({ code: "MENU_EDIT_CONFIRMATION_REQUIRED", statusCode: 409 });
     expect(rpc).toHaveBeenCalledWith(
-      "update_published_menu_week",
+      "update_published_menu_week_with_daily_desserts",
       expect.objectContaining({
         target_menu_week_id: "11111111-1111-4111-8111-111111111111",
         confirm_impact: false,
@@ -203,6 +217,9 @@ describe("CRUD de borradores semanales", () => {
       same_day_closes_at: "2026-08-31T11:00:00.000Z",
       delivery_closes_at: "2026-08-31T14:00:00.000Z",
       availability_published_at: null,
+      dessert_name: null,
+      dessert_capacity: null,
+      dessert_capacity_updated_at: null,
       disabled: index >= 5,
     }));
     const optionRows = serviceDays.slice(0, 5).map((day, index) => ({

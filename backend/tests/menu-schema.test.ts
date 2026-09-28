@@ -48,7 +48,34 @@ describe("contrato del menú semanal", () => {
         visible: true,
         sortOrder: 0,
       });
+      expect(result.data.body.days[0]?.dessert).toBeNull();
     }
+  });
+
+  it("acepta postre diario con tipo y cupo propio", () => {
+    const input = weeklyDraft();
+    Object.assign(input.body.days[1]!, {
+      dessert: { name: "Leche asada", capacity: 25 },
+    });
+
+    const result = createMenuWeekRequestSchema.safeParse(input);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.body.days[1]?.dessert).toEqual({
+        name: "Leche asada",
+        capacity: 25,
+      });
+    }
+  });
+
+  it("rechaza postre diario sin nombre o sin cupo", () => {
+    const input = weeklyDraft();
+    Object.assign(input.body.days[1]!, {
+      dessert: { name: " ", capacity: 25 },
+    });
+
+    expect(createMenuWeekRequestSchema.safeParse(input).success).toBe(false);
   });
 
   it("permite guardar preparaciones pendientes como borrador", () => {

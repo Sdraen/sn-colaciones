@@ -78,6 +78,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
   return (
     <WorkerOrdersClient
+      key={data.menuWeek.startsOn}
       userName={user.fullName}
       initialData={data}
       nowIso={new Date().toISOString()}

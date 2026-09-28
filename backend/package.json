@@ -23,6 +23,8 @@
     "verify:live-flows": "tsx scripts/verify-live-flows.ts",
     "verify:worker-provisioning": "tsx scripts/verify-worker-provisioning.ts",
     "load:test-workers": "tsx scripts/load-test-workers.ts",
+    "load:prepare-k6": "tsx scripts/load-test-workers.ts --prepare-k6",
+    "load:prepare-100": "tsx scripts/load-test-workers.ts --prepare-k6 --isolated-menu",
     "load:cleanup-workers": "tsx scripts/load-test-workers.ts --cleanup-only"
   },
   "dependencies": {

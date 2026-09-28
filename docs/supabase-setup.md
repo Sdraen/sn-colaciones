@@ -154,6 +154,20 @@ varias preparaciones extra o de capacitación en una sola transacción; si algun
 supera su cupo, no guarda ninguna. La segunda permite que la proveedora defina
 varios menús de capacitación por día hábil, cada uno con cupo independiente.
 
+Luego ejecutar `supabase/migrations/0030_daily_worker_dessert.sql`. Esta
+migración permite definir un postre por día con cupo independiente. El
+trabajador puede elegirlo en lugar de ensalada o fruta y la base de datos evita
+sobrecupos concurrentes.
+
+Luego ejecutar `supabase/migrations/0031_disable_fruit_when_dessert.sql`. Esta
+migración deshabilita la fruta durante los días con postre. En esos días, el
+trabajador sólo puede elegir ensalada o postre. También impide agregar postre
+a un día que ya tiene reservas confirmadas de fruta.
+
+Luego ejecutar `supabase/migrations/0032_worker_bread_or_tea.sql`. Esta
+migración exige que cada trabajador elija pan o té, pero no ambos. Los paquetes
+de capacitación conservan pan fijo y té opcional.
+
 ## 3. Estado y pendientes antes de producción
 
 - Las migraciones `0001` a `0020` ya fueron ejecutadas en el proyecto remoto.

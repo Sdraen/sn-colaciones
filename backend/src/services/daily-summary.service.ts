@@ -22,7 +22,7 @@ export async function getDailySummary(
 
   const { data: day, error: dayError } = await supabase
     .from("service_days")
-    .select("id, service_date, delivery_closes_at, disabled")
+    .select("id, service_date, delivery_closes_at, dessert_name, disabled")
     .eq("menu_week_id", menuWeek.id)
     .eq("service_date", serviceDate)
     .maybeSingle();
@@ -145,7 +145,11 @@ export async function getDailySummary(
       quantity,
       menuLabel: option?.label ?? "Menú sin identificar",
       menuDescription: option?.description ?? "",
-      dessert: order.training_package ? null : option?.dessert ?? null,
+      dessert: order.training_package
+        ? null
+        : order.side === "postre"
+          ? day.dessert_name
+          : option?.dessert ?? null,
       beverage: order.training_package ? "Jugo" : option?.beverage ?? null,
       side: order.side,
       bread: order.bread,
@@ -170,7 +174,7 @@ export async function getDailySummary(
     ...([
       ["ensalada", "Ensaladas", sides.ensalada],
       ["fruta", "Frutas", sides.fruta],
-      ["postre", "Postres", sides.postre],
+      ["postre", day.dessert_name ? `Postres · ${day.dessert_name}` : "Postres", sides.postre],
     ] as const)
       .filter(([, , quantity]) => quantity > 0)
       .map(([key, label, expectedQuantity]) => ({

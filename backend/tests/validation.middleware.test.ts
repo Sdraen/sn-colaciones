@@ -49,6 +49,31 @@ describe("validación de contratos HTTP", () => {
     expect(response.body.data.body).toMatchObject({ bread: false, tea: true });
   });
 
+  it("rechaza un pedido que elige pan y té", async () => {
+    const response = await request(app).put("/orders").send({
+      serviceDayId: "00000000-0000-4000-8000-000000000001",
+      menuOptionId: "00000000-0000-4000-8000-000000000002",
+      side: "ensalada",
+      bread: true,
+      tea: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("acepta postre cuando el día lo ofrece", async () => {
+    const response = await request(app).put("/orders").send({
+      serviceDayId: "00000000-0000-4000-8000-000000000001",
+      menuOptionId: "00000000-0000-4000-8000-000000000002",
+      side: "postre",
+      bread: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.body.side).toBe("postre");
+  });
+
   it("responde 400 con errores por campo", async () => {
     const response = await request(app).put("/orders").send({
       serviceDayId: "no-es-uuid",

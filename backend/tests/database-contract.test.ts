@@ -306,6 +306,47 @@ describe("contrato de migraciones de Supabase", () => {
     expect(training).toContain("function public.set_training_menus_for_day");
     expect(training).toContain("MENU_OPTION_HAS_RESERVATIONS");
   });
+
+  it("ofrece postre diario con cupo atómico para trabajadores", () => {
+    const migration = readMigration("0030_daily_worker_dessert.sql");
+
+    expect(migration).toContain("add column dessert_name text");
+    expect(migration).toContain("add column dessert_capacity integer");
+    expect(migration).toContain("function public.save_menu_week_with_daily_desserts");
+    expect(migration).toContain("function public.update_published_menu_week_with_daily_desserts");
+    expect(migration).toContain("function public.get_daily_dessert_availability");
+    expect(migration).toContain("function private.enforce_daily_dessert_capacity");
+    expect(migration).toContain("for update");
+    expect(migration).toContain("DAILY_DESSERT_CAPACITY_EXCEEDED");
+    expect(migration).toContain("selected_side::text not in ('ensalada', 'fruta', 'postre')");
+    expect(migration).toContain(
+      "grant execute on function public.get_daily_dessert_availability(uuid) to authenticated",
+    );
+  });
+
+  it("desactiva fruta durante los días con postre", () => {
+    const migration = readMigration("0031_disable_fruit_when_dessert.sql");
+
+    expect(migration).toContain("function private.enforce_order_business_rules");
+    expect(migration).toContain("new.kind = ''regular''");
+    expect(migration).toContain("new.side = ''fruta''");
+    expect(migration).toContain("target_day.dessert_name is not null");
+    expect(migration).toContain("FRUIT_NOT_AVAILABLE_WITH_DESSERT");
+    expect(migration).toContain("function private.prevent_dessert_with_fruit_reservations");
+    expect(migration).toContain("DAILY_DESSERT_CONFLICTS_WITH_FRUIT_RESERVATIONS");
+  });
+
+  it("exige pan o té para los pedidos de trabajadores", () => {
+    const migration = readMigration("0032_worker_bread_or_tea.sql");
+
+    expect(migration).toContain("function private.enforce_worker_bread_or_tea");
+    expect(migration).toContain("new.kind = 'regular'");
+    expect(migration).toContain("new.bread = new.tea");
+    expect(migration).toContain("if include_bread = include_tea then");
+    expect(migration).toContain("WORKER_BREAD_OR_TEA_REQUIRED");
+    expect(migration).toContain("public.save_regular_order");
+    expect(migration).toContain("orders_check_worker_bread_or_tea");
+  });
 });
 
 function readMigration(fileName: string) {

@@ -12,16 +12,24 @@ import {
   saveRegularOrder,
 } from "../services/order.service.js";
 
-export const getAvailableMenuWeeks: RequestHandler = async (request, response) => {
+export const getAvailableMenuWeeks: RequestHandler = async (
+  request,
+  response,
+) => {
   const { supabase } = getRequestAuth(request);
   const weeks = await listAvailableWorkerMenuWeeks(supabase);
   response.status(200).json({ data: weeks });
 };
 
 export const getMyOrders: RequestHandler = async (request, response) => {
-  const { supabase, user } = getRequestAuth(request);
+  const { supabase, user, profile } = getRequestAuth(request);
   const { query } = getValidatedRequest<ListMyOrdersRequest>(request);
-  const result = await listWorkerOrders(supabase, user.id, query.startsOn);
+  const result = await listWorkerOrders(
+    supabase,
+    user.id,
+    profile.organizationId,
+    query.startsOn,
+  );
   response.status(200).json({ data: result });
 };
 

@@ -891,7 +891,7 @@ components:
         side: { enum: [ensalada, fruta, postre] }
         bread: { type: boolean, default: false }
         tea: { type: boolean, default: false }
-      description: El trabajador elige ensalada o fruta; los miércoles también puede elegir postre. Debe elegir exactamente una alternativa entre pan y té.
+      description: El trabajador elige ensalada o fruta cuando no hay postre. Si la proveedora ofrece postre, elige ensalada o postre y la fruta queda deshabilitada. Además elige exactamente una opción entre pan o té.
     MealSelectionInput:
       type: object
       required: [serviceDayId, menuOptionId, side]
@@ -1054,10 +1054,35 @@ components:
       properties:
         serviceDate: { type: string, format: date }
         disabled: { type: boolean, default: false }
+        dessert:
+          oneOf:
+            - $ref: "#/components/schemas/DailyDessertInput"
+            - { type: "null" }
+          default: null
         options:
           type: array
           maxItems: 20
           items: { $ref: "#/components/schemas/MenuOptionDraftInput" }
+    DailyDessertInput:
+      type: object
+      required: [name, capacity]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 160 }
+        capacity: { type: integer, minimum: 0, maximum: 10000 }
+    DailyDessert:
+      type: object
+      required: [name, capacity, capacityUpdatedAt, reservedQuantity, remainingQuantity]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 160 }
+        capacity: { type: integer, minimum: 0, maximum: 10000 }
+        capacityUpdatedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        reservedQuantity: { type: integer, minimum: 0 }
+        remainingQuantity: { type: integer, minimum: 0 }
     MenuWeekDraftInput:
       type: object
       required: [startsOn, days]
@@ -1117,7 +1142,7 @@ components:
             - { type: "null" }
     ServiceDay:
       type: object
-      required: [id, serviceDate, disabled, options]
+      required: [id, serviceDate, dessert, disabled, options]
       properties:
         id: { type: string, format: uuid }
         serviceDate: { type: string, format: date }
@@ -1125,6 +1150,10 @@ components:
         sameDayOpensAt: { type: string, format: date-time }
         sameDayClosesAt: { type: string, format: date-time }
         deliveryClosesAt: { type: string, format: date-time }
+        dessert:
+          oneOf:
+            - $ref: "#/components/schemas/DailyDessert"
+            - { type: "null" }
         disabled: { type: boolean }
         options:
           type: array

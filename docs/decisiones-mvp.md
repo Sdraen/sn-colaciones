@@ -19,9 +19,10 @@
   alternativas disponibles son Principal 1, Principal 2, Vegetariano,
   Hipocalórico, Sándwich y su opción vegetariana, Burger y su opción
   vegetariana, Empanadas, Handroll y su opción vegetariana.
-- Cada trabajador elige exactamente un acompañamiento entre ensalada y fruta.
-  No necesita conocer la preparación específica de esos acompañamientos antes
-  de reservar. Además puede elegir pan, té o ambos, cualquier día de la semana.
+- Cada trabajador elige exactamente un acompañamiento. Sin postre diario puede
+  elegir ensalada o fruta. Cuando la proveedora agrega postre, la fruta queda
+  deshabilitada y puede elegir ensalada o postre mientras queden cupos. Además
+  debe elegir exactamente una opción entre pan o té.
 - El trabajador ve los cupos restantes de cada plato. Una alternativa agotada
   queda deshabilitada y la base de datos impide sobrecupos incluso cuando dos
   personas intentan reservar al mismo tiempo.

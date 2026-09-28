@@ -64,6 +64,9 @@ export function WorkerOrdersClient({
   const [remainingByOption, setRemainingByOption] = useState<Record<string, number | null>>(
     () => availabilityFromMenu(initialData),
   );
+  const [remainingDessertByDay, setRemainingDessertByDay] = useState<Record<string, number | null>>(
+    () => dessertAvailabilityFromMenu(initialData),
+  );
   const [activeDayId, setActiveDayId] = useState(initialDayId);
   const [draft, setDraft] = useState<Draft>(() =>
     draftForDay(
@@ -89,6 +92,7 @@ export function WorkerOrdersClient({
         if (!active) return;
         setOrders(latest.orders);
         setRemainingByOption(availabilityFromMenu(latest));
+        setRemainingDessertByDay(dessertAvailabilityFromMenu(latest));
       } catch {
         // La validación final de cupos permanece en la base de datos.
       }
@@ -125,6 +129,13 @@ export function WorkerOrdersClient({
         existingOrder?.menuOptionId === selectedOption.id,
       ),
   );
+  const dessertRemaining = activeDay?.dessert
+    ? remainingDessertByDay[activeDay.id] ?? activeDay.dessert.remainingQuantity
+    : null;
+  const hasOwnDessertReservation = existingOrder?.side === "postre";
+  const dessertSelectable = Boolean(
+    activeDay?.dessert && isOptionSelectable(dessertRemaining, hasOwnDessertReservation),
+  );
   const canReserve = Boolean(
     activeDay &&
       !activeDay.disabled &&
@@ -132,7 +143,15 @@ export function WorkerOrdersClient({
       currentTime <= new Date(activeDay.preorderDeadline).getTime(),
   );
   const formComplete = Boolean(
-    draft.menuOptionId && draft.side && (draft.bread || draft.tea) && selectedOptionAvailable,
+      draft.menuOptionId &&
+      draft.side &&
+      draft.bread !== draft.tea &&
+      selectedOptionAvailable &&
+      (draft.side !== "fruta" || !activeDay?.dessert) &&
+      (draft.side !== "postre" || dessertSelectable),
+  );
+  const hasDraftSelection = Boolean(
+    draft.menuOptionId || draft.side || draft.bread || draft.tea,
   );
   const serviceDays = initialData.menuWeek.days.filter((day) => !day.disabled);
   const reservedDays = serviceDays.filter((day) => getConfirmedOrder(orders, day.id)).length;
@@ -151,6 +170,12 @@ export function WorkerOrdersClient({
 
   function updateDraft(update: Partial<Draft>) {
     setDraft((current) => ({ ...current, ...update }));
+    setMessage("");
+    setError("");
+  }
+
+  function clearDraft() {
+    setDraft(emptyDraft);
     setMessage("");
     setError("");
   }
@@ -190,6 +215,16 @@ export function WorkerOrdersClient({
         }
         return next;
       });
+      if (existingOrder?.side !== saved.side) {
+        setRemainingDessertByDay((current) => {
+          const next = saved.side === "postre"
+            ? decrementRemaining(current[activeDay.id])
+            : existingOrder?.side === "postre"
+              ? incrementRemaining(current[activeDay.id])
+              : current[activeDay.id];
+          return { ...current, [activeDay.id]: next };
+        });
+      }
       setMessage(
         existingOrder
           ? `Tu almuerzo del ${formatChileanDate(activeDay.serviceDate)} fue actualizado.`
@@ -224,6 +259,12 @@ export function WorkerOrdersClient({
           current[existingOrder.menuOptionId],
         ),
       }));
+      if (existingOrder.side === "postre") {
+        setRemainingDessertByDay((current) => ({
+          ...current,
+          [activeDay.id]: incrementRemaining(current[activeDay.id]),
+        }));
+      }
       setDraft(emptyDraft);
       setMessage(`Tu almuerzo del ${formatChileanDate(activeDay.serviceDate)} fue eliminado.`);
     } catch (caught) {
@@ -394,14 +435,16 @@ export function WorkerOrdersClient({
                 <Salad size={20} aria-hidden="true" /> Acompañamiento
               </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                Elige sólo una opción. La fruta reemplaza a la ensalada.
+                {activeDay.dessert
+                  ? "Elige ensalada o postre."
+                  : "Elige ensalada o fruta."}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                {getSideChoices().map(([value, label]) => (
+                {getSideChoices(activeDay).map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
-                    disabled={!canReserve}
+                    disabled={!canReserve || (value === "postre" && !dessertSelectable)}
                     onClick={() => updateDraft({ side: value })}
                     className={`focus-ring min-h-14 rounded-xl border px-2 text-xs font-bold transition ${
                       draft.side === value
@@ -409,7 +452,16 @@ export function WorkerOrdersClient({
                         : "border-[var(--line)] bg-white hover:border-[var(--brand)]"
                     } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    {label}
+                    <span className="block">{label}</span>
+                    {value === "postre" ? (
+                      <span className="mt-1 block text-[10px] opacity-80">
+                        {dessertRemaining === 0 && !hasOwnDessertReservation
+                          ? "Agotado"
+                          : dessertRemaining === null
+                            ? "Cupo por confirmar"
+                            : `${dessertRemaining} disponibles`}
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -418,10 +470,10 @@ export function WorkerOrdersClient({
             <section className="card p-5">
               <p className="eyebrow">Paso 3</p>
               <h2 className="mt-1 flex items-center gap-2 font-extrabold">
-                <Coffee size={20} aria-hidden="true" /> Pan y té
+                <Coffee size={20} aria-hidden="true" /> Pan o té
               </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                Puedes elegir uno o ambos complementos.
+                Elige solo una opción.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {(
@@ -441,11 +493,16 @@ export function WorkerOrdersClient({
                       } ${canReserve ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
                     >
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name={`complement-${activeDay.id}`}
                         disabled={!canReserve}
                         checked={checked}
                         onChange={() =>
-                          updateDraft({ [field]: !checked })
+                          updateDraft(
+                            field === "bread"
+                              ? { bread: true, tea: false }
+                              : { bread: false, tea: true },
+                          )
                         }
                         className="size-4 accent-[var(--brand)]"
                       />
@@ -460,6 +517,7 @@ export function WorkerOrdersClient({
               selectedOption={selectedOption}
               draft={draft}
               existingOrder={Boolean(existingOrder)}
+              dessertName={activeDay.dessert?.name ?? null}
             />
 
             <button
@@ -475,6 +533,17 @@ export function WorkerOrdersClient({
                   ? "Guardar cambios"
                   : "Confirmar almuerzo"}
             </button>
+
+            {!existingOrder && hasDraftSelection ? (
+              <button
+                type="button"
+                onClick={clearDraft}
+                disabled={saving}
+                className="focus-ring flex min-h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-[var(--danger)] transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Trash2 size={16} aria-hidden="true" /> Borrar selección
+              </button>
+            ) : null}
 
             {existingOrder ? (
               <ConfirmDialog
@@ -523,7 +592,7 @@ function OrderProgress({
   const steps = [
     { label: "Preparación", complete: Boolean(draft.menuOptionId) },
     { label: "Acompañamiento", complete: Boolean(draft.side) },
-    { label: "Pan y té", complete: draft.bread || draft.tea },
+    { label: "Pan o té", complete: draft.bread !== draft.tea },
   ];
   const completedSteps = steps.filter((step) => step.complete).length;
   const percentage = Math.round((completedSteps / steps.length) * 100);
@@ -719,26 +788,26 @@ function OrderReview({
   selectedOption,
   draft,
   existingOrder,
+  dessertName,
 }: {
   selectedOption: MenuOptionDto | undefined;
   draft: Draft;
   existingOrder: boolean;
+  dessertName: string | null;
 }) {
   const side = draft.side
     ? {
         ensalada: "Ensalada",
         fruta: "Fruta",
-        postre: "Postre",
+        postre: dessertName ? `Postre · ${dessertName}` : "Postre",
         ninguno: "Sin acompañamiento",
       }[draft.side]
     : "Por elegir";
-  const complement = draft.bread && draft.tea
-    ? "Pan y té"
-    : draft.bread
-      ? "Pan"
-      : draft.tea
-        ? "Té"
-        : "Por elegir";
+  const complement = draft.bread
+    ? "Pan"
+    : draft.tea
+      ? "Té"
+      : "Por elegir";
 
   return (
     <section className="rounded-2xl border border-dashed border-[var(--line)] bg-white/65 p-5">
@@ -778,20 +847,26 @@ function draftForDay(orders: OrderDto[], day: ServiceDayDto | undefined): Draft 
   if (!day) return emptyDraft;
   const order = getConfirmedOrder(orders, day.id);
   if (!order) return emptyDraft;
-  const validSide = order.side === "ensalada" || order.side === "fruta";
+  const validSide = order.side === "ensalada" ||
+    order.side === "fruta" ||
+    (order.side === "postre" && day.dessert !== null);
   return {
     menuOptionId: order.menuOptionId,
     side: validSide ? order.side : "",
     bread: order.bread,
-    tea: order.tea,
+    tea: order.bread ? false : order.tea,
   };
 }
 
-function getSideChoices() {
-  const choices: Array<[Extract<SideChoice, "ensalada" | "fruta">, string]> = [
+function getSideChoices(day: ServiceDayDto) {
+  const choices: Array<[Extract<SideChoice, "ensalada" | "fruta" | "postre">, string]> = [
     ["ensalada", "Ensalada"],
-    ["fruta", "Fruta"],
   ];
+  if (day.dessert) {
+    choices.push(["postre", `Postre · ${day.dessert.name}`]);
+  } else {
+    choices.push(["fruta", "Fruta"]);
+  }
   return choices;
 }
 
@@ -799,6 +874,14 @@ function availabilityFromMenu(data: WorkerOrdersDto) {
   return Object.fromEntries(
     data.menuWeek.days.flatMap((day) =>
       day.options.map((option) => [option.id, option.remainingQuantity] as const),
+    ),
+  );
+}
+
+function dessertAvailabilityFromMenu(data: WorkerOrdersDto) {
+  return Object.fromEntries(
+    data.menuWeek.days.flatMap((day) =>
+      day.dessert ? [[day.id, day.dessert.remainingQuantity] as const] : [],
     ),
   );
 }

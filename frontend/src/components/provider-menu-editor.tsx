@@ -3,6 +3,7 @@
 import { memo, useCallback, useState } from "react";
 import {
   AlertTriangle,
+  CakeSlice,
   Check,
   ChevronDown,
   ChevronUp,
@@ -40,6 +41,11 @@ type DraftOption = {
 type DraftDay = {
   serviceDate: string;
   disabled: boolean;
+  dessert: {
+    name: string;
+    capacity: number | null;
+    reservedQuantity: number;
+  } | null;
   options: DraftOption[];
 };
 
@@ -675,22 +681,101 @@ function DayEditor({
             );
           })}
 
-          <button
-            type="button"
-            disabled={workerOptions.length >= MENU_ALTERNATIVES.length}
-            onClick={() =>
-              onUpdateDay(dayIndex, {
-                options: [
-                  ...day.options.filter((option) => option.availableForWorkers),
-                  emptyOption(workerOptions.length, usedLabels),
-                  ...day.options.filter((option) => !option.availableForWorkers),
-                ],
-              })
-            }
-            className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--brand)] px-4 text-base font-extrabold text-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-          >
-            <Plus size={18} /> Agregar otra alternativa
-          </button>
+          {day.dessert ? (
+            <article className="rounded-2xl border-2 border-[var(--line)] bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">
+                    Postre del día
+                  </p>
+                  <p className="mt-1 text-lg font-black">{day.dessert.name || "Por definir"}</p>
+                  {published ? (
+                    <p className="mt-1 text-sm font-bold text-[var(--herb-strong)]">
+                      {day.dessert.reservedQuantity}{" "}
+                      {day.dessert.reservedQuantity === 1 ? "reserva" : "reservas"}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={published && day.dessert.reservedQuantity > 0}
+                  title={
+                    published && day.dessert.reservedQuantity > 0
+                      ? "Este postre tiene reservas y no se puede quitar"
+                      : undefined
+                  }
+                  onClick={() => onUpdateDay(dayIndex, { dessert: null })}
+                  className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Trash2 size={16} /> Quitar postre
+                </button>
+              </div>
+              <div className="grid gap-5 lg:grid-cols-2">
+                <label className="text-base font-extrabold">
+                  Tipo de postre
+                  <input
+                    value={day.dessert.name}
+                    maxLength={160}
+                    onChange={(event) => onUpdateDay(dayIndex, {
+                      dessert: { ...day.dessert!, name: event.target.value },
+                    })}
+                    placeholder="Ej.: Leche asada"
+                    className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
+                  />
+                </label>
+                <label className="text-base font-extrabold">
+                  Cupo inicial
+                  <input
+                    type="number"
+                    min={day.dessert.reservedQuantity}
+                    max="10000"
+                    value={day.dessert.capacity ?? ""}
+                    onChange={(event) => onUpdateDay(dayIndex, {
+                      dessert: {
+                        ...day.dessert!,
+                        capacity: event.target.value === "" ? null : Number(event.target.value),
+                      },
+                    })}
+                    placeholder="Ej.: 30"
+                    className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
+                  />
+                </label>
+              </div>
+              <p className="mt-3 text-sm text-[var(--muted)]">
+                Trabajadores podrán elegir este postre en lugar de ensalada o fruta.
+              </p>
+            </article>
+          ) : null}
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              disabled={workerOptions.length >= MENU_ALTERNATIVES.length}
+              onClick={() =>
+                onUpdateDay(dayIndex, {
+                  options: [
+                    ...day.options.filter((option) => option.availableForWorkers),
+                    emptyOption(workerOptions.length, usedLabels),
+                    ...day.options.filter((option) => !option.availableForWorkers),
+                  ],
+                })
+              }
+              className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--brand)] px-4 text-base font-extrabold text-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+            >
+              <Plus size={18} /> Agregar otra alternativa
+            </button>
+            {!day.dessert ? (
+              <button
+                type="button"
+                onClick={() => onUpdateDay(dayIndex, {
+                  dessert: { name: "", capacity: null, reservedQuantity: 0 },
+                })}
+                className="menu-action inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--herb)] px-4 text-base font-extrabold text-[var(--herb-strong)] sm:w-auto"
+              >
+                <CakeSlice size={18} /> Agregar postre
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : (
         <p className="mt-4 rounded-xl bg-white p-4 text-sm text-[var(--muted)]">
@@ -718,6 +803,13 @@ function toDraftDays(menu: MenuWeekDto): DraftDay[] {
   return menu.days.map((day) => ({
     serviceDate: day.serviceDate,
     disabled: day.disabled,
+    dessert: day.dessert
+      ? {
+          name: day.dessert.name,
+          capacity: day.dessert.capacity,
+          reservedQuantity: day.dessert.reservedQuantity,
+        }
+      : null,
     options: day.options.map((option) => ({
       id: option.id,
       category: option.category,
@@ -741,10 +833,14 @@ function countImpactedReservations(menu: MenuWeekDto, days: DraftDay[]) {
     menu.days.flatMap((day) => day.options).map((option) => [option.id, option]),
   );
 
-  return days.reduce(
-    (weekTotal, day) =>
-      weekTotal +
-      day.options.reduce((dayTotal, option) => {
+  return days.reduce((weekTotal, day) => {
+    const originalDay = menu.days.find((item) => item.serviceDate === day.serviceDate);
+    const dessertImpact = originalDay?.dessert &&
+      originalDay.dessert.reservedQuantity > 0 &&
+      originalDay.dessert.name !== day.dessert?.name
+      ? originalDay.dessert.reservedQuantity
+      : 0;
+    return weekTotal + dessertImpact + day.options.reduce((dayTotal, option) => {
         if (!option.id || option.reservedQuantity === 0) return dayTotal;
         const original = originalOptions.get(option.id);
         if (!original) return dayTotal;
@@ -756,9 +852,8 @@ function countImpactedReservations(menu: MenuWeekDto, days: DraftDay[]) {
           original.beverage !== option.beverage ||
           original.notes !== option.notes;
         return dayTotal + (preparationChanged ? option.reservedQuantity : 0);
-      }, 0),
-    0,
-  );
+      }, 0);
+  }, 0);
 }
 
 function isDayComplete(day: DraftDay) {
@@ -767,6 +862,9 @@ function isDayComplete(day: DraftDay) {
   );
   return (
     visibleOptions.length > 0 &&
+    (!day.dessert || (
+      day.dessert.name.trim().length >= 2 && day.dessert.capacity !== null
+    )) &&
     visibleOptions.every(
       (option) =>
         option.label.trim().length >= 2 &&
@@ -799,6 +897,7 @@ function createEmptyWeek(startsOn: string): DraftDay[] {
   return Array.from({ length: 7 }, (_, index) => ({
     serviceDate: addDays(startsOn, index),
     disabled: false,
+    dessert: null,
     options: [emptyOption(0)],
   }));
 }

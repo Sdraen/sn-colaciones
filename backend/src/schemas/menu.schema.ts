@@ -28,6 +28,10 @@ const menuOptionDraftSchema = z.object({
 const menuDayDraftSchema = z.object({
   serviceDate: isoDateSchema,
   disabled: z.boolean().default(false),
+  dessert: z.object({
+    name: z.string().trim().min(2).max(160),
+    capacity: z.number().int().min(0).max(10_000),
+  }).nullable().default(null),
   options: z.array(menuOptionDraftSchema).max(20),
 });
 

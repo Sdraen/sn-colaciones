@@ -261,6 +261,10 @@ Los datos conservados para una demostración se eliminan de forma explícita con
 npm run load:cleanup-workers -w backend
 ```
 
+Para medir carga progresiva y picos de hasta 300 trabajadores con k6, consulta
+[`docs/pruebas-de-carga.md`](../docs/pruebas-de-carga.md). El perfil por defecto
+crea solo cinco cuentas y el destino remoto requiere una confirmación explícita.
+
 La nómina se puede revisar e importar desde el Excel sin guardar el archivo ni
 los nombres dentro del repositorio. El comando es una vista previa mientras no
 se agregue `--apply`:

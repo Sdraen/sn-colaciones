@@ -853,7 +853,7 @@ function kindLabel(kind: "regular" | "training" | "extra" | "exceptional") {
 function sideLabel(side: string) {
   if (side === "ensalada") return "Ensalada";
   if (side === "fruta") return "Fruta";
-  if (side === "postre") return "Postre (histórico)";
+  if (side === "postre") return "Postre";
   return "Sin acompañamiento";
 }
 

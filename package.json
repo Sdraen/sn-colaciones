@@ -16,7 +16,15 @@
     "build": "npm run build -w backend && npm run build -w frontend",
     "lint": "npm run lint -w backend && npm run lint -w frontend",
     "test": "npm run test -w backend",
-    "test:database": "npm run test:database -w backend"
+    "test:database": "npm run test:database -w backend",
+    "load:prepare": "npm run load:prepare-k6 -w backend",
+    "load:prepare100": "npm run load:prepare-100 -w backend",
+    "load:smoke": "k6 run --summary-export=test-artifacts/k6-smoke-summary.json -e LOAD_PROFILE=smoke backend/load-tests/worker-orders.js",
+    "load:normal": "k6 run --summary-export=test-artifacts/k6-normal-summary.json -e LOAD_PROFILE=normal backend/load-tests/worker-orders.js",
+    "load:concurrent100": "k6 run --summary-export=test-artifacts/k6-concurrent100-summary.json -e LOAD_PROFILE=concurrent100 backend/load-tests/worker-orders.js",
+    "load:stress300": "k6 run --summary-export=test-artifacts/k6-stress300-summary.json -e LOAD_PROFILE=stress300 backend/load-tests/worker-orders.js",
+    "load:spike300": "k6 run --summary-export=test-artifacts/k6-spike300-summary.json -e LOAD_PROFILE=spike300 backend/load-tests/worker-orders.js",
+    "load:cleanup": "npm run load:cleanup-workers -w backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

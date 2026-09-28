@@ -1,4 +1,4 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppRole, Database } from "../types/database.js";
 
 export interface AuthenticatedProfile {
@@ -11,7 +11,10 @@ export interface AuthenticatedProfile {
 export interface RequestAuth {
   accessToken: string;
   assuranceLevel: "aal1" | "aal2";
-  user: User;
+  user: {
+    id: string;
+    email: string | null;
+  };
   profile: AuthenticatedProfile;
   supabase: SupabaseClient<Database>;
 }

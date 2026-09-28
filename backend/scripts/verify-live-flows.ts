@@ -88,7 +88,7 @@ for (const [dayIndex, day] of reservableDays.entries()) {
       body: JSON.stringify({
         serviceDayId: day.id,
         menuOptionId: workerOption.id,
-        side: workerSideFor(day.serviceDate, dayIndex),
+        side: workerSideFor(day, dayIndex),
         bread: dayIndex % 2 === 0,
         tea: dayIndex % 2 !== 0,
       }),
@@ -221,9 +221,9 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-function workerSideFor(serviceDate: string, index: number) {
-  const choices = new Date(`${serviceDate}T12:00:00.000Z`).getUTCDay() === 3
-    ? ["ensalada", "fruta", "postre"]
+function workerSideFor(day: { dessert: { name: string } | null }, index: number) {
+  const choices = day.dessert
+    ? ["ensalada", "postre"]
     : ["ensalada", "fruta"];
   return choices[index % choices.length];
 }
@@ -243,6 +243,7 @@ type MenuWeek = {
     id: string;
     serviceDate: string;
     disabled: boolean;
+    dessert: { name: string } | null;
     options: Array<{
       id: string;
       visible: boolean;

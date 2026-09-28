@@ -6,6 +6,13 @@ import { getMenuWeek } from "./menu.service.js";
 import { getCurrentWeekStartsOn } from "./order-window.service.js";
 
 type UserDatabaseClient = SupabaseClient<Database>;
+type WorkerMenu = Awaited<ReturnType<typeof getMenuWeek>>;
+
+const workerMenuCache = new Map<
+  string,
+  { promise: Promise<WorkerMenu>; expiresAt: number }
+>();
+const workerMenuCacheMs = 250;
 
 export async function listAvailableWorkerMenuWeeks(
   supabase: UserDatabaseClient,
@@ -18,7 +25,10 @@ export async function listAvailableWorkerMenuWeeks(
     .not("published_at", "is", null)
     .order("starts_on", { ascending: true });
   if (error) {
-    throwSupabaseError(error, "No fue posible consultar las semanas disponibles");
+    throwSupabaseError(
+      error,
+      "No fue posible consultar las semanas disponibles",
+    );
   }
 
   return (data ?? []).map((week) => ({
@@ -46,31 +56,46 @@ export async function saveRegularOrder(
     include_tea: input.tea,
   });
   if (error) throwSupabaseError(error, "No fue posible guardar el pedido");
-  if (!data) throw new AppError("La base de datos no devolvió el pedido", 503, "ORDER_SAVE_EMPTY");
+  if (!data)
+    throw new AppError(
+      "La base de datos no devolvió el pedido",
+      503,
+      "ORDER_SAVE_EMPTY",
+    );
   return serializeOrder(data);
 }
 
-export async function cancelRegularOrder(supabase: UserDatabaseClient, orderId: string) {
+export async function cancelRegularOrder(
+  supabase: UserDatabaseClient,
+  orderId: string,
+) {
   const { data, error } = await supabase.rpc("cancel_regular_order", {
     target_order_id: orderId,
   });
   if (error) throwSupabaseError(error, "No fue posible cancelar el pedido");
-  if (!data) throw new AppError("No se encontró el pedido", 404, "ORDER_NOT_FOUND");
+  if (!data)
+    throw new AppError("No se encontró el pedido", 404, "ORDER_NOT_FOUND");
   return serializeOrder(data);
 }
 
 export async function listWorkerOrders(
   supabase: UserDatabaseClient,
   userId: string,
+  organizationId: string,
   startsOn?: string,
 ) {
-  const { data: diner, error: dinerError } = await supabase
-    .from("diners")
-    .select("id")
-    .eq("auth_user_id", userId)
-    .eq("active", true)
-    .maybeSingle();
-  if (dinerError) throwSupabaseError(dinerError, "No fue posible consultar al trabajador");
+  const [dinerResult, menu] = await Promise.all([
+    supabase
+      .from("diners")
+      .select("id")
+      .eq("auth_user_id", userId)
+      .eq("active", true)
+      .maybeSingle(),
+    getCachedWorkerMenu(supabase, organizationId, startsOn),
+  ]);
+  const { data: diner, error: dinerError } = dinerResult;
+  if (dinerError)
+    throwSupabaseError(dinerError, "No fue posible consultar al trabajador");
   if (!diner) {
     throw new AppError(
       "El trabajador no tiene un comensal activo asociado",
@@ -79,7 +104,6 @@ export async function listWorkerOrders(
     );
   }
 
-  const menu = await getMenuWeek(supabase, { startsOn, includeDrafts: false });
   const serviceDayIds = menu.days.map((day) => day.id);
   if (serviceDayIds.length === 0) return { menuWeek: menu, orders: [] };
 
@@ -91,10 +115,13 @@ export async function listWorkerOrders(
     .eq("diner_id", diner.id)
     .in("service_day_id", serviceDayIds)
     .order("created_at", { ascending: true });
-  if (ordersError) throwSupabaseError(ordersError, "No fue posible consultar los pedidos");
+  if (ordersError)
+    throwSupabaseError(ordersError, "No fue posible consultar los pedidos");
 
   const optionById = new Map(
-    menu.days.flatMap((day) => day.options.map((option) => [option.id, option] as const)),
+    menu.days.flatMap((day) =>
+      day.options.map((option) => [option.id, option] as const),
+    ),
   );
 
   return {
@@ -104,6 +131,36 @@ export async function listWorkerOrders(
       menuOption: optionById.get(order.menu_option_id) ?? null,
     })),
   };
+}
+
+function getCachedWorkerMenu(
+  supabase: UserDatabaseClient,
+  organizationId: string,
+  startsOn?: string,
+) {
+  const key = `${organizationId}:${startsOn ?? "latest"}`;
+  const existing = workerMenuCache.get(key);
+  if (existing && existing.expiresAt > Date.now()) return existing.promise;
+
+  const entry = {
+    expiresAt: Number.POSITIVE_INFINITY,
+    promise: getMenuWeek(supabase, {
+      startsOn,
+      includeDrafts: false,
+      availableForWorkersOnly: true,
+      includeAvailability: true,
+    }),
+  };
+  workerMenuCache.set(key, entry);
+  void entry.promise.then(
+    () => {
+      entry.expiresAt = Date.now() + workerMenuCacheMs;
+    },
+    () => {
+      if (workerMenuCache.get(key) === entry) workerMenuCache.delete(key);
+    },
+  );
+  return entry.promise;
 }
 
 type SerializableOrder = Pick<

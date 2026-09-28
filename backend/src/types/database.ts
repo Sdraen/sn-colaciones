@@ -178,6 +178,9 @@ export interface Database {
           same_day_closes_at: string;
           delivery_closes_at: string;
           availability_published_at: string | null;
+          dessert_name: string | null;
+          dessert_capacity: number | null;
+          dessert_capacity_updated_at: string | null;
           disabled: boolean;
           created_at: string;
           updated_at: string;
@@ -192,6 +195,9 @@ export interface Database {
           same_day_closes_at: string;
           delivery_closes_at: string;
           availability_published_at?: string | null;
+          dessert_name?: string | null;
+          dessert_capacity?: number | null;
+          dessert_capacity_updated_at?: string | null;
           disabled?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -635,7 +641,19 @@ export interface Database {
         Args: { target_starts_on: string; week_days: Json };
         Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
       };
+      save_menu_week_with_daily_desserts: {
+        Args: { target_starts_on: string; week_days: Json };
+        Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
+      };
       update_published_menu_week: {
+        Args: {
+          target_menu_week_id: string;
+          week_days: Json;
+          confirm_impact?: boolean;
+        };
+        Returns: Database["public"]["Tables"]["menu_weeks"]["Row"];
+      };
+      update_published_menu_week_with_daily_desserts: {
         Args: {
           target_menu_week_id: string;
           week_days: Json;
@@ -655,6 +673,14 @@ export interface Database {
         Args: { target_menu_week_id: string };
         Returns: Array<{
           menu_option_id: string;
+          reserved_quantity: number;
+          remaining_quantity: number | null;
+        }>;
+      };
+      get_daily_dessert_availability: {
+        Args: { target_menu_week_id: string };
+        Returns: Array<{
+          service_day_id: string;
           reserved_quantity: number;
           remaining_quantity: number | null;
         }>;

@@ -38,22 +38,42 @@ export async function getMenuWeek(
     .limit(1);
 
   if (options.startsOn) weekQuery = weekQuery.eq("starts_on", options.startsOn);
-  if (!options.includeDrafts) weekQuery = weekQuery.not("published_at", "is", null);
+  if (!options.includeDrafts)
+    weekQuery = weekQuery.not("published_at", "is", null);
 
   const { data: week, error: weekError } = await weekQuery.maybeSingle();
-  if (weekError) throwSupabaseError(weekError, "No fue posible consultar el menú semanal");
+  if (weekError)
+    throwSupabaseError(weekError, "No fue posible consultar el menú semanal");
   if (!week) {
-    throw new AppError("No existe un menú semanal publicado", 404, "MENU_WEEK_NOT_FOUND");
+    throw new AppError(
+      "No existe un menú semanal publicado",
+      404,
+      "MENU_WEEK_NOT_FOUND",
+    );
   }
+
+  const includeAvailability =
+    options.availableForWorkersOnly || options.includeAvailability;
+  const availabilityPromise = includeAvailability
+    ? Promise.all([
+        supabase.rpc("get_menu_option_availability", {
+          target_menu_week_id: week.id,
+        }),
+        supabase.rpc("get_daily_dessert_availability", {
+          target_menu_week_id: week.id,
+        }),
+      ])
+    : null;
 
   const { data: days, error: daysError } = await supabase
     .from("service_days")
     .select(
-      "id, service_date, phase, preorder_deadline, same_day_opens_at, same_day_closes_at, delivery_closes_at, availability_published_at, disabled",
+      "id, service_date, phase, preorder_deadline, same_day_opens_at, same_day_closes_at, delivery_closes_at, availability_published_at, dessert_name, dessert_capacity, dessert_capacity_updated_at, disabled",
     )
     .eq("menu_week_id", week.id)
     .order("service_date", { ascending: true });
-  if (daysError) throwSupabaseError(daysError, "No fue posible consultar los días del menú");
+  if (daysError)
+    throwSupabaseError(daysError, "No fue posible consultar los días del menú");
 
   const dayIds = days.map((day) => day.id);
   let menuOptionsQuery = supabase
@@ -63,7 +83,8 @@ export async function getMenuWeek(
     )
     .in("service_day_id", dayIds)
     .order("sort_order", { ascending: true });
-  if (!options.includeDrafts) menuOptionsQuery = menuOptionsQuery.eq("visible", true);
+  if (!options.includeDrafts)
+    menuOptionsQuery = menuOptionsQuery.eq("visible", true);
   if (options.availableForWorkersOnly) {
     menuOptionsQuery = menuOptionsQuery.eq("available_for_workers", true);
   }
@@ -71,7 +92,10 @@ export async function getMenuWeek(
     ? await menuOptionsQuery
     : { data: [], error: null };
   if (optionsResult.error) {
-    throwSupabaseError(optionsResult.error, "No fue posible consultar las alternativas del menú");
+    throwSupabaseError(
+      optionsResult.error,
+      "No fue posible consultar las alternativas del menú",
+    );
   }
 
   const optionRows: MenuOptionSummary[] = optionsResult.data ?? [];
@@ -79,11 +103,15 @@ export async function getMenuWeek(
     string,
     { reservedQuantity: number; remainingQuantity: number | null }
   >();
-  if (options.availableForWorkersOnly || options.includeAvailability) {
-    const { data: availability, error: availabilityError } = await supabase.rpc(
-      "get_menu_option_availability",
-      { target_menu_week_id: week.id },
-    );
+  const dessertAvailabilityByDay = new Map<
+    string,
+    { reservedQuantity: number; remainingQuantity: number | null }
+  >();
+  if (availabilityPromise) {
+    const [menuAvailabilityResult, dessertAvailabilityResult] =
+      await availabilityPromise;
+    const { data: availability, error: availabilityError } =
+      menuAvailabilityResult;
     if (availabilityError) {
       throwSupabaseError(
         availabilityError,
@@ -92,6 +120,18 @@ export async function getMenuWeek(
     }
     for (const item of availability ?? []) {
       availabilityByOption.set(item.menu_option_id, {
+        reservedQuantity: item.reserved_quantity,
+        remainingQuantity: item.remaining_quantity,
+      });
+    }
+    if (dessertAvailabilityResult.error) {
+      throwSupabaseError(
+        dessertAvailabilityResult.error,
+        "No fue posible consultar la disponibilidad de postres",
+      );
+    }
+    for (const item of dessertAvailabilityResult.data ?? []) {
+      dessertAvailabilityByDay.set(item.service_day_id, {
         reservedQuantity: item.reserved_quantity,
         remainingQuantity: item.remaining_quantity,
       });
@@ -118,6 +158,19 @@ export async function getMenuWeek(
       sameDayClosesAt: day.same_day_closes_at,
       deliveryClosesAt: day.delivery_closes_at,
       availabilityPublishedAt: day.availability_published_at,
+      dessert:
+        day.dessert_name === null || day.dessert_capacity === null
+          ? null
+          : {
+              name: day.dessert_name,
+              capacity: day.dessert_capacity,
+              capacityUpdatedAt: day.dessert_capacity_updated_at,
+              reservedQuantity:
+                dessertAvailabilityByDay.get(day.id)?.reservedQuantity ?? 0,
+              remainingQuantity:
+                dessertAvailabilityByDay.get(day.id)?.remainingQuantity ??
+                day.dessert_capacity,
+            },
       disabled: day.disabled,
       options: (optionsByDay.get(day.id) ?? []).map((menuOption) => {
         const availability = availabilityByOption.get(menuOption.id);
@@ -149,6 +202,7 @@ type MenuWeekDraftInput = {
   days: Array<{
     serviceDate: string;
     disabled: boolean;
+    dessert: { name: string; capacity: number } | null;
     options: Array<{
       id?: string;
       category: MenuCategory;
@@ -214,8 +268,12 @@ export async function deleteMenuWeekDraft(
   const existing = await findMenuWeekById(supabase, menuWeekId);
   assertEditableDraft(existing);
 
-  const { error } = await supabase.from("menu_weeks").delete().eq("id", menuWeekId);
-  if (error) throwSupabaseError(error, "No fue posible eliminar el borrador semanal");
+  const { error } = await supabase
+    .from("menu_weeks")
+    .delete()
+    .eq("id", menuWeekId);
+  if (error)
+    throwSupabaseError(error, "No fue posible eliminar el borrador semanal");
 }
 
 export async function copyPreviousMenuWeek(
@@ -249,24 +307,29 @@ export async function copyPreviousMenuWeek(
     throw error;
   }
 
-  const days: MenuWeekDraftInput["days"] = previousMenu.days.map((day, index) => ({
-    serviceDate: addUtcDays(targetStartsOn, index),
-    disabled: day.disabled,
-    options: day.options.map((option) => ({
-      ...(option.id ? { id: option.id } : {}),
-      category: option.category,
-      label: option.label,
-      description: option.description,
-      dessert: option.dessert,
-      beverage: option.beverage,
-      notes: option.notes,
-      capacity: option.capacity,
-      trainingMenu: option.trainingMenu,
-      availableForWorkers: option.availableForWorkers,
-      visible: option.visible,
-      sortOrder: option.sortOrder,
-    })),
-  }));
+  const days: MenuWeekDraftInput["days"] = previousMenu.days.map(
+    (day, index) => ({
+      serviceDate: addUtcDays(targetStartsOn, index),
+      disabled: day.disabled,
+      dessert: day.dessert
+        ? { name: day.dessert.name, capacity: day.dessert.capacity }
+        : null,
+      options: day.options.map((option) => ({
+        ...(option.id ? { id: option.id } : {}),
+        category: option.category,
+        label: option.label,
+        description: option.description,
+        dessert: option.dessert,
+        beverage: option.beverage,
+        notes: option.notes,
+        capacity: option.capacity,
+        trainingMenu: option.trainingMenu,
+        availableForWorkers: option.availableForWorkers,
+        visible: option.visible,
+        sortOrder: option.sortOrder,
+      })),
+    }),
+  );
 
   return createMenuWeekDraft(supabase, { startsOn: targetStartsOn, days });
 }
@@ -278,6 +341,7 @@ export async function saveMenuWeekDraft(
   const weekDays: Json = input.days.map((day) => ({
     service_date: day.serviceDate,
     disabled: day.disabled,
+    dessert: day.dessert,
     options: day.options.map((option) => ({
       category: option.category,
       label: option.label,
@@ -292,14 +356,27 @@ export async function saveMenuWeekDraft(
       sort_order: option.sortOrder,
     })),
   }));
-  const { data, error } = await supabase.rpc("save_menu_week_draft", {
-    target_starts_on: input.startsOn,
-    week_days: weekDays,
-  });
-  if (error) throwSupabaseError(error, "No fue posible guardar el borrador semanal");
-  if (!data) throw new AppError("No se generó el borrador semanal", 503, "MENU_SAVE_EMPTY");
+  const { data, error } = await supabase.rpc(
+    "save_menu_week_with_daily_desserts",
+    {
+      target_starts_on: input.startsOn,
+      week_days: weekDays,
+    },
+  );
+  if (error)
+    throwSupabaseError(error, "No fue posible guardar el borrador semanal");
+  if (!data)
+    throw new AppError(
+      "No se generó el borrador semanal",
+      503,
+      "MENU_SAVE_EMPTY",
+    );
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
+  return getMenuWeek(supabase, {
+    startsOn: data.starts_on,
+    includeDrafts: true,
+    includeAvailability: true,
+  });
 }
 
 async function updatePublishedMenuWeek(
@@ -309,6 +386,7 @@ async function updatePublishedMenuWeek(
   const weekDays: Json = input.days.map((day) => ({
     service_date: day.serviceDate,
     disabled: day.disabled,
+    dessert: day.dessert,
     options: day.options.map((option) => ({
       ...(option.id ? { id: option.id } : {}),
       category: option.category,
@@ -324,19 +402,30 @@ async function updatePublishedMenuWeek(
       sort_order: option.sortOrder,
     })),
   }));
-  const { data, error } = await supabase.rpc("update_published_menu_week", {
-    target_menu_week_id: input.menuWeekId,
-    week_days: weekDays,
-    confirm_impact: input.confirmImpact ?? false,
-  });
+  const { data, error } = await supabase.rpc(
+    "update_published_menu_week_with_daily_desserts",
+    {
+      target_menu_week_id: input.menuWeekId,
+      week_days: weekDays,
+      confirm_impact: input.confirmImpact ?? false,
+    },
+  );
   if (error) {
     throwSupabaseError(error, "No fue posible actualizar el menú publicado");
   }
   if (!data) {
-    throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
+    throw new AppError(
+      "No se encontró la semana de menú",
+      404,
+      "MENU_WEEK_NOT_FOUND",
+    );
   }
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
+  return getMenuWeek(supabase, {
+    startsOn: data.starts_on,
+    includeDrafts: true,
+    includeAvailability: true,
+  });
 }
 
 export async function publishMenuWeek(
@@ -378,9 +467,13 @@ export async function publishMenuWeek(
       422,
       "MENU_WEEK_INCOMPLETE",
       {
-        serviceDates: [...new Set(
-          [...incompleteDays, ...incompleteTrainingDays].map((day) => day.serviceDate),
-        )],
+        serviceDates: [
+          ...new Set(
+            [...incompleteDays, ...incompleteTrainingDays].map(
+              (day) => day.serviceDate,
+            ),
+          ),
+        ],
       },
     );
   }
@@ -388,10 +481,20 @@ export async function publishMenuWeek(
   const { data, error } = await supabase.rpc("publish_menu_week", {
     target_menu_week_id: menuWeekId,
   });
-  if (error) throwSupabaseError(error, "No fue posible publicar el menú semanal");
-  if (!data) throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
+  if (error)
+    throwSupabaseError(error, "No fue posible publicar el menú semanal");
+  if (!data)
+    throw new AppError(
+      "No se encontró la semana de menú",
+      404,
+      "MENU_WEEK_NOT_FOUND",
+    );
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
+  return getMenuWeek(supabase, {
+    startsOn: data.starts_on,
+    includeDrafts: true,
+    includeAvailability: true,
+  });
 }
 
 export async function upsertTrainingMenu(
@@ -414,14 +517,23 @@ export async function upsertTrainingMenu(
     );
   }
 
-  return getMenuWeek(supabase, { startsOn: data.starts_on, includeDrafts: true, includeAvailability: true });
+  return getMenuWeek(supabase, {
+    startsOn: data.starts_on,
+    includeDrafts: true,
+    includeAvailability: true,
+  });
 }
 
 export async function upsertDailyTrainingMenus(
   supabase: UserDatabaseClient,
   input: {
     serviceDayId: string;
-    options: { id?: string; label: string; description: string; capacity: number }[];
+    options: {
+      id?: string;
+      label: string;
+      description: string;
+      capacity: number;
+    }[];
     confirmImpact: boolean;
   },
 ) {
@@ -430,9 +542,22 @@ export async function upsertDailyTrainingMenus(
     requested_options: input.options,
     confirm_impact: input.confirmImpact,
   });
-  if (error) throwSupabaseError(error, "No fue posible guardar las preparaciones de capacitaciÃ³n");
-  if (!data) throw new AppError("No se encontrÃ³ el dÃ­a de servicio", 404, "SERVICE_DAY_NOT_FOUND");
-  return getMenuWeek(supabase, { startsOn: weekStart(data.service_date), includeDrafts: true, includeAvailability: true });
+  if (error)
+    throwSupabaseError(
+      error,
+      "No fue posible guardar las preparaciones de capacitaciÃ³n",
+    );
+  if (!data)
+    throw new AppError(
+      "No se encontrÃ³ el dÃ­a de servicio",
+      404,
+      "SERVICE_DAY_NOT_FOUND",
+    );
+  return getMenuWeek(supabase, {
+    startsOn: weekStart(data.service_date),
+    includeDrafts: true,
+    includeAvailability: true,
+  });
 }
 
 function weekStart(serviceDate: string) {
@@ -451,9 +576,14 @@ async function findMenuWeekById(
     .select("id, starts_on, published_at")
     .eq("id", menuWeekId)
     .maybeSingle();
-  if (error) throwSupabaseError(error, "No fue posible consultar la semana de menú");
+  if (error)
+    throwSupabaseError(error, "No fue posible consultar la semana de menú");
   if (!data) {
-    throw new AppError("No se encontró la semana de menú", 404, "MENU_WEEK_NOT_FOUND");
+    throw new AppError(
+      "No se encontró la semana de menú",
+      404,
+      "MENU_WEEK_NOT_FOUND",
+    );
   }
   return data;
 }
@@ -467,7 +597,8 @@ async function findMenuWeekByStartsOn(
     .select("id, starts_on, published_at")
     .eq("starts_on", startsOn)
     .maybeSingle();
-  if (error) throwSupabaseError(error, "No fue posible consultar la semana de menú");
+  if (error)
+    throwSupabaseError(error, "No fue posible consultar la semana de menú");
   return data;
 }
 

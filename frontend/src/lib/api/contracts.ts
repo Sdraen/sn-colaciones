@@ -2,7 +2,8 @@ export type SideChoice = "ensalada" | "fruta" | "postre" | "ninguno";
 export type OrderKind = "regular" | "training" | "extra" | "exceptional";
 
 export interface MenuOptionDto { id: string; category: string; label: string; description: string; dessert: string | null; beverage: string | null; notes: string | null; capacity: number | null; capacityUpdatedAt: string | null; reservedQuantity: number; remainingQuantity: number | null; trainingMenu: boolean; availableForWorkers: boolean; visible: boolean; sortOrder: number; }
-export interface ServiceDayDto { id: string; serviceDate: string; phase: string; preorderDeadline: string; sameDayOpensAt: string; sameDayClosesAt: string; deliveryClosesAt: string; availabilityPublishedAt: string | null; disabled: boolean; options: MenuOptionDto[]; }
+export interface DailyDessertDto { name: string; capacity: number; capacityUpdatedAt: string | null; reservedQuantity: number; remainingQuantity: number | null; }
+export interface ServiceDayDto { id: string; serviceDate: string; phase: string; preorderDeadline: string; sameDayOpensAt: string; sameDayClosesAt: string; deliveryClosesAt: string; availabilityPublishedAt: string | null; dessert: DailyDessertDto | null; disabled: boolean; options: MenuOptionDto[]; }
 export interface MenuWeekDto { id: string; organizationId: string; startsOn: string; publishedAt: string | null; days: ServiceDayDto[]; }
 export interface OrderDto { id: string; serviceDayId: string; menuOptionId: string; dinerId?: string | null; trainingSessionId?: string | null; exceptionRequestId?: string | null; kind: OrderKind; beneficiaryLabel?: string | null; quantity: number; side: SideChoice; bread: boolean; tea: boolean; trainingPackage: boolean; status: "confirmed" | "cancelled"; fulfilledAt: string | null; createdAt: string; updatedAt?: string; }
 export interface WorkerOrdersDto { menuWeek: MenuWeekDto; orders: OrderDto[]; }

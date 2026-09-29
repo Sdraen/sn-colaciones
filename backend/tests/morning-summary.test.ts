@@ -11,6 +11,7 @@ describe("resumen de pedidos de la mañana", () => {
       { kind: "training", quantity: 30 },
       { kind: "extra", quantity: 1 },
       { kind: "exceptional", quantity: 1 },
+      { kind: "special", quantity: 2 },
     ]);
 
     expect(result).toEqual({
@@ -18,8 +19,10 @@ describe("resumen de pedidos de la mañana", () => {
       training: 30,
       extra: 1,
       exceptional: 1,
-      total: 34,
+      special: 2,
+      total: 36,
     });
-    expect(buildMorningSummaryMessage(result)).toContain("34 colaciones confirmadas");
+    expect(buildMorningSummaryMessage(result)).toContain("36 colaciones confirmadas");
+    expect(buildMorningSummaryMessage(result)).toContain("2 especiales");
   });
 });

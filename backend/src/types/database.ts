@@ -14,7 +14,7 @@ export type MenuCategory =
   | "sandwich"
   | "handroll"
   | "especial";
-export type OrderKind = "regular" | "training" | "extra" | "exceptional";
+export type OrderKind = "regular" | "training" | "extra" | "exceptional" | "special";
 export type OrderStatus = "confirmed" | "cancelled";
 export type SideChoice = "ensalada" | "fruta" | "postre" | "ninguno";
 
@@ -359,7 +359,7 @@ export interface Database {
         Row: {
           id: string;
           service_day_id: string;
-          menu_option_id: string;
+          menu_option_id: string | null;
           beneficiary_label: string;
           reason: string;
           quantity: number;
@@ -372,11 +372,13 @@ export interface Database {
           resolution_note: string | null;
           requested_at: string;
           resolved_at: string | null;
+          request_kind: "late_extra" | "special";
+          special_preparation: string | null;
         };
         Insert: {
           id?: string;
           service_day_id: string;
-          menu_option_id: string;
+          menu_option_id?: string | null;
           beneficiary_label: string;
           reason: string;
           quantity?: number;
@@ -389,6 +391,8 @@ export interface Database {
           resolution_note?: string | null;
           requested_at?: string;
           resolved_at?: string | null;
+          request_kind?: "late_extra" | "special";
+          special_preparation?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["exception_requests"]["Insert"]>;
         Relationships: Relationship[];
@@ -573,6 +577,16 @@ export interface Database {
       delete_company_extra_request: {
         Args: { target_request_id: string };
         Returns: Json;
+      };
+      create_special_meal_request: {
+        Args: {
+          target_service_day_id: string;
+          beneficiary_name: string;
+          requested_quantity: number;
+          requested_preparation: string;
+          request_reason: string;
+        };
+        Returns: Database["public"]["Tables"]["exception_requests"]["Row"];
       };
       mark_order_fulfilled: {
         Args: { target_order_id: string; delivered: boolean };

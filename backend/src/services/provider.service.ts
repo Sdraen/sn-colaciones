@@ -102,8 +102,8 @@ export async function resolveExceptionalRequest(
       ? {}
       : { rejection_note: input.resolutionNote }),
   });
-  if (error) throwSupabaseError(error, "No fue posible resolver la solicitud tardía de colación extra");
-  if (!data) throw new AppError("No se encontró la solicitud de colación extra", 404, "EXTRA_REQUEST_NOT_FOUND");
+  if (error) throwSupabaseError(error, "No fue posible resolver la solicitud");
+  if (!data) throw new AppError("No se encontró la solicitud", 404, "EXTRA_REQUEST_NOT_FOUND");
 
   return {
     id: data.id,
@@ -223,7 +223,7 @@ export async function getProviderOperations(
     supabase
       .from("exception_requests")
       .select(
-        "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at",
+        "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at, request_kind, special_preparation",
       )
       .in("service_day_id", serviceDayIds)
       .order("requested_at", { ascending: false }),
@@ -257,6 +257,8 @@ export async function getProviderOperations(
       resolutionNote: request.resolution_note,
       requestedAt: request.requested_at,
       resolvedAt: request.resolved_at,
+      requestKind: request.request_kind,
+      specialPreparation: request.special_preparation,
     })),
     orders: (orders ?? []).map((order) => {
       const diner = order.diner_id ? dinersById.get(order.diner_id) : undefined;
@@ -356,7 +358,7 @@ function createEmptyTotals(): ReportTotals {
     confirmed: 0,
     cancelled: 0,
     fulfilled: 0,
-    byKind: { regular: 0, training: 0, extra: 0, exceptional: 0 },
+    byKind: { regular: 0, training: 0, extra: 0, exceptional: 0, special: 0 },
     sides: { salad: 0, fruit: 0, dessert: 0, none: 0 },
     bread: 0,
     tea: 0,

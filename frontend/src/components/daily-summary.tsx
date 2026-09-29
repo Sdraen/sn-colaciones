@@ -74,7 +74,7 @@ export function DailySummary({
               {summary.state === "final" ? "Resumen final" : "En vivo hasta las 13:00"}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-bold text-[var(--muted)]"><CalendarDays size={16} /> {formatDate(summary.serviceDate)}</span>
-            {summary.pendingExtraRequests > 0 ? <span className="rounded-full bg-red-50 px-3 py-2 font-bold text-[var(--danger)]">{summary.pendingExtraRequests} extra(s) pendientes</span> : null}
+            {summary.pendingExtraRequests > 0 ? <span className="rounded-full bg-red-50 px-3 py-2 font-bold text-[var(--danger)]">{summary.pendingExtraRequests} solicitud(es) pendientes</span> : null}
           </div>
 
           <DeliveryProgress
@@ -114,6 +114,7 @@ export function DailySummary({
             <Metric icon={UsersRound} label="Trabajadores" value={summary.totals.byKind.regular} />
             <Metric icon={UsersRound} label="Capacitaciones" value={summary.totals.byKind.training} />
             <Metric icon={UsersRound} label="Extras" value={summary.totals.byKind.extra} />
+            <Metric icon={UsersRound} label="Especiales" value={summary.totals.byKind.special} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -174,7 +175,7 @@ function complementLabel(value: { bread: boolean; tea: boolean }) {
   if (value.tea) return "Té";
   return "Sin complemento";
 }
-function kindLabel(value: string) { return value === "regular" ? "Trabajador" : value === "training" ? "Capacitación" : "Extra"; }
+function kindLabel(value: string) { return value === "regular" ? "Trabajador" : value === "training" ? "Capacitación" : value === "special" ? "Especial" : "Extra"; }
 
 const printPageStyle = `
   @page {

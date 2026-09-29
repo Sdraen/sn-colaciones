@@ -285,7 +285,7 @@ export function ExtraRequestActions({
   const [name, setName] = useState(request.beneficiaryLabel);
   const [reason, setReason] = useState(request.reason);
   const [quantity, setQuantity] = useState(String(request.quantity));
-  const [menuOptionId, setMenuOptionId] = useState(request.menuOptionId);
+  const [menuOptionId, setMenuOptionId] = useState(request.menuOptionId ?? "");
   const [side, setSide] = useState<SideChoice>(request.side);
   const [bread, setBread] = useState(request.bread);
   const [tea, setTea] = useState(request.tea);
@@ -298,7 +298,7 @@ export function ExtraRequestActions({
     setName(request.beneficiaryLabel);
     setReason(request.reason);
     setQuantity(String(request.quantity));
-    setMenuOptionId(request.menuOptionId);
+    setMenuOptionId(request.menuOptionId ?? "");
     setSide(request.side);
     setBread(request.bread);
     setTea(request.tea);

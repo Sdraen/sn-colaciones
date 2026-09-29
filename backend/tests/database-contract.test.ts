@@ -347,6 +347,20 @@ describe("contrato de migraciones de Supabase", () => {
     expect(migration).toContain("public.save_regular_order");
     expect(migration).toContain("orders_check_worker_bread_or_tea");
   });
+
+  it("registra colaciones especiales con aprobación y corte a las 11:00", () => {
+    const orderKind = readMigration("0033_special_order_kind.sql");
+    const requests = readMigration("0034_special_meal_requests.sql");
+
+    expect(orderKind).toContain("add value if not exists 'special'");
+    expect(requests).toContain("function public.create_special_meal_request");
+    expect(requests).toContain("SPECIAL_REQUEST_WINDOW_CLOSED");
+    expect(requests).toContain("now() >= target_day.same_day_closes_at");
+    expect(requests).toContain("request_kind = 'special'");
+    expect(requests).toContain("'Colación especial'");
+    expect(requests).toContain("'special'::public.order_kind");
+    expect(requests).toContain("grant execute on function public.create_special_meal_request");
+  });
 });
 
 function readMigration(fileName: string) {

@@ -77,6 +77,18 @@ export const createExtraBatchRequestSchema = z.object({
   query: z.object({}),
 });
 
+export const createSpecialMealRequestSchema = z.object({
+  body: z.object({
+    serviceDayId: uuidSchema,
+    beneficiaryLabel: z.string().trim().min(2).max(120),
+    quantity: z.number().int().min(1).max(500),
+    preparation: z.string().trim().min(3).max(300),
+    reason: z.string().trim().min(5).max(500),
+  }).strict(),
+  params: z.object({}),
+  query: z.object({}),
+});
+
 const operationalCorrectionSchema = requireBreadOrTea(
   mealSelectionSchema.omit({ serviceDayId: true }).extend({
     name: z.string().trim().min(2).max(120),
@@ -123,6 +135,7 @@ export type CreateTrainingRequest = z.infer<typeof createTrainingRequestSchema>;
 export type CreateTrainingBatchRequest = z.infer<typeof createTrainingBatchRequestSchema>;
 export type CreateExtraRequest = z.infer<typeof createExtraRequestSchema>;
 export type CreateExtraBatchRequest = z.infer<typeof createExtraBatchRequestSchema>;
+export type CreateSpecialMealRequest = z.infer<typeof createSpecialMealRequestSchema>;
 export type UpdateOperationalOrderRequest = z.infer<typeof updateOperationalOrderRequestSchema>;
 export type DeleteOperationalOrderRequest = z.infer<typeof deleteOperationalOrderRequestSchema>;
 export type UpdateExtraRequestRequest = z.infer<typeof updateExtraRequestRequestSchema>;

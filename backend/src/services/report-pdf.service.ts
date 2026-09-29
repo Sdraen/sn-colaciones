@@ -321,6 +321,7 @@ function kindLabel(kind: NominalReportRow["kind"]) {
   if (kind === "regular") return "Trabajador";
   if (kind === "training") return "Capacitación";
   if (kind === "exceptional") return "Excepcional";
+  if (kind === "special") return "Especial";
   return "Extra";
 }
 

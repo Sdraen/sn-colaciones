@@ -63,9 +63,7 @@ export function ProviderOperationsClient({
   const [operations, setOperations] = useState(initialOperations);
   const [currentMenu, setCurrentMenu] = useState(initialCurrentMenu);
   const [nextMenu, setNextMenu] = useState(initialNextMenu);
-  const [menuPeriod, setMenuPeriod] = useState<"current" | "next">(
-    initialCurrentMenu ? "next" : "current",
-  );
+  const [menuPeriod, setMenuPeriod] = useState<"current" | "next">("current");
   const [view, setView] = useState<View>("menu");
   const [activeDayId, setActiveDayId] = useState(initialOperations?.menu.days[0]?.id ?? "");
   const [message, setMessage] = useState("");
@@ -172,6 +170,7 @@ export function ProviderOperationsClient({
             }
           : current,
       );
+      await refreshOperations().catch(() => undefined);
       setMessage("Solicitud resuelta.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible resolver");
@@ -367,6 +366,13 @@ function ProductionView({
     );
   }
 
+  const approvedSpecials = operations.orders.filter(
+    (order) =>
+      order.serviceDayId === activeDayId &&
+      order.kind === "special" &&
+      order.status === "confirmed",
+  );
+
   return (
     <section className="provider-panel-enter mt-6">
       <div className="provider-day-tabs mobile-scroll-tabs flex gap-2 overflow-x-auto pb-1">
@@ -419,13 +425,16 @@ function ProductionView({
                 const option = requestDay?.options.find((item) => item.id === request.menuOptionId);
                 return (
                 <div key={request.id} className="rounded-xl border border-[var(--line)] p-4">
-                  <strong>{request.beneficiaryLabel}</strong>
+                  <span className="text-xs font-black uppercase tracking-wide text-[var(--brand)]">
+                    {request.requestKind === "special" ? "Colación especial" : "Extra tardía"}
+                  </span>
+                  <strong className="mt-1 block">{request.beneficiaryLabel}</strong>
                   <p className="mt-1 text-sm font-bold">{request.quantity} colaciones solicitadas</p>
                   <p className="mt-1 text-xs text-[var(--muted)]">Fecha: {requestDay?.serviceDate ?? "Sin fecha"}</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">
-                    {option?.label ?? "Preparación"}
-                    {" · "}
-                    {option?.description ?? "Sin detalle"}
+                    {request.requestKind === "special"
+                      ? request.specialPreparation
+                      : `${option?.label ?? "Preparación"} · ${option?.description ?? "Sin detalle"}`}
                   </p>
                   <p className="mt-1 text-sm text-[var(--muted)]">{request.reason}</p>
                   <input
@@ -458,6 +467,32 @@ function ProductionView({
               <p className="text-sm text-[var(--muted)]">No hay solicitudes pendientes.</p>
             )}
           </div>
+          {approvedSpecials.length ? (
+            <div className="mt-6 border-t border-[var(--line)] pt-5">
+              <h3 className="font-black">Colaciones especiales aprobadas</h3>
+              <div className="mt-3 space-y-3">
+                {approvedSpecials.map((order) => {
+                  const request = operations.extraRequests.find(
+                    (item) => item.id === order.exceptionRequestId,
+                  );
+                  const option = activeDay?.options.find(
+                    (item) => item.id === order.menuOptionId,
+                  );
+                  return (
+                    <article
+                      key={order.id}
+                      className="rounded-xl border border-[var(--line)] bg-[var(--herb-soft)] p-3"
+                    >
+                      <strong className="block">{order.beneficiaryLabel}</strong>
+                      <p className="mt-1 text-sm font-bold">
+                        {order.quantity} · {option?.description ?? request?.specialPreparation ?? "Sin detalle"}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

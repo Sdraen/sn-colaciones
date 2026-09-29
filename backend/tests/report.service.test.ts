@@ -60,6 +60,18 @@ describe("reportes por período", () => {
       },
       {
         service_day_id: "day-1",
+        menu_option_id: "special-1",
+        kind: "special",
+        quantity: 1,
+        side: "ninguno",
+        bread: false,
+        tea: false,
+        training_package: false,
+        status: "confirmed",
+        fulfilled_at: null,
+      },
+      {
+        service_day_id: "day-1",
         menu_option_id: "menu-2",
         kind: "regular",
         quantity: 1,
@@ -73,14 +85,14 @@ describe("reportes por período", () => {
     ]);
 
     expect(totals).toMatchObject({
-      requested: 24,
-      confirmed: 23,
+      requested: 25,
+      confirmed: 24,
       cancelled: 1,
       fulfilled: 1,
       bread: 3,
       tea: 21,
-      byKind: { regular: 1, training: 20, extra: 2, exceptional: 0 },
-      sides: { salad: 1, fruit: 2, dessert: 20, none: 0 },
+      byKind: { regular: 1, training: 20, extra: 2, exceptional: 0, special: 1 },
+      sides: { salad: 1, fruit: 2, dessert: 20, none: 1 },
     });
   });
 

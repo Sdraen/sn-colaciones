@@ -4,6 +4,7 @@ import type {
   CompanyOperationsRequest,
   CreateExtraRequest,
   CreateExtraBatchRequest,
+  CreateSpecialMealRequest,
   CreateTrainingBatchRequest,
   CreateTrainingRequest,
   DeleteExtraRequestRequest,
@@ -14,6 +15,7 @@ import type {
 import {
   createExtraOrder,
   createExtraBatch,
+  createSpecialMealRequest,
   createTrainingOrder,
   createTrainingBatch,
   deleteCompanyExtraRequest,
@@ -75,6 +77,13 @@ export const postExtraBatch: RequestHandler = async (request, response) => {
   const { supabase } = getRequestAuth(request);
   const { body } = getValidatedRequest<CreateExtraBatchRequest>(request);
   const result = await createExtraBatch(supabase, body);
+  response.status(201).json({ data: result });
+};
+
+export const postSpecialMealRequest: RequestHandler = async (request, response) => {
+  const { supabase } = getRequestAuth(request);
+  const { body } = getValidatedRequest<CreateSpecialMealRequest>(request);
+  const result = await createSpecialMealRequest(supabase, body);
   response.status(201).json({ data: result });
 };
 

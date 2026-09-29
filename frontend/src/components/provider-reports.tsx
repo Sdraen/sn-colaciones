@@ -97,6 +97,7 @@ export function OperationsReports({
       if (row.status !== "confirmed") return false;
       if (dayFilter !== "all" && row.serviceDate !== dayFilter) return false;
       if (kindFilter === "extra" && !["extra", "exceptional"].includes(row.kind)) return false;
+      if (kindFilter === "special" && row.kind !== "special") return false;
       if (kindFilter !== "all" && kindFilter !== "extra" && row.kind !== kindFilter) return false;
       if (menuFilter !== "all" && row.menuLabel !== menuFilter) return false;
       if (!query) return true;
@@ -198,7 +199,7 @@ export function OperationsReports({
 
   return (
     <section className="provider-panel-enter mt-6 space-y-5">
-      <div className="provider-report-header flex flex-wrap items-end justify-between gap-3">
+      <div className="provider-report-header space-y-4">
         <div>
           <p className="eyebrow">Reportes de colaciones</p>
           <h2 className="mt-1 text-xl font-black sm:text-2xl">Historial operacional</h2>
@@ -206,7 +207,7 @@ export function OperationsReports({
             Período {formatChileanDate(report.range.from)} al {formatChileanDate(report.range.to)}
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto sm:flex-wrap">
+        <div className="mx-auto grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-fit sm:flex-wrap sm:justify-center">
           <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
             Período
             <FormSelect
@@ -244,17 +245,17 @@ export function OperationsReports({
             onClick={downloadCsv}
             className="provider-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-3 font-extrabold text-white sm:px-4"
           >
-            <Download size={17} /> CSV
+            <Download size={17} /> EXCEL
           </button>
           {supportsNominalPdf ? (
             <button
               type="button"
               onClick={() => void downloadPdf()}
               disabled={downloadingPdf}
-              className="provider-action col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 font-extrabold text-[var(--ink)] disabled:cursor-wait disabled:opacity-60 sm:col-span-1 sm:px-4"
+              className="provider-action col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--danger)] px-3 font-extrabold text-white shadow-sm transition hover:brightness-95 disabled:cursor-wait disabled:opacity-60 sm:col-span-1 sm:px-4"
             >
               <FileText size={17} className={downloadingPdf ? "animate-pulse" : ""} />
-              {downloadingPdf ? "Generando…" : "PDF completo"}
+              {downloadingPdf ? "Generando…" : "PDF"}
             </button>
           ) : null}
         </div>
@@ -488,6 +489,7 @@ function ProviderSummary({ report }: { report: OrdersReportDto }) {
               label: "Extras",
               value: (report.totals.byKind.extra ?? 0) + (report.totals.byKind.exceptional ?? 0),
             },
+            { label: "Especiales", value: report.totals.byKind.special ?? 0 },
           ]}
         />
         <BreakdownCard
@@ -734,6 +736,7 @@ function ProviderNominalReport({
               { value: "regular", label: "Trabajadores" },
               { value: "training", label: "Capacitaciones" },
               { value: "extra", label: "Extras" },
+              { value: "special", label: "Especiales" },
             ]}
             className="min-h-11 text-sm font-bold"
           />
@@ -844,9 +847,10 @@ function normalizeSearch(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-CL").trim();
 }
 
-function kindLabel(kind: "regular" | "training" | "extra" | "exceptional") {
+function kindLabel(kind: "regular" | "training" | "extra" | "exceptional" | "special") {
   if (kind === "regular") return "Trabajador";
   if (kind === "training") return "Capacitación";
+  if (kind === "special") return "Especial";
   return kind === "exceptional" ? "Extra excepcional" : "Extra";
 }
 

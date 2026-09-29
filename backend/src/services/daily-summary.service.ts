@@ -102,7 +102,7 @@ export async function getDailySummary(
   const confirmed = orders.filter((order) => order.status === "confirmed");
   const menuTotals = new Map<string, { menuOptionId: string; label: string; description: string; quantity: number }>();
   const componentTotals = new Map<string, { label: string; quantity: number }>();
-  const byKind = { regular: 0, training: 0, extra: 0 };
+  const byKind = { regular: 0, training: 0, extra: 0, special: 0 };
   const sides = { ensalada: 0, fruta: 0, postre: 0, ninguno: 0 } satisfies Record<SideChoice, number>;
   let bread = 0;
   let tea = 0;

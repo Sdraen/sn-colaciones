@@ -130,6 +130,7 @@ export async function getOrdersReport(
             regular: optionTotals.byKind.regular,
             training: optionTotals.byKind.training,
             extra: optionTotals.byKind.extra + optionTotals.byKind.exceptional,
+            special: optionTotals.byKind.special,
             salad: optionTotals.sides.salad,
             fruit: optionTotals.sides.fruit,
             juice: optionTotals.juice,
@@ -299,7 +300,7 @@ export function summarizeReportOrders(orders: ReportOrder[]): ReportTotals {
     confirmed: 0,
     cancelled: 0,
     fulfilled: 0,
-    byKind: { regular: 0, training: 0, extra: 0, exceptional: 0 },
+    byKind: { regular: 0, training: 0, extra: 0, exceptional: 0, special: 0 },
     sides: { salad: 0, fruit: 0, dessert: 0, none: 0 },
     bread: 0,
     tea: 0,
@@ -366,6 +367,7 @@ function resolveBeneficiaryName(
   if (order.kind === "training") {
     return trainingName ? `Capacitación: ${trainingName}` : "Capacitación";
   }
+  if (order.kind === "special") return order.beneficiary_label ?? "Colación especial";
   return order.beneficiary_label ?? (order.kind === "extra" ? "Colación extra" : "Solicitud excepcional");
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { saveRegularOrderRequestSchema } from "../src/schemas/order.schema.js";
+import { createSpecialMealRequestSchema } from "../src/schemas/company.schema.js";
 
 const request = {
   body: {
@@ -58,5 +59,38 @@ describe("selección de pan y té", () => {
         body: { ...request.body, side: "postre" },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("solicitud de colación especial", () => {
+  const specialRequest = {
+    body: {
+      serviceDayId: "00000000-0000-4000-8000-000000000001",
+      beneficiaryLabel: "Gerente general",
+      quantity: 1,
+      preparation: "Salmón con verduras",
+      reason: "Solicitud de gerencia",
+    },
+    params: {},
+    query: {},
+  };
+
+  it("acepta beneficiario, cantidad, preparación y motivo", () => {
+    expect(createSpecialMealRequestSchema.safeParse(specialRequest).success).toBe(true);
+  });
+
+  it("rechaza cantidad y textos fuera de rango", () => {
+    expect(createSpecialMealRequestSchema.safeParse({
+      ...specialRequest,
+      body: { ...specialRequest.body, quantity: 0 },
+    }).success).toBe(false);
+    expect(createSpecialMealRequestSchema.safeParse({
+      ...specialRequest,
+      body: { ...specialRequest.body, preparation: "" },
+    }).success).toBe(false);
+    expect(createSpecialMealRequestSchema.safeParse({
+      ...specialRequest,
+      body: { ...specialRequest.body, reason: "no" },
+    }).success).toBe(false);
   });
 });

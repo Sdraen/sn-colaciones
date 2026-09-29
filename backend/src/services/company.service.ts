@@ -122,6 +122,28 @@ export async function createExtraBatch(
   return data;
 }
 
+export async function createSpecialMealRequest(
+  supabase: UserDatabaseClient,
+  input: {
+    serviceDayId: string;
+    beneficiaryLabel: string;
+    quantity: number;
+    preparation: string;
+    reason: string;
+  },
+) {
+  const { data, error } = await supabase.rpc("create_special_meal_request", {
+    target_service_day_id: input.serviceDayId,
+    beneficiary_name: input.beneficiaryLabel,
+    requested_quantity: input.quantity,
+    requested_preparation: input.preparation,
+    request_reason: input.reason,
+  });
+  if (error) throwSupabaseError(error, "No fue posible enviar la solicitud especial");
+  if (!data) throw new AppError("No se generó la solicitud especial", 503, "SPECIAL_REQUEST_SAVE_EMPTY");
+  return serializeException(data);
+}
+
 export async function createExceptionalRequest(
   supabase: UserDatabaseClient,
   input: MealSelection & { beneficiaryLabel: string; reason: string },
@@ -235,7 +257,7 @@ export async function getCompanyOperations(
       ? supabase
           .from("exception_requests")
           .select(
-            "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at",
+            "id, service_day_id, menu_option_id, beneficiary_label, reason, quantity, side, bread, tea, status, resolution_note, requested_at, resolved_at, request_kind, special_preparation",
           )
           .in("service_day_id", serviceDayIds)
           .order("requested_at", { ascending: false })
@@ -247,7 +269,7 @@ export async function getCompanyOperations(
             "id, service_day_id, menu_option_id, training_session_id, exception_request_id, kind, beneficiary_label, quantity, side, bread, tea, training_package, status, fulfilled_at, created_at",
           )
           .in("service_day_id", serviceDayIds)
-          .in("kind", ["training", "extra", "exceptional"])
+          .in("kind", ["training", "extra", "exceptional", "special"])
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     serviceDates.length
@@ -314,6 +336,8 @@ type ExceptionalRequest = Pick<
   | "resolution_note"
   | "requested_at"
   | "resolved_at"
+  | "request_kind"
+  | "special_preparation"
 >;
 
 type TrainingSession = Pick<
@@ -356,6 +380,8 @@ function serializeException(request: ExceptionalRequest) {
     resolutionNote: request.resolution_note,
     requestedAt: request.requested_at,
     resolvedAt: request.resolved_at,
+    requestKind: request.request_kind,
+    specialPreparation: request.special_preparation,
   };
 }
 

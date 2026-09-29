@@ -10,6 +10,7 @@ import {
   Clock3,
   GraduationCap,
   Plus,
+  Sparkles,
   Trash2,
   RefreshCw,
   UserPlus,
@@ -42,7 +43,7 @@ import {
 import { isTrainingRegistrationOpen } from "@/lib/business-rules";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
-type Mode = "training" | "extra";
+type Mode = "training" | "extra" | "special";
 type View = "operations" | "summary" | "reports" | "workers";
 type PreparationItem = { key: string; menuOptionId: string; quantity: string };
 
@@ -60,6 +61,13 @@ const modes = [
     schedule: "08:00 a 13:00",
     description: "Directa hasta las 11:00; después requiere aprobación de la proveedora.",
     icon: UserPlus,
+  },
+  {
+    value: "special",
+    label: "Colación especial",
+    schedule: "Hasta las 11:00",
+    description: "Solicita una preparación fuera del menú. Requiere aprobación de la proveedora.",
+    icon: Sparkles,
   },
 ] as const;
 
@@ -174,7 +182,13 @@ export function CompanyOperationsClient({
       now < new Date(activeDay.deliveryClosesAt),
   );
   const lateExtra = Boolean(activeDay && now >= new Date(activeDay.sameDayClosesAt));
-  const modeOpen = mode === "training" ? trainingOpen : extraOpen;
+  const specialOpen = Boolean(
+    activeDay &&
+      !activeDay.disabled &&
+      !blocked &&
+      now < new Date(activeDay.sameDayClosesAt),
+  );
+  const modeOpen = mode === "training" ? trainingOpen : mode === "extra" ? extraOpen : specialOpen;
   const modeClosedReason =
     mode === "training"
       ? trainingClosedMessage({
@@ -182,6 +196,10 @@ export function CompanyOperationsClient({
           trainingMenu,
           remainingQuantity: trainingMenus.reduce((sum, option) => sum + (option.remainingQuantity ?? 0), 0),
         })
+      : mode === "special"
+        ? blocked || activeDay?.disabled
+          ? "No hay servicio habilitado para este día."
+          : "El plazo para solicitar colaciones especiales terminó a las 11:00."
       : !extraHasAvailability && !blocked && !activeDay?.disabled
         ? "No quedan cupos de colaciones extra para este día."
         : closedWindowMessage(mode, blocked || Boolean(activeDay?.disabled));
@@ -197,19 +215,28 @@ export function CompanyOperationsClient({
       setError("Selecciona pan, té o ambos.");
       return;
     }
-    const availableOptions = mode === "training" ? trainingMenus : editableMenuOptions;
-    const selectedItems = mode === "training" ? trainingItems : extraItems;
-    const items = selectedItems.map((item) => ({
-      menuOptionId: item.menuOptionId || availableOptions.find((option) => option.remainingQuantity !== 0)?.id || "",
-      quantity: Number(item.quantity),
-    }));
-    if (items.length === 0 || items.some((item) => {
-      const option = availableOptions.find((candidate) => candidate.id === item.menuOptionId);
-      return !option || !Number.isInteger(item.quantity) || item.quantity < 1 ||
-        item.quantity > Math.min(500, option.remainingQuantity ?? 500);
-    }) || new Set(items.map((item) => item.menuOptionId)).size !== items.length) {
-      setError("Selecciona preparaciones distintas y cantidades dentro de sus cupos disponibles.");
-      return;
+    let items: Array<{ menuOptionId: string; quantity: number }> = [];
+    if (mode !== "special") {
+      const availableOptions = mode === "training" ? trainingMenus : editableMenuOptions;
+      const selectedItems = mode === "training" ? trainingItems : extraItems;
+      items = selectedItems.map((item) => ({
+        menuOptionId: item.menuOptionId || availableOptions.find((option) => option.remainingQuantity !== 0)?.id || "",
+        quantity: Number(item.quantity),
+      }));
+      if (items.length === 0 || items.some((item) => {
+        const option = availableOptions.find((candidate) => candidate.id === item.menuOptionId);
+        return !option || !Number.isInteger(item.quantity) || item.quantity < 1 ||
+          item.quantity > Math.min(500, option.remainingQuantity ?? 500);
+      }) || new Set(items.map((item) => item.menuOptionId)).size !== items.length) {
+        setError("Selecciona preparaciones distintas y cantidades dentro de sus cupos disponibles.");
+        return;
+      }
+    } else {
+      const quantity = Number(form.get("quantity"));
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
+        setError("Ingresa entre 1 y 500 colaciones especiales.");
+        return;
+      }
     }
 
     setSaving(true);
@@ -225,7 +252,7 @@ export function CompanyOperationsClient({
             body: JSON.stringify({ serviceDayId: activeDay.id, name, items, tea: form.has("trainingTea") }),
           },
         );
-      } else {
+      } else if (mode === "extra") {
         await browserApiRequest("/api/v1/company/extras/batch", {
           method: "POST",
           body: JSON.stringify({
@@ -238,13 +265,26 @@ export function CompanyOperationsClient({
             ...(lateExtra ? { reason: String(form.get("reason")) } : {}),
           }),
         });
+      } else {
+        await browserApiRequest("/api/v1/company/special-requests", {
+          method: "POST",
+          body: JSON.stringify({
+            serviceDayId: activeDay.id,
+            beneficiaryLabel: String(form.get("name")),
+            quantity: Number(form.get("quantity")),
+            preparation: String(form.get("preparation")),
+            reason: String(form.get("reason")),
+          }),
+        });
       }
       await refreshOperations();
       formElement.reset();
       setTrainingItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
       setExtraItems([{ key: crypto.randomUUID(), menuOptionId: "", quantity: "1" }]);
       setMessage(
-        mode === "extra" && lateExtra
+        mode === "special"
+          ? "Solicitud especial enviada a la proveedora."
+          : mode === "extra" && lateExtra
           ? "Solicitud de colación extra enviada a la proveedora."
           : "Colaciones agregadas correctamente.",
       );
@@ -441,7 +481,7 @@ export function CompanyOperationsClient({
             />
             <Metric
               icon={AlertCircle}
-              label="Extras pendientes"
+              label="Solicitudes pendientes"
               value={activeExceptions.filter((item) => item.status === "pending").length}
             />
           </div>
@@ -454,7 +494,7 @@ export function CompanyOperationsClient({
                 Elige el tipo de colación y completa solo la información necesaria.
               </p>
 
-              <div className="company-mode-grid mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="company-mode-grid mt-5 grid gap-3 sm:grid-cols-3">
                 {modes.map((item) => {
                   const Icon = item.icon;
                   const selected = mode === item.value;
@@ -513,25 +553,68 @@ export function CompanyOperationsClient({
                   onSubmit={submit}
                   className="mt-5 space-y-4"
                 >
-                  <Field label={mode === "training" ? "Nombre de la capacitación" : "Persona o referencia"}>
+                  <Field label={mode === "training" ? "Nombre de la capacitación" : mode === "special" ? "Persona beneficiaria" : "Persona o referencia"}>
                     <input
                       name="name"
                       required
                       minLength={2}
+                      maxLength={120}
+                      disabled={!modeOpen || saving}
                       placeholder={
-                        mode === "training" ? "Ej.: Inducción nuevos guardias" : "Ej.: Visita externa"
+                        mode === "training" ? "Ej.: Inducción nuevos guardias" : mode === "special" ? "Ej.: Gerente general" : "Ej.: Visita externa"
                       }
                       className="company-input form-control px-4"
                     />
                   </Field>
 
-                  <PreparationSelector
-                    label={mode === "training" ? "Preparaciones de capacitación" : "Menús solicitados"}
-                    options={mode === "training" ? trainingMenus : editableMenuOptions}
-                    items={mode === "training" ? trainingItems : extraItems}
-                    onChange={mode === "training" ? setTrainingItems : setExtraItems}
-                    disabled={!modeOpen || saving}
-                  />
+                  {mode !== "special" ? (
+                    <PreparationSelector
+                      label={mode === "training" ? "Preparaciones de capacitación" : "Menús solicitados"}
+                      options={mode === "training" ? trainingMenus : editableMenuOptions}
+                      items={mode === "training" ? trainingItems : extraItems}
+                      onChange={mode === "training" ? setTrainingItems : setExtraItems}
+                      disabled={!modeOpen || saving}
+                    />
+                  ) : (
+                    <>
+                      <Field label="Cantidad">
+                        <input
+                          name="quantity"
+                          type="number"
+                          min={1}
+                          max={500}
+                          defaultValue={1}
+                          required
+                          disabled={!modeOpen || saving}
+                          className="company-input form-control px-4"
+                        />
+                      </Field>
+                      <Field label="Preparación solicitada">
+                        <textarea
+                          name="preparation"
+                          required
+                          minLength={3}
+                          maxLength={300}
+                          rows={3}
+                          disabled={!modeOpen || saving}
+                          placeholder="Describe la comida solicitada fuera del menú"
+                          className="company-input form-control p-4"
+                        />
+                      </Field>
+                      <Field label="Motivo u observación">
+                        <textarea
+                          name="reason"
+                          required
+                          minLength={5}
+                          maxLength={500}
+                          rows={3}
+                          disabled={!modeOpen || saving}
+                          placeholder="Indica por qué se necesita esta colación especial"
+                          className="company-input form-control p-4"
+                        />
+                      </Field>
+                    </>
+                  )}
 
                   {mode === "training" ? (
                     <div className="rounded-xl bg-[var(--herb-soft)] p-4 text-sm">
@@ -543,7 +626,7 @@ export function CompanyOperationsClient({
                         Agregar té para todos los alumnos (opcional)
                       </label>
                     </div>
-                  ) : (
+                  ) : mode === "extra" ? (
                     <>
                       <Field label="Acompañamiento">
                         <FormSelect
@@ -572,7 +655,7 @@ export function CompanyOperationsClient({
                         </div>
                       </fieldset>
                     </>
-                  )}
+                  ) : null}
 
                   {mode === "extra" && lateExtra ? (
                     <Field label="Motivo de la solicitud tardía">
@@ -595,9 +678,11 @@ export function CompanyOperationsClient({
                     <Plus size={17} />
                     {saving
                       ? "Guardando…"
-                      : mode === "extra" && lateExtra
-                        ? "Enviar solicitud"
-                        : "Agregar al conteo"}
+                      : mode === "special"
+                        ? "Enviar solicitud especial"
+                        : mode === "extra" && lateExtra
+                          ? "Enviar solicitud"
+                          : "Agregar al conteo"}
                   </button>
                 </form>
 
@@ -633,6 +718,9 @@ export function CompanyOperationsClient({
                       const option = activeDay?.options.find(
                         (item) => item.id === order.menuOptionId,
                       );
+                      const specialRequest = order.exceptionRequestId
+                        ? activeExceptions.find((item) => item.id === order.exceptionRequestId)
+                        : undefined;
                       return (
                         <article
                           key={order.id}
@@ -641,54 +729,62 @@ export function CompanyOperationsClient({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <span className="text-xs font-black uppercase tracking-wide text-[var(--brand)]">
-                                {order.kind === "training" ? "Capacitación" : "Colación extra"}
+                                {order.kind === "training"
+                                  ? "Capacitación"
+                                  : order.kind === "special"
+                                    ? "Colación especial"
+                                    : "Colación extra"}
                               </span>
                               <strong className="mt-1 block break-words">
                                 {order.beneficiaryLabel || "Sin referencia"}
                               </strong>
                             </div>
-                            <OperationalOrderActions
-                              order={order}
-                              menuOptions={editableMenuOptions}
-                              trainingMenu={trainingMenu}
-                              onChanged={refreshAfterCorrection}
-                              onBusyChange={setSaving}
-                              onSuccess={showCorrectionSuccess}
-                              onError={showCorrectionError}
-                            />
+                            {order.kind !== "special" ? (
+                              <OperationalOrderActions
+                                order={order}
+                                menuOptions={editableMenuOptions}
+                                trainingMenu={trainingMenu}
+                                onChanged={refreshAfterCorrection}
+                                onBusyChange={setSaving}
+                                onSuccess={showCorrectionSuccess}
+                                onError={showCorrectionError}
+                              />
+                            ) : null}
                           </div>
                           <dl className="mt-3 grid gap-1.5 text-xs text-[var(--muted)]">
                             <div className="flex justify-between gap-3">
                               <dt>Menú</dt>
                               <dd className="text-right font-bold text-[var(--ink)]">
-                                {option?.description ?? "Sin detalle"}
+                                {option?.description ?? specialRequest?.specialPreparation ?? "Sin detalle"}
                               </dd>
                             </div>
                             <div className="flex justify-between gap-3">
                               <dt>Cantidad</dt>
                               <dd className="font-bold text-[var(--ink)]">{order.quantity}</dd>
                             </div>
-                            <div className="flex justify-between gap-3">
-                              <dt>Selección</dt>
-                              <dd className="text-right font-bold text-[var(--ink)]">
-                                {order.trainingPackage
-                                  ? `Ensalada · Fruta · Jugo · Pan${order.tea ? " · Té" : ""}`
-                                  : `${sideLabel(order.side)} · ${complementLabel(order)}`}
-                              </dd>
-                            </div>
+                            {order.kind !== "special" ? (
+                              <div className="flex justify-between gap-3">
+                                <dt>Selección</dt>
+                                <dd className="text-right font-bold text-[var(--ink)]">
+                                  {order.trainingPackage
+                                    ? `Ensalada · Fruta · Jugo · Pan${order.tea ? " · Té" : ""}`
+                                    : `${sideLabel(order.side)} · ${complementLabel(order)}`}
+                                </dd>
+                              </div>
+                            ) : null}
                           </dl>
                         </article>
                       );
                     })
                   ) : (
-                    <EmptyState text="Todavía no hay capacitaciones ni extras para este día." />
+                    <EmptyState text="Todavía no hay capacitaciones, extras ni especiales para este día." />
                   )}
                 </div>
               </section>
 
               <section className="company-card-motion card p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-black">Solicitudes tardías de extras</h2>
+                  <h2 className="font-black">Solicitudes especiales y tardías</h2>
                   <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold">
                     {activeExceptions.length}
                   </span>
@@ -702,8 +798,16 @@ export function CompanyOperationsClient({
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <strong>{item.beneficiaryLabel}</strong>
+                            <span className="text-xs font-black uppercase tracking-wide text-[var(--brand)]">
+                              {item.requestKind === "special" ? "Colación especial" : "Extra tardía"}
+                            </span>
+                            <strong className="mt-1 block">{item.beneficiaryLabel}</strong>
                             <p className="mt-1 text-xs font-bold">{item.quantity} colaciones</p>
+                            {item.specialPreparation ? (
+                              <p className="mt-1 text-sm font-bold text-[var(--ink)]">
+                                {item.specialPreparation}
+                              </p>
+                            ) : null}
                             <p className="mt-1 text-xs text-[var(--muted)]">{item.reason}</p>
                           </div>
                           <StatusBadge status={item.status} />
@@ -713,7 +817,7 @@ export function CompanyOperationsClient({
                             {item.resolutionNote}
                           </p>
                         ) : null}
-                        {item.status !== "approved" ? (
+                        {item.requestKind === "late_extra" && item.status !== "approved" ? (
                           <ExtraRequestActions
                             request={item}
                             menuOptions={editableMenuOptions}

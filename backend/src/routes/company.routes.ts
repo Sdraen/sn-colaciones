@@ -8,6 +8,7 @@ import {
   deleteOperationalOrder,
   postExtraOrder,
   postExtraBatch,
+  postSpecialMealRequest,
   postTrainingOrder,
   postTrainingBatch,
   postWorker,
@@ -27,6 +28,7 @@ import {
   createExtraBatchRequestSchema,
   createTrainingRequestSchema,
   createTrainingBatchRequestSchema,
+  createSpecialMealRequestSchema,
   deleteExtraRequestRequestSchema,
   deleteOperationalOrderRequestSchema,
   updateExtraRequestRequestSchema,
@@ -111,6 +113,11 @@ companyRouter.post(
   "/extras/batch",
   validateRequest(createExtraBatchRequestSchema),
   postExtraBatch,
+);
+companyRouter.post(
+  "/special-requests",
+  validateRequest(createSpecialMealRequestSchema),
+  postSpecialMealRequest,
 );
 companyRouter.patch(
   "/orders/:orderId",

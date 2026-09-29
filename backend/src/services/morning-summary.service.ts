@@ -12,6 +12,7 @@ interface SummaryCounts {
   training: number;
   extra: number;
   exceptional: number;
+  special: number;
   total: number;
 }
 
@@ -112,6 +113,7 @@ export function summarizeOrders(
     training: 0,
     extra: 0,
     exceptional: 0,
+    special: 0,
     total: 0,
   };
   for (const order of orders) {
@@ -122,7 +124,7 @@ export function summarizeOrders(
 }
 
 export function buildMorningSummaryMessage(counts: SummaryCounts) {
-  return `${counts.total} colaciones confirmadas: ${counts.regular} trabajadores, ${counts.training} capacitaciones y ${counts.extra + counts.exceptional} extras.`;
+  return `${counts.total} colaciones confirmadas: ${counts.regular} trabajadores, ${counts.training} capacitaciones, ${counts.extra + counts.exceptional} extras y ${counts.special} especiales.`;
 }
 
 function dateInTimeZone(date: Date, timeZone: string) {

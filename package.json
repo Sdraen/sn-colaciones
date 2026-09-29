@@ -27,6 +27,6 @@
     "load:cleanup": "npm run load:cleanup-workers -w backend"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^10.0.5"
   }
 }

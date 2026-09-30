@@ -1,13 +1,23 @@
 import Image from "next/image";
 
-export function BrandMark({ className = "size-11" }: { className?: string }) {
+export function BrandMark({
+  className = "size-11",
+  sizes = "48px",
+  priority = false,
+}: {
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+}) {
   return (
     <Image
       src="/brand/sandra-neira-mark.png"
       alt=""
       width={1254}
       height={1254}
-      sizes="48px"
+      sizes={sizes}
+      quality={100}
+      priority={priority}
       className={`shrink-0 object-contain ${className}`}
     />
   );

@@ -23,6 +23,9 @@ const contentSecurityPolicy = [
   .join("; ");
 
 const nextConfig: NextConfig = {
+  images: {
+    qualities: [75, 100],
+  },
   async headers() {
     const headers = [
       { key: "Content-Security-Policy", value: contentSecurityPolicy },

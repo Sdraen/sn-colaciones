@@ -153,7 +153,7 @@ export function ProviderAccessManagement({
                 }}
                 ariaLabel="Tipo de acceso"
                 options={[
-                  { value: "delivery", label: "Despacho / delivery" },
+                  { value: "delivery", label: "Despacho" },
                   { value: "company_admin", label: "Administradora Securitas" },
                 ]}
                 className="mt-2 font-semibold"

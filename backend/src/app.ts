@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import helmet from "helmet";
+import * as helmetModule from "helmet";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found.js";
 import { requestContext } from "./middleware/request-context.js";
@@ -21,7 +21,7 @@ export function createApp(options: AppOptions = {}) {
     app.set("trust proxy", options.trustProxyHops);
   }
   app.use(requestContext);
-  app.use(helmet());
+  app.use(helmetModule.default());
   app.use(cors({ origin: corsOrigins }));
   app.use(express.json({ limit: "1mb" }));
 

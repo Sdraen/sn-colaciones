@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type RequestHandler } from "express";
 import helmetModule from "helmet";
+import { getRuntimeEnv } from "./config/env.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found.js";
 import { requestContext } from "./middleware/request-context.js";
@@ -36,3 +37,12 @@ export function createApp(options: AppOptions = {}) {
 
   return app;
 }
+
+const runtimeEnv = getRuntimeEnv();
+
+const app = createApp({
+  corsOrigins: runtimeEnv.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
+  trustProxyHops: runtimeEnv.TRUST_PROXY_HOPS,
+});
+
+export default app;

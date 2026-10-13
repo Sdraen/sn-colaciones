@@ -1,6 +1,6 @@
 import cors from "cors";
-import express from "express";
-import * as helmetModule from "helmet";
+import express, { type RequestHandler } from "express";
+import helmetModule from "helmet";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found.js";
 import { requestContext } from "./middleware/request-context.js";
@@ -12,6 +12,8 @@ type AppOptions = {
   trustProxyHops?: number;
 };
 
+const createHelmet = helmetModule as unknown as () => RequestHandler;
+
 export function createApp(options: AppOptions = {}) {
   const app = express();
   const corsOrigins = options.corsOrigins ?? ["http://localhost:3000"];
@@ -21,7 +23,7 @@ export function createApp(options: AppOptions = {}) {
     app.set("trust proxy", options.trustProxyHops);
   }
   app.use(requestContext);
-  app.use(helmetModule.default());
+  app.use(createHelmet());
   app.use(cors({ origin: corsOrigins }));
   app.use(express.json({ limit: "1mb" }));
 

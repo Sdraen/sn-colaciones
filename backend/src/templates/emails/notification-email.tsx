@@ -6,6 +6,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
@@ -25,7 +26,15 @@ export function NotificationEmail({ title, message, appUrl }: NotificationEmailP
       <Body style={body}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandMark}>SN</Text>
+            <Section style={brandLogoFrame}>
+              <Img
+                src="https://www.sncolaciones.cl/android-chrome-192x192.png"
+                width="72"
+                height="72"
+                alt="Logo SN Colaciones"
+                style={brandLogo}
+              />
+            </Section>
             <Text style={brandName}>SN Colaciones</Text>
             <Text style={brandCaption}>Cocina casera · Gestión diaria</Text>
           </Section>
@@ -83,17 +92,21 @@ const brandHeader = {
   color: "#ffffff",
 };
 
-const brandMark = {
+const brandLogoFrame = {
   display: "inline-block",
-  width: "42px",
   margin: "0 0 14px",
-  borderRadius: "12px",
-  backgroundColor: "#efa51f",
-  color: "#ffffff",
-  fontSize: "16px",
-  fontWeight: "800",
-  lineHeight: "42px",
-  textAlign: "center" as const,
+  padding: "7px",
+  borderRadius: "16px",
+  backgroundColor: "#fffdf8",
+};
+
+const brandLogo = {
+  display: "block",
+  width: "72px",
+  height: "72px",
+  border: "0",
+  outline: "none",
+  textDecoration: "none",
 };
 
 const brandName = {

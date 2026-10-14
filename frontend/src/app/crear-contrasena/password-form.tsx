@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle } from "lucide-react";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { createClient } from "@/lib/supabase/client";
-import { continuationPath } from "@/lib/auth-flow";
+import { continuationPath, mfaPath } from "@/lib/auth-flow";
 
 const minimumPasswordLength = 12;
 const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
@@ -40,6 +40,10 @@ export function CreatePasswordForm({ email }: { email: string }) {
     setPending(false);
 
     if (updateError) {
+      if (updateError.code === "insufficient_aal") {
+        window.location.replace(mfaPath("/crear-contrasena"));
+        return;
+      }
       setError("No fue posible guardar la contraseña. Solicita un enlace nuevo.");
       return;
     }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { LegacyServiceWorkerCleanup } from "@/components/legacy-service-worker-cleanup";
 import { SiteHeader } from "@/components/site-header";
@@ -17,12 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "SN Colaciones",
   title: {
     default: "SN Colaciones",
     template: "%s | SN Colaciones",
   },
   description:
     "Gestión simple y sincronizada de menús, pedidos y colaciones disponibles.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#b84b16",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

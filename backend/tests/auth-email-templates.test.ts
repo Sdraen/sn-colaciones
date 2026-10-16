@@ -6,6 +6,17 @@ const templatesDirectory = fileURLToPath(
   new URL("../../supabase/templates/", import.meta.url),
 );
 
+const brandedTemplateFiles = [
+  "confirmation.html",
+  "email-change.html",
+  "email-changed.html",
+  "invite.html",
+  "magic-link.html",
+  "password-changed.html",
+  "reauthentication.html",
+  "recovery.html",
+];
+
 describe("plantillas de creación de contraseña", () => {
   it.each([
     ["invite.html", "invite"],
@@ -19,5 +30,13 @@ describe("plantillas de creación de contraseña", () => {
       "next=%2Fauth%2Fcontinuar%3Fnext%3D%252Fcrear-contrasena",
     );
     expect(template).not.toContain("{{ .ConfirmationURL }}");
+  });
+
+  it.each(brandedTemplateFiles)("usa la marca institucional sin nombre personal en %s", (fileName) => {
+    const template = readFileSync(`${templatesDirectory}${fileName}`, "utf8");
+
+    expect(template).toContain("/brand/sn-colaciones-vintage-mark.png");
+    expect(template).toContain("SN Colaciones");
+    expect(template).not.toMatch(/Sandra|Neira/i);
   });
 });

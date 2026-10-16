@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fff6e5;
-  --foreground: #3b2418;
-  --surface: #fffdf8;
-  --surface-muted: #f8ead4;
-  --line: #ead1ad;
-  --brand: #d84b2a;
-  --brand-strong: #aa321d;
-  --brand-soft: #ffe0d1;
-  --accent: #efa51f;
-  --accent-strong: #b76c0b;
-  --accent-soft: #fff0bd;
-  --herb: #3f7b48;
-  --herb-strong: #285a34;
-  --herb-soft: #e1efd9;
+  --background: #f4e7cb;
+  --foreground: #482712;
+  --surface: #fffaf0;
+  --surface-muted: #efe0c2;
+  --line: #d9bd8d;
+  --brand: #b84b16;
+  --brand-strong: #813411;
+  --brand-soft: #f3d1ae;
+  --accent: #c88a37;
+  --accent-strong: #925c1c;
+  --accent-soft: #f7e2b6;
+  --herb: #66733b;
+  --herb-strong: #465127;
+  --herb-soft: #e5e8ce;
   --danger: #b83a32;
-  --warning: #a9650d;
-  --muted: #786153;
+  --warning: #99611c;
+  --muted: #765d49;
 }
 
 @theme inline {
@@ -50,9 +50,15 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   background-image:
-    radial-gradient(circle at 7% 0%, rgba(216, 75, 42, 0.14), transparent 26rem),
-    radial-gradient(circle at 92% 10%, rgba(239, 165, 31, 0.16), transparent 22rem),
-    radial-gradient(circle at 75% 92%, rgba(63, 123, 72, 0.09), transparent 24rem);
+    radial-gradient(circle at 7% 0%, rgba(184, 75, 22, 0.13), transparent 26rem),
+    radial-gradient(circle at 92% 10%, rgba(200, 138, 55, 0.17), transparent 22rem),
+    radial-gradient(circle at 75% 92%, rgba(102, 115, 59, 0.1), transparent 24rem),
+    repeating-linear-gradient(105deg, rgba(72, 39, 18, 0.018) 0 1px, transparent 1px 8px);
+  background-attachment: fixed;
+}
+
+.brand-wordmark {
+  font-family: Georgia, "Times New Roman", serif;
 }
 
 /* El documento ya reserva el ancho de la barra con scrollbar-gutter.
@@ -334,19 +340,19 @@ a {
 .card {
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: rgba(255, 253, 248, 0.96);
+  background: rgba(255, 250, 240, 0.96);
   box-shadow: 0 14px 34px rgba(102, 57, 27, 0.09);
 }
 
 .card.card-strong {
   border-color: transparent;
-  background: linear-gradient(135deg, #bd3d24 0%, #dd572d 58%, #eb8d24 100%);
+  background: linear-gradient(135deg, #813411 0%, #b84b16 58%, #c88a37 100%);
   color: white;
   box-shadow: 0 18px 34px rgba(170, 50, 29, 0.2);
 }
 
 .focus-ring:focus-visible {
-  outline: 3px solid rgba(216, 75, 42, 0.3);
+  outline: 3px solid rgba(184, 75, 22, 0.3);
   outline-offset: 3px;
 }
 

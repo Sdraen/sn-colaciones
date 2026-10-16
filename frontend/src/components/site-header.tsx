@@ -85,12 +85,12 @@ export function SiteHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[#fffdf8]/92 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[#fffaf0]/92 backdrop-blur-xl">
         <div className="mx-auto flex h-18 w-[min(1180px,calc(100%_-_24px))] min-w-0 items-center justify-between gap-3 sm:w-[min(1180px,calc(100%_-_32px))] sm:gap-6">
-          <Link href="/" className="focus-ring flex min-w-0 items-center gap-2.5 rounded-xl sm:gap-3">
+          <Link href="/" className="focus-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-xl sm:gap-3">
             <BrandMark className="size-11 drop-shadow-sm" />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-extrabold tracking-[-0.02em]">
+            <span className="min-w-0 overflow-hidden">
+              <span className="brand-wordmark block truncate text-[0.95rem] font-black tracking-[-0.025em]">
                 SN Colaciones
               </span>
               <span className="hidden truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)] min-[360px]:block">
@@ -177,7 +177,7 @@ export function SiteHeader({
         />
         <aside
           id="notifications-panel"
-          className={`relative mx-3 mt-3 max-h-[calc(100dvh-96px)] overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffdf8] shadow-2xl transition duration-200 md:ml-auto md:mr-6 md:max-w-sm ${
+          className={`relative mx-3 mt-3 max-h-[calc(100dvh-96px)] overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffaf0] shadow-2xl transition duration-200 md:ml-auto md:mr-6 md:max-w-sm ${
             notificationsOpen
               ? "translate-y-0 opacity-100"
               : "-translate-y-2 opacity-0"
@@ -262,7 +262,7 @@ export function SiteHeader({
         />
         <nav
           id="account-menu"
-          className="account-menu-panel relative mx-3 mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffdf8] p-3 shadow-2xl md:ml-auto md:mr-6 md:max-w-sm"
+          className="account-menu-panel relative mx-3 mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fffaf0] p-3 shadow-2xl md:ml-auto md:mr-6 md:max-w-sm"
           aria-label="Navegación y cuenta"
         >
             {currentUser ? (

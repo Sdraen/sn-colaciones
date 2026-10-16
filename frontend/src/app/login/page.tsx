@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
       <section className="login-card-enter card relative z-10 w-full max-w-[420px] overflow-hidden">
         <div className="bg-[linear-gradient(135deg,var(--brand-strong),var(--brand),var(--accent))] px-6 py-6 text-white sm:px-7">
-          <div className="login-brand-enter rounded-2xl bg-[#fffdf8] px-4 py-3 shadow-sm">
+          <div className="login-brand-enter rounded-2xl bg-[#fffaf0] px-4 py-3 shadow-sm">
             <BrandVertical className="mx-auto w-36 sm:w-40" priority />
           </div>
           <p className="mt-4 text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white/75">

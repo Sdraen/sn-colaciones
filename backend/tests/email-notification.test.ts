@@ -14,6 +14,7 @@ describe("plantilla de notificaciones por correo", () => {
     expect(email.html).not.toContain("<pendiente>");
     expect(email.html).toContain('href="https://colaciones.example.cl"');
     expect(email.html).toContain("SN Colaciones nunca solicitará tu contraseña");
+    expect(email.html).toContain("/brand/sn-colaciones-vintage-mark.png");
     expect(email.text).toContain("SOLICITUD <PENDIENTE>");
     expect(email.text).toContain("Revisar en SN Colaciones https://colaciones.example.cl");
   });

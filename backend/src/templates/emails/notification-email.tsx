@@ -28,7 +28,7 @@ export function NotificationEmail({ title, message, appUrl }: NotificationEmailP
           <Section style={brandHeader}>
             <Section style={brandLogoFrame}>
               <Img
-                src="https://www.sncolaciones.cl/android-chrome-192x192.png"
+                src="https://www.sncolaciones.cl/brand/sn-colaciones-vintage-mark.png"
                 width="72"
                 height="72"
                 alt="Logo SN Colaciones"
@@ -71,8 +71,8 @@ export function NotificationEmail({ title, message, appUrl }: NotificationEmailP
 
 const body = {
   margin: "0",
-  backgroundColor: "#fff6e5",
-  color: "#3b2418",
+  backgroundColor: "#f4e7cb",
+  color: "#482712",
   fontFamily: "Arial, Helvetica, sans-serif",
 };
 
@@ -81,14 +81,14 @@ const container = {
   maxWidth: "600px",
   margin: "32px auto",
   overflow: "hidden",
-  border: "1px solid #ead1ad",
+  border: "1px solid #d9bd8d",
   borderRadius: "22px",
-  backgroundColor: "#fffdf8",
+  backgroundColor: "#fffaf0",
 };
 
 const brandHeader = {
   padding: "28px 34px 24px",
-  backgroundColor: "#d84b2a",
+  backgroundColor: "#b84b16",
   color: "#ffffff",
 };
 
@@ -97,7 +97,7 @@ const brandLogoFrame = {
   margin: "0 0 14px",
   padding: "7px",
   borderRadius: "16px",
-  backgroundColor: "#fffdf8",
+  backgroundColor: "#fffaf0",
 };
 
 const brandLogo = {
@@ -119,7 +119,7 @@ const brandName = {
 
 const brandCaption = {
   margin: "2px 0 0",
-  color: "#ffe9dd",
+  color: "#f7dfbe",
   fontSize: "11px",
   fontWeight: "700",
   letterSpacing: "1.2px",
@@ -131,7 +131,7 @@ const content = { padding: "34px" };
 
 const eyebrow = {
   margin: "0 0 10px",
-  color: "#d84b2a",
+  color: "#b84b16",
   fontSize: "11px",
   fontWeight: "800",
   letterSpacing: "1.3px",
@@ -139,7 +139,7 @@ const eyebrow = {
 
 const heading = {
   margin: "0 0 22px",
-  color: "#3b2418",
+  color: "#482712",
   fontSize: "28px",
   fontWeight: "800",
   letterSpacing: "-0.5px",
@@ -148,7 +148,7 @@ const heading = {
 
 const greeting = {
   margin: "0 0 8px",
-  color: "#3b2418",
+  color: "#482712",
   fontSize: "15px",
   fontWeight: "700",
   lineHeight: "24px",
@@ -156,7 +156,7 @@ const greeting = {
 
 const messageText = {
   margin: "0 0 24px",
-  color: "#654d3e",
+  color: "#765d49",
   fontSize: "16px",
   lineHeight: "26px",
 };
@@ -165,7 +165,7 @@ const button = {
   display: "inline-block",
   padding: "13px 20px",
   borderRadius: "12px",
-  backgroundColor: "#d84b2a",
+  backgroundColor: "#b84b16",
   color: "#ffffff",
   fontSize: "15px",
   fontWeight: "800",
@@ -176,14 +176,14 @@ const button = {
 const noticeBox = {
   marginTop: "28px",
   padding: "16px 18px",
-  border: "1px solid #ead1ad",
+  border: "1px solid #d9bd8d",
   borderRadius: "14px",
-  backgroundColor: "#fff6e5",
+  backgroundColor: "#f7e8ca",
 };
 
 const noticeTitle = {
   margin: "0 0 4px",
-  color: "#3f7b48",
+  color: "#66733b",
   fontSize: "13px",
   fontWeight: "800",
   lineHeight: "20px",
@@ -191,12 +191,12 @@ const noticeTitle = {
 
 const noticeText = {
   margin: "0",
-  color: "#786153",
+  color: "#765d49",
   fontSize: "12px",
   lineHeight: "19px",
 };
 
-const divider = { margin: "28px 0 18px", borderColor: "#ead1ad" };
+const divider = { margin: "28px 0 18px", borderColor: "#d9bd8d" };
 
 const automaticText = {
   margin: "0",
@@ -207,13 +207,13 @@ const automaticText = {
 
 const footer = {
   padding: "20px 34px 24px",
-  backgroundColor: "#f8ead4",
+  backgroundColor: "#efe0c2",
   textAlign: "center" as const,
 };
 
 const footerBrand = {
   margin: "0",
-  color: "#3b2418",
+  color: "#482712",
   fontSize: "13px",
   fontWeight: "800",
   lineHeight: "20px",
@@ -221,7 +221,7 @@ const footerBrand = {
 
 const footerText = {
   margin: "1px 0 0",
-  color: "#786153",
+  color: "#765d49",
   fontSize: "11px",
   lineHeight: "18px",
 };

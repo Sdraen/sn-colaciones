@@ -51,6 +51,21 @@ type DraftDay = {
 
 type Feedback = { kind: "success" | "error"; text: string } | null;
 
+type MenuValidationIssue = {
+  dayIndex: number;
+  optionIndex?: number;
+  field:
+    | "day-options"
+    | "option-label"
+    | "option-description"
+    | "option-capacity"
+    | "dessert-name"
+    | "dessert-capacity"
+    | "training-description"
+    | "training-capacity";
+  message: string;
+};
+
 const MENU_ALTERNATIVES = [
   { label: "Principal 1", category: "principal" },
   { label: "Principal 2", category: "principal" },
@@ -88,15 +103,12 @@ export function ProviderMenuEditor({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [trainingEditorRevision, setTrainingEditorRevision] = useState(0);
 
   const serviceDays = days;
   const readyDays = serviceDays.filter((day) => day.disabled || isDayComplete(day)).length;
-  const trainingComplete = days.flatMap((day) => day.options)
-    .filter((option) => option.trainingMenu && !option.availableForWorkers)
-    .every((option) => option.label.trim().length >= 2 &&
-      option.description.trim().length >= 3 && option.capacity !== null);
-  const weekComplete = readyDays === serviceDays.length && trainingComplete;
+  const validationIssues = validationAttempted ? validateMenuDays(days) : [];
   const published = Boolean(menu?.publishedAt);
 
   const updateDay = useCallback((dayIndex: number, patch: Partial<DraftDay>) => {
@@ -129,6 +141,24 @@ export function ProviderMenuEditor({
   }, []);
 
   const closeEditingDay = useCallback(() => setEditingDay(null), []);
+
+  function validateBeforeCompletion() {
+    const issues = validateMenuDays(days);
+    if (issues.length === 0) {
+      setValidationAttempted(false);
+      return true;
+    }
+
+    const firstIssue = issues[0]!;
+    const issueDay = days[firstIssue.dayIndex]!;
+    setValidationAttempted(true);
+    setEditingDay(firstIssue.field.startsWith("training-") ? null : firstIssue.dayIndex);
+    setFeedback({
+      kind: "error",
+      text: `Faltan ${issues.length} ${issues.length === 1 ? "campo obligatorio" : "campos obligatorios"}. Revisa ${formatChileanDateWithWeekday(issueDay.serviceDate)}: ${firstIssue.message}`,
+    });
+    return false;
+  }
 
   const handleTrainingMenuChange = useCallback((saved: MenuWeekDto) => {
     setMenu(saved);
@@ -164,6 +194,7 @@ export function ProviderMenuEditor({
 
   async function savePublishedMenu(confirmImpact: boolean) {
     if (!menu || !published || !dirty) return;
+    if (!validateBeforeCompletion()) return;
     setSaving(true);
     setFeedback(null);
     try {
@@ -190,6 +221,7 @@ export function ProviderMenuEditor({
     setFeedback(null);
     try {
       await persistDraft();
+      setValidationAttempted(false);
       setFeedback({ kind: "success", text: "Borrador semanal guardado." });
     } catch (error) {
       setFeedback({ kind: "error", text: errorMessage(error, "No fue posible guardar el menú") });
@@ -199,6 +231,7 @@ export function ProviderMenuEditor({
   }
 
   async function publishWeek() {
+    if (!validateBeforeCompletion()) return;
     setSaving(true);
     setFeedback(null);
     try {
@@ -211,6 +244,7 @@ export function ProviderMenuEditor({
       onMenuChange?.(publishedMenu);
       setDays(toDraftDays(publishedMenu));
       setEditingDay(null);
+      setValidationAttempted(false);
       setFeedback({
         kind: "success",
         text: "Semana publicada. Los trabajadores ya pueden verla.",
@@ -238,6 +272,7 @@ export function ProviderMenuEditor({
       setDays(toDraftDays(copied));
       setDirty(false);
       setEditingDay(0);
+      setValidationAttempted(false);
       setFeedback({ kind: "success", text: "Semana anterior copiada como borrador." });
     } catch (error) {
       setFeedback({ kind: "error", text: errorMessage(error, "No fue posible copiar la semana") });
@@ -259,6 +294,7 @@ export function ProviderMenuEditor({
       setDays(createEmptyWeek(startsOn));
       setDirty(false);
       setEditingDay(0);
+      setValidationAttempted(false);
       setFeedback({ kind: "success", text: "Borrador eliminado." });
     } catch (error) {
       setFeedback({ kind: "error", text: errorMessage(error, "No fue posible eliminar") });
@@ -329,8 +365,14 @@ export function ProviderMenuEditor({
         {serviceDays.map((day, dayIndex) => {
           const complete = day.disabled || isDayComplete(day);
           const expanded = editingDay === dayIndex;
+          const dayValidationIssues = validationIssues.filter(
+            (issue) => issue.dayIndex === dayIndex,
+          );
+          const firstDayIssue = dayValidationIssues[0];
           const description = day.disabled
             ? "Sin servicio"
+            : firstDayIssue
+              ? firstDayIssue.message
             : day.options.find((option) => option.visible && option.availableForWorkers)?.description.trim() ||
               "Preparación pendiente";
 
@@ -358,7 +400,11 @@ export function ProviderMenuEditor({
                   <strong className="block capitalize">
                     {formatChileanDateWithWeekday(day.serviceDate)}
                   </strong>
-                  <span className="mt-0.5 block truncate text-sm text-[var(--muted)]">
+                  <span
+                    className={`mt-0.5 block truncate text-sm ${
+                      firstDayIssue ? "font-bold text-[var(--danger)]" : "text-[var(--muted)]"
+                    }`}
+                  >
                     {description}
                   </span>
                 </span>
@@ -386,6 +432,7 @@ export function ProviderMenuEditor({
                     day={day}
                     dayIndex={dayIndex}
                     published={published}
+                    validationIssues={dayValidationIssues}
                     onUpdateDay={updateDay}
                     onUpdateOption={updateOption}
                     onDone={closeEditingDay}
@@ -433,7 +480,7 @@ export function ProviderMenuEditor({
             <button
               type="button"
               onClick={publishWeek}
-              disabled={saving || !weekComplete}
+              disabled={saving}
               className="menu-action inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-[var(--herb)] px-3 text-sm font-extrabold text-white hover:brightness-95 disabled:opacity-40 sm:px-5 sm:text-base"
             >
               <Send size={18} className="shrink-0" />
@@ -454,6 +501,7 @@ export function ProviderMenuEditor({
             setDays(toDraftDays(menu));
             setDirty(false);
             setEditingDay(null);
+            setValidationAttempted(false);
             setFeedback(null);
           }}
         />
@@ -518,6 +566,7 @@ function DayEditor({
   day,
   dayIndex,
   published,
+  validationIssues,
   onUpdateDay,
   onUpdateOption,
   onDone,
@@ -525,6 +574,7 @@ function DayEditor({
   day: DraftDay;
   dayIndex: number;
   published: boolean;
+  validationIssues: MenuValidationIssue[];
   onUpdateDay: (index: number, patch: Partial<DraftDay>) => void;
   onUpdateOption: (dayIndex: number, optionIndex: number, patch: Partial<DraftOption>) => void;
   onDone: () => void;
@@ -535,6 +585,7 @@ function DayEditor({
     (total, option) => total + option.reservedQuantity,
     0,
   );
+  const dayOptionsIssue = findValidationIssue(validationIssues, "day-options");
 
   return (
     <div className="border-t border-[var(--line)] bg-[var(--cream)] px-4 py-5 sm:px-5">
@@ -563,8 +614,31 @@ function DayEditor({
 
       {!day.disabled ? (
         <div className="mt-5 space-y-4">
+          {dayOptionsIssue ? (
+            <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-[var(--danger)]">
+              {dayOptionsIssue.message}
+            </p>
+          ) : null}
           {day.options.map((option, optionIndex) => {
             if (!option.availableForWorkers) return null;
+            const labelIssue = findValidationIssue(
+              validationIssues,
+              "option-label",
+              optionIndex,
+            );
+            const capacityIssue = findValidationIssue(
+              validationIssues,
+              "option-capacity",
+              optionIndex,
+            );
+            const descriptionIssue = findValidationIssue(
+              validationIssues,
+              "option-description",
+              optionIndex,
+            );
+            const labelErrorId = `menu-${day.serviceDate}-${optionIndex}-label-error`;
+            const capacityErrorId = `menu-${day.serviceDate}-${optionIndex}-capacity-error`;
+            const descriptionErrorId = `menu-${day.serviceDate}-${optionIndex}-description-error`;
             const knownAlternative = MENU_ALTERNATIVES.some(
               (alternative) => alternative.label === option.label,
             );
@@ -643,6 +717,11 @@ function DayEditor({
                       ]}
                       className="mt-2 text-base font-semibold"
                     />
+                    {labelIssue ? (
+                      <p id={labelErrorId} role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+                        {labelIssue.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label className="text-base font-extrabold">
@@ -650,6 +729,8 @@ function DayEditor({
                     <input
                       type="number"
                       min={option.reservedQuantity}
+                      max="10000"
+                      step="1"
                       required
                       value={option.capacity ?? ""}
                       onChange={(event) =>
@@ -658,14 +739,26 @@ function DayEditor({
                         })
                       }
                       placeholder="Ej.: 50"
-                      className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
+                      aria-invalid={Boolean(capacityIssue)}
+                      aria-describedby={capacityIssue ? capacityErrorId : undefined}
+                      className={`form-control mt-2 px-4 text-base font-normal text-[var(--ink)] ${
+                        capacityIssue ? "border-[var(--danger)]" : ""
+                      }`}
                     />
+                    {capacityIssue ? (
+                      <p id={capacityErrorId} role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+                        {capacityIssue.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label className="text-base font-extrabold lg:col-span-2">
                     Plato o preparación
                     <textarea
                       value={option.description}
+                      required
+                      minLength={3}
+                      maxLength={300}
                       onChange={(event) =>
                         onUpdateOption(dayIndex, optionIndex, {
                           description: event.target.value,
@@ -673,8 +766,17 @@ function DayEditor({
                       }
                       rows={3}
                       placeholder="Ej.: Pollo al jugo con arroz"
-                      className="form-control mt-2 px-4 py-3 text-base font-normal text-[var(--ink)]"
+                      aria-invalid={Boolean(descriptionIssue)}
+                      aria-describedby={descriptionIssue ? descriptionErrorId : undefined}
+                      className={`form-control mt-2 px-4 py-3 text-base font-normal text-[var(--ink)] ${
+                        descriptionIssue ? "border-[var(--danger)]" : ""
+                      }`}
                     />
+                    {descriptionIssue ? (
+                      <p id={descriptionErrorId} role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+                        {descriptionIssue.message}
+                      </p>
+                    ) : null}
                   </label>
                 </div>
               </article>
@@ -682,69 +784,13 @@ function DayEditor({
           })}
 
           {day.dessert ? (
-            <article className="rounded-2xl border-2 border-[var(--line)] bg-white p-4 shadow-sm sm:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">
-                    Postre del día
-                  </p>
-                  <p className="mt-1 text-lg font-black">{day.dessert.name || "Por definir"}</p>
-                  {published ? (
-                    <p className="mt-1 text-sm font-bold text-[var(--herb-strong)]">
-                      {day.dessert.reservedQuantity}{" "}
-                      {day.dessert.reservedQuantity === 1 ? "reserva" : "reservas"}
-                    </p>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  disabled={published && day.dessert.reservedQuantity > 0}
-                  title={
-                    published && day.dessert.reservedQuantity > 0
-                      ? "Este postre tiene reservas y no se puede quitar"
-                      : undefined
-                  }
-                  onClick={() => onUpdateDay(dayIndex, { dessert: null })}
-                  className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Trash2 size={16} /> Quitar postre
-                </button>
-              </div>
-              <div className="grid gap-5 lg:grid-cols-2">
-                <label className="text-base font-extrabold">
-                  Tipo de postre
-                  <input
-                    value={day.dessert.name}
-                    maxLength={160}
-                    onChange={(event) => onUpdateDay(dayIndex, {
-                      dessert: { ...day.dessert!, name: event.target.value },
-                    })}
-                    placeholder="Ej.: Leche asada"
-                    className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
-                  />
-                </label>
-                <label className="text-base font-extrabold">
-                  Cupo inicial
-                  <input
-                    type="number"
-                    min={day.dessert.reservedQuantity}
-                    max="10000"
-                    value={day.dessert.capacity ?? ""}
-                    onChange={(event) => onUpdateDay(dayIndex, {
-                      dessert: {
-                        ...day.dessert!,
-                        capacity: event.target.value === "" ? null : Number(event.target.value),
-                      },
-                    })}
-                    placeholder="Ej.: 30"
-                    className="form-control mt-2 px-4 text-base font-normal text-[var(--ink)]"
-                  />
-                </label>
-              </div>
-              <p className="mt-3 text-sm text-[var(--muted)]">
-                Trabajadores podrán elegir este postre en lugar de ensalada o fruta.
-              </p>
-            </article>
+            <DessertEditor
+              day={day}
+              dayIndex={dayIndex}
+              published={published}
+              validationIssues={validationIssues}
+              onUpdateDay={onUpdateDay}
+            />
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -794,6 +840,115 @@ function DayEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+function DessertEditor({
+  day,
+  dayIndex,
+  published,
+  validationIssues,
+  onUpdateDay,
+}: {
+  day: DraftDay;
+  dayIndex: number;
+  published: boolean;
+  validationIssues: MenuValidationIssue[];
+  onUpdateDay: (index: number, patch: Partial<DraftDay>) => void;
+}) {
+  if (!day.dessert) return null;
+
+  const nameIssue = findValidationIssue(validationIssues, "dessert-name");
+  const capacityIssue = findValidationIssue(validationIssues, "dessert-capacity");
+  const nameErrorId = `menu-${day.serviceDate}-dessert-name-error`;
+  const capacityErrorId = `menu-${day.serviceDate}-dessert-capacity-error`;
+
+  return (
+    <article className="rounded-2xl border-2 border-[var(--line)] bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">
+            Postre del día
+          </p>
+          <p className="mt-1 text-lg font-black">{day.dessert.name || "Por definir"}</p>
+          {published ? (
+            <p className="mt-1 text-sm font-bold text-[var(--herb-strong)]">
+              {day.dessert.reservedQuantity}{" "}
+              {day.dessert.reservedQuantity === 1 ? "reserva" : "reservas"}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          disabled={published && day.dessert.reservedQuantity > 0}
+          title={
+            published && day.dessert.reservedQuantity > 0
+              ? "Este postre tiene reservas y no se puede quitar"
+              : undefined
+          }
+          onClick={() => onUpdateDay(dayIndex, { dessert: null })}
+          className="menu-action inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-50 px-3 text-sm font-extrabold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Trash2 size={16} /> Quitar postre
+        </button>
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <label className="text-base font-extrabold">
+          Tipo de postre
+          <input
+            value={day.dessert.name}
+            required
+            minLength={2}
+            maxLength={160}
+            onChange={(event) => onUpdateDay(dayIndex, {
+              dessert: { ...day.dessert!, name: event.target.value },
+            })}
+            placeholder="Ej.: Leche asada"
+            aria-invalid={Boolean(nameIssue)}
+            aria-describedby={nameIssue ? nameErrorId : undefined}
+            className={`form-control mt-2 px-4 text-base font-normal text-[var(--ink)] ${
+              nameIssue ? "border-[var(--danger)]" : ""
+            }`}
+          />
+          {nameIssue ? (
+            <p id={nameErrorId} role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+              {nameIssue.message}
+            </p>
+          ) : null}
+        </label>
+        <label className="text-base font-extrabold">
+          Cupo inicial
+          <input
+            type="number"
+            min={day.dessert.reservedQuantity}
+            max="10000"
+            step="1"
+            required
+            value={day.dessert.capacity ?? ""}
+            onChange={(event) => onUpdateDay(dayIndex, {
+              dessert: {
+                ...day.dessert!,
+                capacity: event.target.value === "" ? null : Number(event.target.value),
+              },
+            })}
+            placeholder="Ej.: 30"
+            aria-invalid={Boolean(capacityIssue)}
+            aria-describedby={capacityIssue ? capacityErrorId : undefined}
+            className={`form-control mt-2 px-4 text-base font-normal text-[var(--ink)] ${
+              capacityIssue ? "border-[var(--danger)]" : ""
+            }`}
+          />
+          {capacityIssue ? (
+            <p id={capacityErrorId} role="alert" className="mt-2 text-sm font-bold text-[var(--danger)]">
+              {capacityIssue.message}
+            </p>
+          ) : null}
+        </label>
+      </div>
+      <p className="mt-3 text-sm text-[var(--muted)]">
+        Trabajadores podrán elegir este postre en lugar de ensalada o fruta.
+      </p>
+    </article>
   );
 }
 
@@ -863,15 +1018,163 @@ function isDayComplete(day: DraftDay) {
   return (
     visibleOptions.length > 0 &&
     (!day.dessert || (
-      day.dessert.name.trim().length >= 2 && day.dessert.capacity !== null
+      day.dessert.name.trim().length >= 2 &&
+      isValidCapacity(day.dessert.capacity, day.dessert.reservedQuantity)
     )) &&
     visibleOptions.every(
       (option) =>
         option.label.trim().length >= 2 &&
         option.description.trim().length >= 3 &&
-        option.capacity !== null,
+        isValidCapacity(option.capacity, option.reservedQuantity),
     )
   );
+}
+
+function validateMenuDays(days: DraftDay[]): MenuValidationIssue[] {
+  const issues: MenuValidationIssue[] = [];
+
+  days.forEach((day, dayIndex) => {
+    if (!day.disabled) {
+      const visibleWorkerOptions = day.options
+        .map((option, optionIndex) => ({ option, optionIndex }))
+        .filter(({ option }) => option.visible && option.availableForWorkers);
+
+      if (visibleWorkerOptions.length === 0) {
+        issues.push({
+          dayIndex,
+          field: "day-options",
+          message: "Agrega al menos una alternativa para este día.",
+        });
+      }
+
+      visibleWorkerOptions.forEach(({ option, optionIndex }, visibleIndex) => {
+        const optionName = option.label.trim() || `la alternativa ${visibleIndex + 1}`;
+
+        if (option.label.trim().length < 2) {
+          issues.push({
+            dayIndex,
+            optionIndex,
+            field: "option-label",
+            message: "Selecciona el tipo de alternativa.",
+          });
+        }
+        if (option.description.trim().length < 3) {
+          issues.push({
+            dayIndex,
+            optionIndex,
+            field: "option-description",
+            message: `Ingresa el plato o preparación de ${optionName}.`,
+          });
+        }
+
+        const capacityMessage = getCapacityValidationMessage(
+          option.capacity,
+          option.reservedQuantity,
+          `de ${optionName}`,
+        );
+        if (capacityMessage) {
+          issues.push({
+            dayIndex,
+            optionIndex,
+            field: "option-capacity",
+            message: capacityMessage,
+          });
+        }
+      });
+
+      if (day.dessert) {
+        if (day.dessert.name.trim().length < 2) {
+          issues.push({
+            dayIndex,
+            field: "dessert-name",
+            message: "Ingresa el tipo de postre.",
+          });
+        }
+
+        const dessertCapacityMessage = getCapacityValidationMessage(
+          day.dessert.capacity,
+          day.dessert.reservedQuantity,
+          "del postre",
+        );
+        if (dessertCapacityMessage) {
+          issues.push({
+            dayIndex,
+            field: "dessert-capacity",
+            message: dessertCapacityMessage,
+          });
+        }
+      }
+    }
+
+    day.options.forEach((option, optionIndex) => {
+      if (!option.trainingMenu || !option.visible) return;
+
+      if (option.description.trim().length < 3) {
+        issues.push({
+          dayIndex,
+          optionIndex,
+          field: "training-description",
+          message: "En Menú de capacitaciones, ingresa el plato o preparación.",
+        });
+      }
+
+      const capacityMessage = getCapacityValidationMessage(
+        option.capacity,
+        option.reservedQuantity,
+        "del menú de capacitación",
+      );
+      if (capacityMessage) {
+        issues.push({
+          dayIndex,
+          optionIndex,
+          field: "training-capacity",
+          message: `En Menú de capacitaciones: ${capacityMessage}`,
+        });
+      }
+    });
+  });
+
+  return issues;
+}
+
+function findValidationIssue(
+  issues: MenuValidationIssue[],
+  field: MenuValidationIssue["field"],
+  optionIndex?: number,
+) {
+  return issues.find(
+    (issue) => issue.field === field && issue.optionIndex === optionIndex,
+  );
+}
+
+function isValidCapacity(capacity: number | null, reservedQuantity: number) {
+  return capacity !== null &&
+    Number.isInteger(capacity) &&
+    capacity >= reservedQuantity &&
+    capacity <= 10_000;
+}
+
+function getCapacityValidationMessage(
+  capacity: number | null,
+  reservedQuantity: number,
+  subjectContext: string,
+) {
+  if (capacity === null) {
+    return `Ingresa la disponibilidad inicial ${subjectContext}.`;
+  }
+  if (!Number.isInteger(capacity)) {
+    return `La disponibilidad inicial ${subjectContext} debe ser un número entero.`;
+  }
+  if (capacity < 0) {
+    return `La disponibilidad inicial ${subjectContext} no puede ser negativa.`;
+  }
+  if (capacity < reservedQuantity) {
+    return `La disponibilidad inicial ${subjectContext} no puede ser menor que las ${reservedQuantity} reservas existentes.`;
+  }
+  if (capacity > 10_000) {
+    return `La disponibilidad inicial ${subjectContext} no puede superar 10.000.`;
+  }
+  return null;
 }
 
 function emptyOption(sortOrder: number, usedLabels = new Set<string>()): DraftOption {

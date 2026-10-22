@@ -8,6 +8,7 @@ type ReportOrder = Pick<
   Database["public"]["Tables"]["orders"]["Row"],
   | "service_day_id"
   | "menu_option_id"
+  | "diner_id"
   | "kind"
   | "quantity"
   | "side"
@@ -17,6 +18,20 @@ type ReportOrder = Pick<
   | "status"
   | "fulfilled_at"
 >;
+
+type ReportInput = {
+  period: ReportPeriod;
+  date?: string;
+  company?: string;
+};
+
+type ReportDiner = Pick<
+  Database["public"]["Tables"]["diners"]["Row"],
+  "id" | "auth_user_id" | "full_name" | "type"
+>;
+
+export const INTERNAL_COMPANY_NAME = "Securitas";
+const UNKNOWN_EXTERNAL_COMPANY_NAME = "Empresa externa";
 
 type NominalReportOrder = Pick<
   Database["public"]["Tables"]["orders"]["Row"],
@@ -50,7 +65,7 @@ export type ReportTotals = {
 
 export async function getOrdersReport(
   supabase: UserDatabaseClient,
-  input: { period: ReportPeriod; date?: string },
+  input: ReportInput,
 ) {
   const range = resolveReportRange(input.period, input.date);
   const { data: serviceDays, error: serviceDaysError } = await supabase
@@ -69,7 +84,7 @@ export async function getOrdersReport(
         supabase
           .from("orders")
           .select(
-            "service_day_id, menu_option_id, kind, quantity, side, bread, tea, training_package, status, fulfilled_at",
+            "service_day_id, menu_option_id, diner_id, kind, quantity, side, bread, tea, training_package, status, fulfilled_at",
           )
           .in("service_day_id", dayIds),
         supabase
@@ -97,7 +112,15 @@ export async function getOrdersReport(
     throwSupabaseError(optionsResult.error, "No fue posible consultar los menús del reporte");
   }
 
-  const orders = ordersResult.data ?? [];
+  const allOrders = (ordersResult.data ?? []) as ReportOrder[];
+  const companyContext = await loadReportCompanyContext(supabase, allOrders);
+  const selectedCompany = canonicalCompanyName(input.company, companyContext.companies);
+  const orders = allOrders.filter((order) =>
+    matchesReportCompany(
+      resolveReportCompanyName(order, companyContext.companyByDinerId),
+      selectedCompany,
+    ),
+  );
   const menuOptions = optionsResult.data ?? [];
   const totals = summarizeReportOrders(orders);
   const days = (serviceDays ?? []).map((day) => {
@@ -144,6 +167,8 @@ export async function getOrdersReport(
   return {
     period: input.period,
     range,
+    companies: companyContext.companies,
+    selectedCompany,
     totals,
     days,
     generatedAt: new Date().toISOString(),
@@ -152,7 +177,7 @@ export async function getOrdersReport(
 
 export async function getCompleteOrdersReport(
   supabase: UserDatabaseClient,
-  input: { period: ReportPeriod; date?: string },
+  input: ReportInput,
 ) {
   const [summary, nominal] = await Promise.all([
     getOrdersReport(supabase, input),
@@ -163,7 +188,7 @@ export async function getCompleteOrdersReport(
 
 export async function getNominalOrdersReport(
   supabase: UserDatabaseClient,
-  input: { period: ReportPeriod; date?: string },
+  input: ReportInput,
 ) {
   const range = resolveReportRange(input.period, input.date);
   const { data: serviceDays, error: serviceDaysError } = await supabase
@@ -181,6 +206,8 @@ export async function getNominalOrdersReport(
     return {
       period: input.period,
       range,
+      companies: [] as string[],
+      selectedCompany: input.company ?? null,
       totals: summarizeReportOrders([]),
       rows: [] as NominalReportRow[],
       generatedAt: new Date().toISOString(),
@@ -206,14 +233,14 @@ export async function getNominalOrdersReport(
     throwSupabaseError(optionsResult.error, "No fue posible consultar los menús del reporte nominal");
   }
 
-  const orders = (ordersResult.data ?? []) as NominalReportOrder[];
-  const dinerIds = uniqueValues(orders.map((order) => order.diner_id));
-  const trainingIds = uniqueValues(orders.map((order) => order.training_session_id));
+  const allOrders = (ordersResult.data ?? []) as NominalReportOrder[];
+  const dinerIds = uniqueValues(allOrders.map((order) => order.diner_id));
+  const trainingIds = uniqueValues(allOrders.map((order) => order.training_session_id));
   const [dinersResult, trainingResult] = await Promise.all([
     dinerIds.length
-      ? supabase.from("diners").select("id, full_name").in("id", dinerIds)
+      ? supabase.from("diners").select("id, full_name, auth_user_id, type").in("id", dinerIds)
       : Promise.resolve({
-          data: [] as Array<{ id: string; full_name: string }>,
+          data: [] as ReportDiner[],
           error: null,
         }),
     trainingIds.length
@@ -227,9 +254,19 @@ export async function getNominalOrdersReport(
     throwSupabaseError(trainingResult.error, "No fue posible consultar las capacitaciones del reporte");
   }
 
+  const diners = (dinersResult.data ?? []) as ReportDiner[];
+  const companyContext = await loadReportCompanyContext(supabase, allOrders, diners);
+  const selectedCompany = canonicalCompanyName(input.company, companyContext.companies);
+  const orders = allOrders.filter((order) =>
+    matchesReportCompany(
+      resolveReportCompanyName(order, companyContext.companyByDinerId),
+      selectedCompany,
+    ),
+  );
+
   const datesByDay = new Map((serviceDays ?? []).map((day) => [day.id, day.service_date]));
   const optionsById = new Map((optionsResult.data ?? []).map((option) => [option.id, option]));
-  const dinersById = new Map((dinersResult.data ?? []).map((diner) => [diner.id, diner]));
+  const dinersById = new Map(diners.map((diner) => [diner.id, diner]));
   const trainingById = new Map(
     (trainingResult.data ?? []).map((training) => [training.id, training]),
   );
@@ -245,6 +282,7 @@ export async function getNominalOrdersReport(
         orderId: order.id,
         serviceDate: datesByDay.get(order.service_day_id) ?? range.from,
         beneficiaryName: resolveBeneficiaryName(order, diner?.full_name, training?.name),
+        companyName: resolveReportCompanyName(order, companyContext.companyByDinerId),
         kind: order.kind,
         menuLabel: option?.label ?? "Alternativa no disponible",
         preparation: option?.description || option?.label || "Sin preparación informada",
@@ -267,6 +305,8 @@ export async function getNominalOrdersReport(
   return {
     period: input.period,
     range,
+    companies: companyContext.companies,
+    selectedCompany,
     totals: summarizeReportOrders(orders),
     rows,
     generatedAt: new Date().toISOString(),
@@ -358,6 +398,107 @@ function uniqueValues(values: Array<string | null>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+async function loadReportCompanyContext(
+  supabase: UserDatabaseClient,
+  orders: Array<Pick<NominalReportOrder, "diner_id" | "kind">>,
+  loadedDiners?: ReportDiner[],
+) {
+  const dinerIds = uniqueValues(orders.map((order) => order.diner_id));
+  let diners = loadedDiners ?? [];
+
+  if (!loadedDiners && dinerIds.length > 0) {
+    const dinersResult = await supabase
+      .from("diners")
+      .select("id, full_name, auth_user_id, type")
+      .in("id", dinerIds);
+    if (dinersResult.error) {
+      throwSupabaseError(
+        dinersResult.error,
+        "No fue posible consultar las empresas de los trabajadores del reporte",
+      );
+    }
+    diners = (dinersResult.data ?? []) as ReportDiner[];
+  }
+
+  const externalUserIds = uniqueValues(
+    diners
+      .filter((diner) => diner.type === "external")
+      .map((diner) => diner.auth_user_id),
+  );
+  const profilesResult = externalUserIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, external_company_name")
+        .in("id", externalUserIds)
+    : { data: [] as Array<{ id: string; external_company_name: string | null }>, error: null };
+  if (profilesResult.error) {
+    throwSupabaseError(
+      profilesResult.error,
+      "No fue posible consultar las empresas externas del reporte",
+    );
+  }
+
+  const externalCompanyByUserId = new Map(
+    (profilesResult.data ?? []).map((profile) => [
+      profile.id,
+      profile.external_company_name?.trim() || UNKNOWN_EXTERNAL_COMPANY_NAME,
+    ]),
+  );
+  const companyByDinerId = new Map<string, string>();
+  for (const diner of diners) {
+    companyByDinerId.set(
+      diner.id,
+      diner.type === "external"
+        ? externalCompanyByUserId.get(diner.auth_user_id ?? "") ?? UNKNOWN_EXTERNAL_COMPANY_NAME
+        : INTERNAL_COMPANY_NAME,
+    );
+  }
+
+  const companies = uniqueCompanyNames(
+    orders.map((order) => resolveReportCompanyName(order, companyByDinerId)),
+  );
+  return { companies, companyByDinerId };
+}
+
+function resolveReportCompanyName(
+  order: Pick<NominalReportOrder, "diner_id" | "kind">,
+  companyByDinerId: Map<string, string>,
+) {
+  if (order.kind !== "regular" || !order.diner_id) return INTERNAL_COMPANY_NAME;
+  return companyByDinerId.get(order.diner_id) ?? INTERNAL_COMPANY_NAME;
+}
+
+export function matchesReportCompany(companyName: string, selectedCompany?: string | null) {
+  return !selectedCompany || normalizeCompanyName(companyName) === normalizeCompanyName(selectedCompany);
+}
+
+function canonicalCompanyName(selectedCompany: string | undefined, companies: string[]) {
+  if (!selectedCompany) return null;
+  return companies.find((company) => matchesReportCompany(company, selectedCompany)) ?? selectedCompany;
+}
+
+function uniqueCompanyNames(names: string[]) {
+  const unique = new Map<string, string>();
+  for (const name of names) {
+    const trimmed = name.trim();
+    const key = normalizeCompanyName(trimmed);
+    if (key && !unique.has(key)) unique.set(key, trimmed);
+  }
+  return [...unique.values()].toSorted((left, right) => {
+    if (left === INTERNAL_COMPANY_NAME) return -1;
+    if (right === INTERNAL_COMPANY_NAME) return 1;
+    return left.localeCompare(right, "es-CL");
+  });
+}
+
+function normalizeCompanyName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-CL")
+    .trim();
+}
+
 function resolveBeneficiaryName(
   order: NominalReportOrder,
   dinerName?: string,
@@ -375,6 +516,7 @@ export type NominalReportRow = {
   orderId: string;
   serviceDate: string;
   beneficiaryName: string;
+  companyName: string;
   kind: OrderKind;
   menuLabel: string;
   preparation: string;

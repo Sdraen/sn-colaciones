@@ -23,6 +23,7 @@ pdfMake.setFonts({
 
 export async function createNominalOrdersPdf(report: NominalOrdersReport) {
   const confirmedRows = report.rows.filter((row) => row.status === "confirmed");
+  const companyLabel = report.selectedCompany ?? "Todas las empresas";
   const preparationSummary = summarizePreparations(confirmedRows);
   const groupedNames = groupNamesByPreparation(confirmedRows);
   const preparationBody: TableCell[][] = [
@@ -51,6 +52,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
     [
       tableHeader("Fecha"),
       tableHeader("Trabajador o beneficiario"),
+      tableHeader("Empresa"),
       tableHeader("Tipo"),
       tableHeader("Preparación"),
       tableHeader("Acomp."),
@@ -65,12 +67,12 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
     body.push([
       {
         text: "No existen solicitudes para el período seleccionado.",
-        colSpan: 8,
+        colSpan: 9,
         alignment: "center",
         color: MUTED,
         margin: [0, 16],
       },
-      {}, {}, {}, {}, {}, {}, {},
+      {}, {}, {}, {}, {}, {}, {}, {},
     ]);
   }
 
@@ -79,7 +81,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
     pageOrientation: "landscape",
     pageMargins: [28, 32, 28, 38],
     info: {
-      title: `Reporte nominal de colaciones ${report.range.from} a ${report.range.to}`,
+      title: `Reporte nominal de colaciones ${companyLabel} ${report.range.from} a ${report.range.to}`,
       subject: "Detalle nominal de solicitudes de colaciones",
       author: "SN Colaciones",
       creationDate: new Date(report.generatedAt),
@@ -109,6 +111,12 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
                 color: MUTED,
                 fontSize: 9,
                 margin: [0, 5, 0, 0],
+              },
+              {
+                text: `Empresa: ${companyLabel}`,
+                color: MUTED,
+                fontSize: 9,
+                margin: [0, 3, 0, 0],
               },
             ],
           },
@@ -170,7 +178,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
       },
       ...groupedNames.map((group) => ({
         stack: [
-          { text: `${formatDate(group.serviceDate)} · ${group.menuLabel}`, bold: true, color: BRAND },
+          { text: `${formatDate(group.serviceDate)} · ${group.menuLabel} · ${group.companyName}`, bold: true, color: BRAND },
           { text: group.preparation, color: MUTED, margin: [0, 2, 0, 3] },
           { text: group.names.join(" · ") || "Sin funcionarios", fontSize: 8 },
         ],
@@ -187,7 +195,7 @@ export async function createNominalOrdersPdf(report: NominalOrdersReport) {
         table: {
           headerRows: 1,
           dontBreakRows: true,
-          widths: [47, 137, 50, 172, 48, 45, 27, 48],
+          widths: [47, 120, 82, 48, 145, 48, 45, 27, 48],
           body,
         },
         layout: {
@@ -271,14 +279,16 @@ function groupNamesByPreparation(rows: NominalReportRow[]) {
     serviceDate: string;
     menuLabel: string;
     preparation: string;
+    companyName: string;
     names: string[];
   }>();
   for (const row of rows) {
-    const key = `${row.serviceDate}\u0000${row.menuLabel}\u0000${row.preparation}`;
+    const key = `${row.serviceDate}\u0000${row.menuLabel}\u0000${row.preparation}\u0000${row.companyName}`;
     const group = groups.get(key) ?? {
       serviceDate: row.serviceDate,
       menuLabel: row.menuLabel,
       preparation: row.preparation,
+      companyName: row.companyName,
       names: [],
     };
     group.names.push(row.beneficiaryName);
@@ -295,6 +305,7 @@ function reportRow(row: NominalReportRow): TableCell[] {
   return [
     { text: formatDate(row.serviceDate), noWrap: true },
     { text: row.beneficiaryName, bold: row.kind === "regular" },
+    { text: row.companyName },
     { text: kindLabel(row.kind) },
     { stack: [{ text: row.menuLabel, bold: true }, { text: row.preparation, color: MUTED, margin: [0, 2, 0, 0] }] },
     { text: row.trainingPackage ? "Ensalada y fruta" : sideLabel(row.side) },

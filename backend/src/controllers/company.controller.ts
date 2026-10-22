@@ -145,7 +145,12 @@ export const getCompanyReportPdf: RequestHandler = async (request, response) => 
     actorId: profile.id,
     entityType: "report",
     action: "report.nominal_pdf_downloaded",
-    metadata: { period: query.period, from: report.range.from, to: report.range.to },
+    metadata: {
+      period: query.period,
+      from: report.range.from,
+      to: report.range.to,
+      company: report.selectedCompany,
+    },
   });
   const fileName = `reporte-nominal-colaciones-${query.period}-${report.range.from}-${report.range.to}.pdf`;
 

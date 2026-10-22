@@ -22,7 +22,7 @@ import { formatChileanDate } from "@/lib/date-format";
 import { formatRefreshTime, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 type ReportSection = "summary" | "preparations" | "nominal";
-type SearchScope = "all" | "worker" | "menu" | "kind";
+type SearchScope = "all" | "worker" | "company" | "menu" | "kind";
 
 const NOMINAL_PAGE_SIZE = 20;
 const REPORT_SECTIONS = [
@@ -43,6 +43,7 @@ export function OperationsReports({
   const [report, setReport] = useState(initialReport);
   const [period, setPeriod] = useState<OrdersReportDto["period"]>(initialReport.period);
   const [selectedDate, setSelectedDate] = useState(initialReport.range.to);
+  const [companyFilter, setCompanyFilter] = useState(initialReport.selectedCompany ?? "all");
   const [validationError, setValidationError] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [activeSection, setActiveSection] = useState<ReportSection>("summary");
@@ -59,8 +60,9 @@ export function OperationsReports({
 
   const refreshReport = useCallback(async () => {
     if (!selectedDate) return;
+    const query = buildReportQuery(period, selectedDate, companyFilter);
     const nextReport = await browserApiRequest<OrdersReportDto>(
-      `${endpoint}?period=${period}&date=${selectedDate}`,
+      `${endpoint}?${query}`,
     );
     setReport(nextReport);
     setDayFilter((current) =>
@@ -73,12 +75,21 @@ export function OperationsReports({
         ? current
         : "all",
     );
-  }, [endpoint, period, selectedDate]);
+  }, [companyFilter, endpoint, period, selectedDate]);
   const { lastUpdatedAt, refreshError, refreshing, refreshNow } = useAutoRefresh(
     refreshReport,
     { enabled: Boolean(selectedDate) },
   );
   const error = validationError || refreshError;
+  const companyFilterOptions = useMemo(() => {
+    const companies = companyFilter === "all" || report.companies.includes(companyFilter)
+      ? report.companies
+      : [companyFilter, ...report.companies];
+    return [
+      { value: "all", label: "Todas las empresas" },
+      ...companies.map((company) => ({ value: company, label: company })),
+    ];
+  }, [companyFilter, report.companies]);
   const menuFilterOptions = useMemo(() => {
     const menus = new Map<string, string>();
     for (const row of report.nominalRows) {
@@ -101,7 +112,7 @@ export function OperationsReports({
       if (kindFilter !== "all" && kindFilter !== "extra" && row.kind !== kindFilter) return false;
       if (menuFilter !== "all" && row.menuLabel !== menuFilter) return false;
       if (!query) return true;
-      return normalizeSearch(row.beneficiaryName).includes(query);
+      return normalizeSearch(`${row.beneficiaryName} ${row.companyName}`).includes(query);
     });
   }, [dayFilter, kindFilter, menuFilter, report.nominalRows, search]);
   const legacyNominalRows = useMemo(() => {
@@ -111,6 +122,7 @@ export function OperationsReports({
       if (!query) return true;
       const values = {
         worker: row.beneficiaryName,
+        company: row.companyName,
         menu: `${row.menuLabel} ${row.preparation}`,
         kind: kindLabel(row.kind),
       };
@@ -139,8 +151,9 @@ export function OperationsReports({
 
   function downloadCsv() {
     const rows = [
-      ["Fecha", "Categoría", "Preparación", "Reservas anticipadas", "Conteo final", "Ensalada", "Fruta", "Pan", "Té"],
+      ["Empresa", "Fecha", "Categoría", "Preparación", "Reservas anticipadas", "Conteo final", "Ensalada", "Fruta", "Pan", "Té"],
       ...report.days.flatMap((day) => day.menuBreakdown.map((item) => [
+        report.selectedCompany ?? "Todas las empresas",
         formatChileanDate(day.serviceDate),
         item.label,
         item.description,
@@ -161,7 +174,10 @@ export function OperationsReports({
     const link = document.createElement("a");
     link.href = url;
     const fileDate = formatChileanDate(report.range.to).replaceAll("/", "-");
-    link.download = `reporte-colaciones-${period}-${fileDate}.csv`;
+    const companySuffix = report.selectedCompany
+      ? `-${fileNameSegment(report.selectedCompany)}`
+      : "";
+    link.download = `reporte-colaciones-${period}-${fileDate}${companySuffix}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -175,8 +191,9 @@ export function OperationsReports({
     setValidationError("");
     setDownloadingPdf(true);
     try {
+      const query = buildReportQuery(period, selectedDate, companyFilter);
       const { blob, fileName } = await browserApiDownload(
-        `${endpoint}/pdf?period=${period}&date=${selectedDate}`,
+        `${endpoint}/pdf?${query}`,
       );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -206,6 +223,9 @@ export function OperationsReports({
           <p className="mt-1 text-sm text-[var(--muted)]">
             Período {formatChileanDate(report.range.from)} al {formatChileanDate(report.range.to)}
           </p>
+          <p className="mt-1 text-sm font-bold text-[var(--brand)]">
+            Empresa: {report.selectedCompany ?? "Todas las empresas"}
+          </p>
         </div>
         <div className="mx-auto grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-fit sm:flex-wrap sm:justify-center">
           <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
@@ -231,6 +251,20 @@ export function OperationsReports({
             }}
             inputClassName="sm:w-40"
           />
+          <label className="grid gap-1 text-xs font-extrabold text-[var(--muted)]">
+            Empresa
+            <FormSelect
+              value={companyFilter}
+              onValueChange={(value) => {
+                setCompanyFilter(value);
+                setNominalPage(1);
+                setValidationError("");
+              }}
+              ariaLabel="Filtrar reporte por empresa"
+              options={companyFilterOptions}
+              className="min-h-11 min-w-44 text-sm font-bold"
+            />
+          </label>
           <button
             type="button"
             onClick={() => void loadReport()}
@@ -412,7 +446,7 @@ export function OperationsReports({
           <div className="border-b border-[var(--line)] p-5">
             <h3 className="font-black">Listado de trabajadores y colaciones</h3>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              Busca por nombre, categoría o preparación. Se muestran sólo reservas confirmadas.
+              Busca por nombre, empresa, categoría o preparación. Se muestran sólo reservas confirmadas.
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)]">
               <FormSelect
@@ -422,6 +456,7 @@ export function OperationsReports({
                 options={[
                   { value: "all", label: "Todo" },
                   { value: "worker", label: "Funcionario" },
+                  { value: "company", label: "Empresa" },
                   { value: "menu", label: "Comida" },
                   { value: "kind", label: "Categoría" },
                 ]}
@@ -434,7 +469,7 @@ export function OperationsReports({
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar nombre, plato o categoría"
+                  placeholder="Buscar nombre, empresa, plato o categoría"
                   className="form-control min-h-11 pl-10 pr-3 text-sm"
                 />
               </label>
@@ -443,13 +478,14 @@ export function OperationsReports({
           <div className="mobile-scroll-tabs max-w-full overflow-x-auto">
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
-                <tr><th className="p-3">Fecha</th><th className="p-3">Funcionario / grupo</th><th className="p-3">Categoría</th><th className="p-3">Plato</th><th className="p-3">Acompañamiento</th><th className="p-3">Pan</th><th className="p-3">Té</th><th className="p-3 text-right">Cantidad</th></tr>
+                <tr><th className="p-3">Fecha</th><th className="p-3">Funcionario / grupo</th><th className="p-3">Empresa</th><th className="p-3">Categoría</th><th className="p-3">Plato</th><th className="p-3">Acompañamiento</th><th className="p-3">Pan</th><th className="p-3">Té</th><th className="p-3 text-right">Cantidad</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
                 {legacyNominalRows.map((row) => (
                   <tr key={row.orderId}>
                     <td className="p-3 font-bold">{formatChileanDate(row.serviceDate)}</td>
                     <td className="p-3"><strong>{row.beneficiaryName}</strong></td>
+                    <td className="p-3">{row.companyName}</td>
                     <td className="p-3">{kindLabel(row.kind)}</td>
                     <td className="p-3"><strong>{row.menuLabel}</strong><span className="block text-xs text-[var(--muted)]">{row.preparation}</span></td>
                     <td className="p-3">{row.trainingPackage ? "Ensalada y fruta · Jugo" : sideLabel(row.side)}</td>
@@ -458,7 +494,7 @@ export function OperationsReports({
                     <td className="p-3 text-right font-black">{row.quantity}</td>
                   </tr>
                 ))}
-                {legacyNominalRows.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[var(--muted)]">No hay resultados para esta búsqueda.</td></tr> : null}
+                {legacyNominalRows.length === 0 ? <tr><td colSpan={9} className="p-8 text-center text-[var(--muted)]">No hay resultados para esta búsqueda.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -704,13 +740,13 @@ function ProviderNominalReport({
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <label className="relative block md:col-span-2 xl:col-span-1">
-            <span className="sr-only">Buscar trabajador</span>
+            <span className="sr-only">Buscar trabajador o empresa</span>
             <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
             <input
               type="search"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Nombre del funcionario o grupo"
+              placeholder="Nombre del funcionario, grupo o empresa"
               className="form-control min-h-11 pl-10 pr-3 text-sm"
             />
           </label>
@@ -756,6 +792,7 @@ function ProviderNominalReport({
             <tr>
               <th className="p-3">Fecha</th>
               <th className="p-3">Funcionario / grupo</th>
+              <th className="p-3">Empresa</th>
               <th className="p-3">Categoría</th>
               <th className="p-3">Plato</th>
               <th className="p-3">Acompañamiento</th>
@@ -771,6 +808,7 @@ function ProviderNominalReport({
                 <td className="p-3">
                   <strong>{row.beneficiaryName}</strong>
                 </td>
+                <td className="p-3">{row.companyName}</td>
                 <td className="p-3">{kindLabel(row.kind)}</td>
                 <td className="p-3">
                   <strong>{row.menuLabel}</strong>
@@ -783,7 +821,7 @@ function ProviderNominalReport({
               </tr>
             ))}
             {rows.length === 0 ? (
-              <tr><td colSpan={8} className="p-8 text-center text-[var(--muted)]">No hay resultados para estos filtros.</td></tr>
+              <tr><td colSpan={9} className="p-8 text-center text-[var(--muted)]">No hay resultados para estos filtros.</td></tr>
             ) : null}
           </tbody>
         </table>
@@ -795,7 +833,9 @@ function ProviderNominalReport({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h4 className="font-black">{row.beneficiaryName}</h4>
-                <p className="text-xs text-[var(--muted)]">{formatChileanDate(row.serviceDate)}</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {row.companyName} · {formatChileanDate(row.serviceDate)}
+                </p>
               </div>
               <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-extrabold">
                 x{row.quantity}
@@ -841,6 +881,20 @@ function ProviderNominalReport({
       ) : null}
     </section>
   );
+}
+
+function buildReportQuery(
+  period: OrdersReportDto["period"],
+  selectedDate: string,
+  companyFilter: string,
+) {
+  const query = new URLSearchParams({ period, date: selectedDate });
+  if (companyFilter !== "all") query.set("company", companyFilter);
+  return query.toString();
+}
+
+function fileNameSegment(value: string) {
+  return normalizeSearch(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 function normalizeSearch(value: string) {

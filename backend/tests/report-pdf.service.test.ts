@@ -7,12 +7,14 @@ describe("reporte nominal en PDF", () => {
     const report = {
       period: "weekly",
       range: { from: "2026-09-14", to: "2026-09-20" },
+      companies: ["Securitas", "Empresa Externa"],
+      selectedCompany: "Empresa Externa",
       totals: {
         requested: 1,
         confirmed: 1,
         cancelled: 0,
         fulfilled: 0,
-        byKind: { regular: 1, training: 0, extra: 0, exceptional: 0 },
+        byKind: { regular: 1, training: 0, extra: 0, exceptional: 0, special: 0 },
         sides: { salad: 0, fruit: 1, dessert: 0, none: 0 },
         bread: 1,
         tea: 0,
@@ -23,6 +25,7 @@ describe("reporte nominal en PDF", () => {
           orderId: "order-1",
           serviceDate: "2026-09-14",
           beneficiaryName: "María González",
+          companyName: "Empresa Externa",
           kind: "regular",
           menuLabel: "Principal 1",
           preparation: "Pollo mongoliano con fideos blancos",

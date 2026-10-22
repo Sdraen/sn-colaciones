@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  matchesReportCompany,
   resolveReportRange,
   summarizeReportOrders,
 } from "../src/services/report.service.js";
@@ -20,11 +21,18 @@ describe("reportes por período", () => {
     });
   });
 
+  it("filtra empresas ignorando mayúsculas y tildes", () => {
+    expect(matchesReportCompany("Compañía Águila", "compania aguila")).toBe(true);
+    expect(matchesReportCompany("Securitas", "Empresa Externa")).toBe(false);
+    expect(matchesReportCompany("Securitas", null)).toBe(true);
+  });
+
   it("suma cantidades y excluye canceladas de producción", () => {
     const totals = summarizeReportOrders([
       {
         service_day_id: "day-1",
         menu_option_id: "menu-1",
+        diner_id: "diner-1",
         kind: "regular",
         quantity: 1,
         side: "ensalada",
@@ -37,6 +45,7 @@ describe("reportes por período", () => {
       {
         service_day_id: "day-1",
         menu_option_id: "menu-1",
+        diner_id: null,
         kind: "training",
         quantity: 20,
         side: "postre",
@@ -49,6 +58,7 @@ describe("reportes por período", () => {
       {
         service_day_id: "day-1",
         menu_option_id: "menu-2",
+        diner_id: null,
         kind: "extra",
         quantity: 2,
         side: "fruta",
@@ -61,6 +71,7 @@ describe("reportes por período", () => {
       {
         service_day_id: "day-1",
         menu_option_id: "special-1",
+        diner_id: null,
         kind: "special",
         quantity: 1,
         side: "ninguno",
@@ -73,6 +84,7 @@ describe("reportes por período", () => {
       {
         service_day_id: "day-1",
         menu_option_id: "menu-2",
+        diner_id: "diner-2",
         kind: "regular",
         quantity: 1,
         side: "ninguno",
@@ -100,6 +112,7 @@ describe("reportes por período", () => {
     const totals = summarizeReportOrders([{
       service_day_id: "day-1",
       menu_option_id: "training-menu",
+      diner_id: null,
       kind: "training",
       quantity: 25,
       side: "ensalada",

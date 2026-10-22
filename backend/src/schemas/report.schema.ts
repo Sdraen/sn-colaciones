@@ -9,6 +9,7 @@ export const reportRequestSchema = z.object({
   query: z.object({
     period: reportPeriodSchema.default("daily"),
     date: isoDateSchema.optional(),
+    company: z.string().trim().min(2).max(120).optional(),
   }),
 });
 

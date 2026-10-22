@@ -1,4 +1,9 @@
-export type AppRole = "worker" | "company_admin" | "provider_admin" | "delivery";
+export type AppRole =
+  | "worker"
+  | "company_admin"
+  | "provider_admin"
+  | "delivery"
+  | "external_worker";
 
 export interface CurrentUser {
   id: string;

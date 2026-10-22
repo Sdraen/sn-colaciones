@@ -71,8 +71,12 @@ export async function backendRequest<T>(
 }
 
 export async function requireApiRole(role: AppRole) {
+  return requireApiRoles(role);
+}
+
+export async function requireApiRoles(...roles: AppRole[]) {
   const user = await getCurrentApiUser();
-  if (!user || user.role !== role) return null;
+  if (!user || !roles.includes(user.role)) return null;
   return user;
 }
 

@@ -6,6 +6,7 @@ export function isAdministrativeRole(role: AppRole) {
 
 export function homeByRole(role: AppRole) {
   if (role === "worker") return "/pedidos";
+  if (role === "external_worker") return "/pedidos";
   if (role === "company_admin") return "/admin/empresa";
   if (role === "delivery") return "/despacho";
   return "/admin/proveedor";

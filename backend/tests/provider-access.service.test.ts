@@ -14,7 +14,7 @@ const actorId = "00000000-0000-4000-8000-000000000004";
 const redirectTo = "https://colaciones.example.cl/auth/activar";
 
 describe("administración de accesos autorizados por la proveedora", () => {
-  it("acepta solamente los roles despacho y administradora Securitas", () => {
+  it("acepta solamente los accesos administrados por la proveedora", () => {
     const baseRequest = {
       body: { email: "persona@empresa.cl", fullName: "Persona de prueba" },
       params: {},
@@ -31,14 +31,27 @@ describe("administración de accesos autorizados por la proveedora", () => {
     }).success).toBe(true);
     expect(createProviderAccessRequestSchema.safeParse({
       ...baseRequest,
+      body: {
+        ...baseRequest.body,
+        role: "external_worker",
+        companyName: "Empresa Contratista Ltda.",
+      },
+    }).success).toBe(true);
+    expect(createProviderAccessRequestSchema.safeParse({
+      ...baseRequest,
+      body: { ...baseRequest.body, role: "external_worker" },
+    }).success).toBe(false);
+    expect(createProviderAccessRequestSchema.safeParse({
+      ...baseRequest,
       body: { ...baseRequest.body, role: "provider_admin" },
     }).success).toBe(false);
   });
 
   it.each([
-    ["delivery", "Encargado de despacho"],
-    ["company_admin", "Administradora Securitas"],
-  ] as const)("crea una cuenta %s mediante invitación y sin contraseña compartida", async (role, fullName) => {
+    ["delivery", "Encargado de despacho", undefined],
+    ["company_admin", "Administradora Securitas", undefined],
+    ["external_worker", "Persona externa", "Empresa Contratista Ltda."],
+  ] as const)("crea una cuenta %s mediante invitación y sin contraseña compartida", async (role, fullName, companyName) => {
     const inviteUserByEmail = vi.fn().mockResolvedValue({
       data: { user: { id: deliveryUserId } },
       error: null,
@@ -48,6 +61,7 @@ describe("administración de accesos autorizados por la proveedora", () => {
         id: deliveryUserId,
         full_name: fullName,
         role,
+        external_company_name: companyName ?? null,
         active: true,
         created_at: "2026-09-17T12:00:00.000Z",
       },
@@ -70,6 +84,7 @@ describe("administración de accesos autorizados por la proveedora", () => {
       email: " Despacho@Empresa.cl ",
       fullName,
       role,
+      companyName,
       actorId,
       passwordSetupRedirectTo: redirectTo,
     });
@@ -78,7 +93,11 @@ describe("administración de accesos autorizados por la proveedora", () => {
       "despacho@empresa.cl",
       expect.objectContaining({
         redirectTo,
-        data: { full_name: fullName, role },
+        data: {
+          full_name: fullName,
+          role,
+          ...(companyName ? { company_name: companyName } : {}),
+        },
       }),
     );
     expect(insert).toHaveBeenCalledWith(
@@ -86,6 +105,7 @@ describe("administración de accesos autorizados por la proveedora", () => {
         id: deliveryUserId,
         organization_id: organizationId,
         role,
+        external_company_name: companyName ?? null,
       }),
     );
     expect(account).toMatchObject({
@@ -93,7 +113,19 @@ describe("administración de accesos autorizados por la proveedora", () => {
       email: "despacho@empresa.cl",
       accessActivated: false,
       role,
+      companyName: companyName ?? null,
     });
+    if (companyName) {
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organization_id: organizationId,
+          auth_user_id: deliveryUserId,
+          full_name: fullName,
+          type: "external",
+          active: true,
+        }),
+      );
+    }
   });
 
   it("reenvía la creación de clave sólo a un acceso administrado de la organización", async () => {
@@ -131,7 +163,11 @@ describe("administración de accesos autorizados por la proveedora", () => {
     );
 
     expect(query.eq).toHaveBeenCalledWith("organization_id", organizationId);
-    expect(query.in).toHaveBeenCalledWith("role", ["delivery", "company_admin"]);
+    expect(query.in).toHaveBeenCalledWith("role", [
+      "delivery",
+      "company_admin",
+      "external_worker",
+    ]);
     expect(resetPasswordForEmail).toHaveBeenCalledWith(
       "despacho@empresa.cl",
       { redirectTo },

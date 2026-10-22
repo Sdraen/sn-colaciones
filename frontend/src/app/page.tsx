@@ -65,6 +65,18 @@ function CurrentRoleCard({ role }: { role: AppRole }) {
       />
     );
   }
+  if (role === "external_worker") {
+    return (
+      <RoleCard
+        href="/pedidos"
+        icon={ClipboardCheck}
+        title="Mis colaciones"
+        description="Revisa el menú semanal y reserva una colación de la misma forma que los trabajadores de Securitas."
+        action="Ir a mis pedidos"
+        tone="herb"
+      />
+    );
+  }
   if (role === "company_admin") {
     return (
       <RoleCard

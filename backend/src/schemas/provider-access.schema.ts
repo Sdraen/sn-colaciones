@@ -1,14 +1,29 @@
 import { z } from "zod";
 import { uuidSchema } from "./common.schema.js";
 
-export const providerManagedRoleSchema = z.enum(["delivery", "company_admin"]);
+export const providerManagedRoleSchema = z.enum([
+  "delivery",
+  "company_admin",
+  "external_worker",
+]);
 
 export const createProviderAccessRequestSchema = z.object({
-  body: z.object({
-    email: z.string().trim().toLowerCase().pipe(z.email()),
-    fullName: z.string().trim().min(3).max(120),
-    role: providerManagedRoleSchema,
-  }),
+  body: z
+    .object({
+      email: z.string().trim().toLowerCase().pipe(z.email()),
+      fullName: z.string().trim().min(3).max(120),
+      role: providerManagedRoleSchema,
+      companyName: z.string().trim().min(2).max(120).optional(),
+    })
+    .superRefine((body, context) => {
+      if (body.role === "external_worker" && !body.companyName) {
+        context.addIssue({
+          code: "custom",
+          path: ["companyName"],
+          message: "Debes indicar la empresa de la persona externa",
+        });
+      }
+    }),
   params: z.object({}),
   query: z.object({}),
 });

@@ -9,8 +9,13 @@ export const getCurrentMenuWeek: RequestHandler = async (request, response) => {
   const menu = await getMenuWeek(supabase, {
     startsOn: query.startsOn,
     includeDrafts: profile.role === "provider_admin",
-    availableForWorkersOnly: profile.role === "worker",
-    includeAvailability: profile.role === "company_admin" || profile.role === "provider_admin",
+    availableForWorkersOnly:
+      profile.role === "worker" || profile.role === "external_worker",
+    includeAvailability:
+      profile.role === "worker" ||
+      profile.role === "external_worker" ||
+      profile.role === "company_admin" ||
+      profile.role === "provider_admin",
   });
   response.status(200).json({ data: menu });
 };

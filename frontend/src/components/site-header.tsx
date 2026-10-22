@@ -324,6 +324,7 @@ export function SiteHeader({
 
 function roleLabel(role: CurrentUser["role"]) {
   if (role === "worker") return "Trabajador";
+  if (role === "external_worker") return "Trabajador externo";
   if (role === "company_admin") return "Administración Securitas";
   if (role === "delivery") return "Despacho";
   return "Administración proveedora";
@@ -335,6 +336,9 @@ function navigationFor(currentUser: CurrentUser | null) {
     return [...links, { href: "/login", label: "Ingresar", icon: LogIn }];
   }
   if (currentUser.role === "worker") {
+    return [...links, { href: "/pedidos", label: "Mi pedido", icon: ClipboardCheck }];
+  }
+  if (currentUser.role === "external_worker") {
     return [...links, { href: "/pedidos", label: "Mi pedido", icon: ClipboardCheck }];
   }
   if (currentUser.role === "company_admin") {

@@ -6,7 +6,12 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type AppRole = "worker" | "company_admin" | "provider_admin" | "delivery";
+export type AppRole =
+  | "worker"
+  | "company_admin"
+  | "provider_admin"
+  | "delivery"
+  | "external_worker";
 export type MenuCategory =
   | "principal"
   | "vegetariano"
@@ -51,6 +56,7 @@ export interface Database {
           organization_id: string;
           full_name: string;
           role: AppRole;
+          external_company_name: string | null;
           active: boolean;
           created_at: string;
           updated_at: string;
@@ -60,6 +66,7 @@ export interface Database {
           organization_id: string;
           full_name: string;
           role?: AppRole;
+          external_company_name?: string | null;
           active?: boolean;
           created_at?: string;
           updated_at?: string;

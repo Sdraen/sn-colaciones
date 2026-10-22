@@ -16,7 +16,7 @@ import {
 
 export const orderRouter = Router();
 
-orderRouter.use(requireRole("worker"));
+orderRouter.use(requireRole("worker", "external_worker"));
 orderRouter.get(
   "/me/weeks",
   validateRequest(listAvailableWeeksRequestSchema),

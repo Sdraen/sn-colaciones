@@ -93,6 +93,44 @@ describe("autenticación y autorización HTTP", () => {
     expect(response.body.error.code).toBe("FORBIDDEN");
   });
 
+  it("permite que un trabajador externo use rutas de pedidos", async () => {
+    const app = express();
+    app.use(requestContext);
+    app.get(
+      "/orders",
+      createAuthenticate(async () => fakeAuth("external_worker", "aal1")),
+      requireRole("worker", "external_worker"),
+      (_request, response) => response.json({ ok: true }),
+    );
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get("/orders")
+      .set("authorization", "Bearer valid-token");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
+  });
+
+  it("mantiene a los trabajadores externos fuera de las rutas administrativas", async () => {
+    const app = express();
+    app.use(requestContext);
+    app.get(
+      "/provider",
+      createAuthenticate(async () => fakeAuth("external_worker", "aal1")),
+      requireRole("provider_admin"),
+      (_request, response) => response.json({ ok: true }),
+    );
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get("/provider")
+      .set("authorization", "Bearer valid-token");
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
   it("exige MFA a los roles administrativos", async () => {
     const app = express();
     app.use(requestContext);

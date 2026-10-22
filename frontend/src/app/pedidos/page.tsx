@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { WorkerOrdersClient } from "@/components/worker-orders-client";
 import { WorkerWeekSelector } from "@/components/worker-week-selector";
-import { backendRequest, backendRequestOrNull, requireApiRole } from "@/lib/api/server";
+import { backendRequest, backendRequestOrNull, requireApiRoles } from "@/lib/api/server";
 import type {
   WorkerMenuWeekSummaryDto,
   WorkerOrdersDto,
@@ -15,7 +15,7 @@ interface OrdersPageProps {
 }
 
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
-  const user = await requireApiRole("worker");
+  const user = await requireApiRoles("worker", "external_worker");
   if (!user) redirect("/login?next=/pedidos");
   const currentWeekStartsOn = mondayOf(chileDate(new Date()));
   const requestedWeekValue = (await searchParams).week;

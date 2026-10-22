@@ -9,8 +9,8 @@ export interface OrderDto { id: string; serviceDayId: string; menuOptionId: stri
 export interface WorkerOrdersDto { menuWeek: MenuWeekDto; orders: OrderDto[]; }
 export interface WorkerMenuWeekSummaryDto { id: string; startsOn: string; publishedAt: string; }
 export interface WorkerAccountDto { id: string; fullName: string; employeeCode: string | null; email: string | null; accountCreated: boolean; accessActivated: boolean; active: boolean; createdAt: string; }
-export type ProviderManagedRole = "delivery" | "company_admin";
-export interface ProviderAccessAccountDto { id: string; fullName: string; email: string | null; role: ProviderManagedRole; accessActivated: boolean; active: boolean; createdAt: string; }
+export type ProviderManagedRole = "delivery" | "company_admin" | "external_worker";
+export interface ProviderAccessAccountDto { id: string; fullName: string; email: string | null; role: ProviderManagedRole; companyName: string | null; accessActivated: boolean; active: boolean; createdAt: string; }
 export interface ExceptionDto { id: string; serviceDayId: string; menuOptionId: string | null; beneficiaryLabel: string; reason: string; quantity: number; side: SideChoice; bread: boolean; tea: boolean; status: "pending" | "approved" | "rejected"; resolutionNote: string | null; requestedAt: string; resolvedAt: string | null; requestKind: "late_extra" | "special"; specialPreparation: string | null; }
 export interface TrainingSessionDto { id: string; name: string; serviceDate: string; expectedAttendees: number; createdAt: string; }
 export interface CompanyOperationsDto { menuWeek: { id: string; startsOn: string }; trainingSessions: TrainingSessionDto[]; extraRequests: ExceptionDto[]; orders: OrderDto[]; calendarBlocks: Array<{ id: string; startsOn: string; endsOn: string; kind: string; reason: string }>; }
@@ -22,7 +22,7 @@ export interface NotificationDto { id: string; channel: "in_app" | "email"; even
 export interface DeliveryActorDto {
   id: string;
   fullName: string;
-  role: "worker" | "company_admin" | "provider_admin" | "delivery";
+  role: "worker" | "company_admin" | "provider_admin" | "delivery" | "external_worker";
 }
 export interface DeliveryTrackingDto {
   serviceDayId: string;

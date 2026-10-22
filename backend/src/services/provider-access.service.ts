@@ -5,7 +5,11 @@ import type { ProviderManagedRole } from "../schemas/provider-access.schema.js";
 import type { Database } from "../types/database.js";
 
 type AdminClient = SupabaseClient<Database>;
-const MANAGED_ROLES: ProviderManagedRole[] = ["delivery", "company_admin"];
+const MANAGED_ROLES: ProviderManagedRole[] = [
+  "delivery",
+  "company_admin",
+  "external_worker",
+];
 
 export async function listProviderAccessAccounts(
   admin: AdminClient,
@@ -13,7 +17,7 @@ export async function listProviderAccessAccounts(
 ) {
   const { data: profiles, error } = await admin
     .from("profiles")
-    .select("id, full_name, role, active, created_at")
+    .select("id, full_name, role, external_company_name, active, created_at")
     .eq("organization_id", organizationId)
     .in("role", MANAGED_ROLES)
     .order("full_name", { ascending: true });
@@ -29,6 +33,7 @@ export async function listProviderAccessAccounts(
       fullName: profile.full_name,
       email: authUser?.email ?? null,
       role: profile.role as ProviderManagedRole,
+      companyName: profile.external_company_name,
       accessActivated: Boolean(authUser?.email_confirmed_at),
       active: profile.active,
       createdAt: profile.created_at,
@@ -43,12 +48,22 @@ export async function createProviderAccessAccount(
     email: string;
     fullName: string;
     role: ProviderManagedRole;
+    companyName?: string;
     actorId: string;
     passwordSetupRedirectTo: string;
   },
 ) {
   const email = input.email.trim().toLocaleLowerCase("es-CL");
   const fullName = input.fullName.trim();
+  const companyName =
+    input.role === "external_worker" ? input.companyName?.trim() : undefined;
+  if (input.role === "external_worker" && !companyName) {
+    throw new AppError(
+      "Debes indicar la empresa de la persona externa",
+      422,
+      "EXTERNAL_COMPANY_REQUIRED",
+    );
+  }
   const existingAuthUser = await findAuthUserByEmail(admin, email);
   if (existingAuthUser) {
     throw new AppError(
@@ -59,11 +74,16 @@ export async function createProviderAccessAccount(
   }
 
   let authUserId: string | null = null;
+  let externalDinerId: string | null = null;
   try {
     const { data: authData, error: authError } = await admin.auth.admin.inviteUserByEmail(
       email,
       {
-        data: { full_name: fullName, role: input.role },
+        data: {
+          full_name: fullName,
+          role: input.role,
+          ...(companyName ? { company_name: companyName } : {}),
+        },
         redirectTo: input.passwordSetupRedirectTo,
       },
     );
@@ -83,11 +103,33 @@ export async function createProviderAccessAccount(
         organization_id: organizationId,
         full_name: fullName,
         role: input.role,
+        external_company_name: companyName ?? null,
         active: true,
       })
-      .select("id, full_name, role, active, created_at")
+      .select("id, full_name, role, external_company_name, active, created_at")
       .single();
     if (profileError) throwSupabaseError(profileError, "No fue posible crear el perfil de acceso");
+
+    if (input.role === "external_worker") {
+      const { data: diner, error: dinerError } = await admin
+        .from("diners")
+        .insert({
+          organization_id: organizationId,
+          auth_user_id: authUserId,
+          full_name: fullName,
+          type: "external",
+          active: true,
+        })
+        .select("id")
+        .single();
+      if (dinerError) {
+        throwSupabaseError(
+          dinerError,
+          "No fue posible crear el registro de colaciones del trabajador externo",
+        );
+      }
+      externalDinerId = diner.id;
+    }
 
     const { error: auditError } = await admin.from("audit_events").insert({
       organization_id: organizationId,
@@ -95,7 +137,11 @@ export async function createProviderAccessAccount(
       entity_type: "profile",
       entity_id: profile.id,
       action: "access.account_created",
-      metadata: { role: input.role },
+      metadata: {
+        role: input.role,
+        ...(companyName ? { company_name: companyName } : {}),
+        ...(externalDinerId ? { diner_id: externalDinerId } : {}),
+      },
     });
     if (auditError) throwSupabaseError(auditError, "No fue posible auditar la cuenta");
 
@@ -104,11 +150,15 @@ export async function createProviderAccessAccount(
       fullName: profile.full_name,
       email,
       role: profile.role as ProviderManagedRole,
+      companyName: profile.external_company_name,
       accessActivated: false,
       active: profile.active,
       createdAt: profile.created_at,
     };
   } catch (error) {
+    if (externalDinerId) {
+      await admin.from("diners").delete().eq("id", externalDinerId);
+    }
     if (authUserId) await admin.auth.admin.deleteUser(authUserId);
     throw error;
   }

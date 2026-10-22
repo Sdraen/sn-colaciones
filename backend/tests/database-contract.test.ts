@@ -361,6 +361,39 @@ describe("contrato de migraciones de Supabase", () => {
     expect(requests).toContain("'special'::public.order_kind");
     expect(requests).toContain("grant execute on function public.create_special_meal_request");
   });
+
+  it("agrega trabajadores externos identificados por empresa", () => {
+    const migration = readMigration("0035_external_workers.sql");
+
+    expect(migration).toContain(
+      "alter type public.app_role add value if not exists 'external_worker'",
+    );
+    expect(migration).toContain(
+      "add column if not exists external_company_name text",
+    );
+    expect(migration).toContain("profiles_external_company_check");
+    expect(migration).toContain(
+      "profile.role::text in ('company_admin', 'delivery', 'external_worker')",
+    );
+    expect(migration).toContain("and type = 'external'");
+    expect(migration).toContain(
+      "grant execute on function public.set_provider_access_active(uuid, boolean) to authenticated",
+    );
+  });
+
+  it("permite reservar a trabajadores Securitas y externos", () => {
+    const migration = readMigration("0036_external_worker_reservations.sql");
+
+    expect(migration).toContain("function public.save_regular_order");
+    expect(migration).toContain(
+      "profile.role in ('worker', 'external_worker')",
+    );
+    expect(migration).toContain("diner.type in ('worker', 'external')");
+    expect(migration).toContain("WORKER_BREAD_OR_TEA_REQUIRED");
+    expect(migration).toContain(
+      "grant execute on function public.save_regular_order(uuid, uuid, public.side_choice, boolean, boolean) to authenticated",
+    );
+  });
 });
 
 function readMigration(fileName: string) {

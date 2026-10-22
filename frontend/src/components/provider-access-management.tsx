@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Building2, CheckCircle2, Mail, Search, Send, ShieldCheck, Truck, UserCheck, UserPlus, UserX } from "lucide-react";
+import { Building2, CheckCircle2, Eye, Mail, Search, Send, ShieldCheck, Truck, UserCheck, UserPlus, UserX } from "lucide-react";
 import { FormSelect } from "@/components/ui/form-select";
 import { SuccessDialog } from "@/components/ui/success-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -26,7 +26,9 @@ export function ProviderAccessManagement({
     const term = normalize(search);
     if (!term) return accounts;
     return accounts.filter((account) =>
-      normalize(`${account.fullName} ${account.email ?? ""}`).includes(term),
+      normalize(
+        `${account.fullName} ${account.email ?? ""} ${account.companyName ?? ""}`,
+      ).includes(term),
     );
   }, [accounts, search]);
 
@@ -49,6 +51,9 @@ export function ProviderAccessManagement({
             fullName: String(data.get("fullName")),
             email: String(data.get("email")),
             role,
+            ...(role === "external_worker"
+              ? { companyName: String(data.get("companyName")) }
+              : {}),
           }),
         },
       );
@@ -129,7 +134,7 @@ export function ProviderAccessManagement({
           <p className="eyebrow">Gestión de accesos</p>
           <h2 className="mt-1 text-2xl font-black">Crear un usuario</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            Autoriza a una administradora Securitas o a un encargado de despacho.
+            Autoriza a una administradora Securitas, a un encargado de despacho o a una persona externa que podrá reservar su colación.
           </p>
 
           <div className="mt-5 flex items-start gap-3 rounded-xl bg-[var(--herb-soft)] p-3 text-sm text-[var(--herb-strong)]">
@@ -149,18 +154,27 @@ export function ProviderAccessManagement({
                 id="access-role"
                 value={role}
                 onValueChange={(value) => {
-                  if (value === "delivery" || value === "company_admin") setRole(value);
+                  if (
+                    value === "delivery" ||
+                    value === "company_admin" ||
+                    value === "external_worker"
+                  ) {
+                    setRole(value);
+                  }
                 }}
                 ariaLabel="Tipo de acceso"
                 options={[
                   { value: "delivery", label: "Despacho" },
                   { value: "company_admin", label: "Administradora Securitas" },
+                  { value: "external_worker", label: "Trabajador externo" },
                 ]}
                 className="mt-2 font-semibold"
               />
               <p className="mt-2 flex items-start gap-2 text-xs leading-5 text-[var(--muted)]">
                 {role === "delivery" ? (
                   <><Truck size={15} className="mt-0.5 shrink-0" /> Puede registrar llegada y entrega de colaciones.</>
+                ) : role === "external_worker" ? (
+                  <><Eye size={15} className="mt-0.5 shrink-0" /> Puede consultar el menú semanal y reservar una colación; no tiene acceso administrativo.</>
                 ) : (
                   <><Building2 size={15} className="mt-0.5 shrink-0" /> Puede gestionar trabajadores, capacitaciones, extras y confirmar la recepción.</>
                 )}
@@ -176,9 +190,30 @@ export function ProviderAccessManagement({
                 maxLength={120}
                 autoComplete="name"
                 className="form-control mt-2 px-4"
-                placeholder={role === "delivery" ? "Ej.: Encargado turno fin de semana" : "Ej.: Administradora turno fin de semana"}
+                placeholder={
+                  role === "delivery"
+                    ? "Ej.: Encargado turno fin de semana"
+                    : role === "external_worker"
+                      ? "Ej.: Camila Pérez"
+                      : "Ej.: Administradora turno fin de semana"
+                }
               />
             </label>
+
+            {role === "external_worker" ? (
+              <label className="block text-sm font-extrabold">
+                Empresa de origen
+                <input
+                  name="companyName"
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  autoComplete="organization"
+                  className="form-control mt-2 px-4"
+                  placeholder="Ej.: Empresa Contratista Ltda."
+                />
+              </label>
+            ) : null}
 
             <label className="block text-sm font-extrabold">
               Correo de acceso
@@ -190,7 +225,13 @@ export function ProviderAccessManagement({
                   required
                   autoComplete="email"
                   className="min-h-12 w-full bg-transparent outline-none"
-                  placeholder={role === "delivery" ? "despacho@empresa.cl" : "administracion@securitas.cl"}
+                  placeholder={
+                    role === "delivery"
+                      ? "despacho@empresa.cl"
+                      : role === "external_worker"
+                        ? "trabajador@empresa.cl"
+                        : "administracion@securitas.cl"
+                  }
                 />
               </span>
             </label>
@@ -235,7 +276,7 @@ export function ProviderAccessManagement({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="min-h-11 w-full bg-transparent outline-none"
-                placeholder="Buscar por nombre o correo"
+                placeholder="Buscar por nombre, correo o empresa"
               />
             </label>
           </div>
@@ -249,9 +290,24 @@ export function ProviderAccessManagement({
                     <p className="mt-1 truncate text-xs text-[var(--muted)]">
                       {account.email ?? "Correo no disponible"}
                     </p>
+                    {account.companyName ? (
+                      <p className="mt-1 truncate text-xs font-bold text-[var(--muted)]">
+                        {account.companyName}
+                      </p>
+                    ) : null}
                     <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand)]">
-                      {account.role === "delivery" ? <Truck size={13} /> : <Building2 size={13} />}
-                      {account.role === "delivery" ? "Despacho" : "Administradora Securitas"}
+                      {account.role === "delivery" ? (
+                        <Truck size={13} />
+                      ) : account.role === "external_worker" ? (
+                        <Eye size={13} />
+                      ) : (
+                        <Building2 size={13} />
+                      )}
+                      {account.role === "delivery"
+                        ? "Despacho"
+                        : account.role === "external_worker"
+                          ? "Trabajador externo · puede reservar"
+                          : "Administradora Securitas"}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -322,7 +378,7 @@ export function ProviderAccessManagement({
             </ul>
           ) : (
             <p className="p-8 text-center text-sm font-bold text-[var(--muted)]">
-              No hay usuarios de despacho o Securitas registrados.
+              No hay usuarios autorizados registrados.
             </p>
           )}
         </div>

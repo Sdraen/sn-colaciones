@@ -28,11 +28,6 @@ export default async function Home() {
           <LoginCard />
         )}
       </section>
-
-      <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
-        <ShieldCheck size={15} className="text-[var(--herb)]" aria-hidden="true" />
-        El acceso y los roles se validan con Supabase y con la API del sistema.
-      </div>
     </main>
   );
 }

@@ -65,7 +65,7 @@ export async function backendRequest<T>(
     );
   }
   if (!("data" in payload)) {
-    throw new BackendApiError("La API devolvió una respuesta inesperada", 502, "INVALID_API_RESPONSE");
+    throw new BackendApiError("El sistema devolvió una respuesta inesperada", 502, "INVALID_API_RESPONSE");
   }
   return payload.data as T;
 }

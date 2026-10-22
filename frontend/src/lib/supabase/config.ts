@@ -1,5 +1,5 @@
 const missingConfigMessage =
-  "Falta configurar NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.";
+  "La configuración del sistema está incompleta. Contacta a la administración.";
 
 export function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

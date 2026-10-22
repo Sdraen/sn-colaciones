@@ -26,7 +26,7 @@ export async function browserApiRequest<T>(path: string, init: RequestInit = {})
     const apiError = "error" in payload ? payload.error : undefined;
     throw new Error(apiError?.message ?? "No fue posible completar la solicitud");
   }
-  if (!("data" in payload)) throw new Error("La API devolvió una respuesta inesperada");
+  if (!("data" in payload)) throw new Error("El sistema devolvió una respuesta inesperada");
   return payload.data as T;
 }
 

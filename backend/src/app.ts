@@ -2,6 +2,7 @@ import cors from "cors";
 import express, { type RequestHandler } from "express";
 import helmetModule from "helmet";
 import { getRuntimeEnv } from "./config/env.js";
+import { AppError } from "./errors/app-error.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found.js";
 import { requestContext } from "./middleware/request-context.js";
@@ -15,6 +16,23 @@ type AppOptions = {
 
 const createHelmet = helmetModule as unknown as () => RequestHandler;
 
+const rejectCompressedRequestBodies: RequestHandler = (request, _response, next) => {
+  const contentEncoding = request.header("content-encoding")?.trim().toLowerCase();
+
+  if (!contentEncoding || contentEncoding === "identity") {
+    next();
+    return;
+  }
+
+  next(
+    new AppError(
+      "El contenido comprimido no esta permitido",
+      415,
+      "UNSUPPORTED_CONTENT_ENCODING",
+    ),
+  );
+};
+
 export function createApp(options: AppOptions = {}) {
   const app = express();
   const corsOrigins = options.corsOrigins ?? ["http://localhost:3000"];
@@ -26,7 +44,8 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestContext);
   app.use(createHelmet());
   app.use(cors({ origin: corsOrigins }));
-  app.use(express.json({ limit: "1mb" }));
+  app.use(rejectCompressedRequestBodies);
+  app.use(express.json({ limit: "1mb", inflate: false }));
 
   app.get("/", (_request, response) => {
     response.status(200).json({ service: "sn-colaciones-backend" });

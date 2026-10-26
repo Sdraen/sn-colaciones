@@ -28,4 +28,16 @@ describe("GET /api/health", () => {
     expect(response.body.error.code).toBe("AUTH_REQUIRED");
     expect(response.body.error.requestId).toBeTruthy();
   });
+
+  it("rechaza cuerpos HTTP comprimidos antes de procesarlos", async () => {
+    const response = await request(createApp())
+      .post("/api/v1/orders/me")
+      .set("Content-Type", "application/json")
+      .set("Content-Encoding", "gzip")
+      .send(Buffer.from("{}"));
+
+    expect(response.status).toBe(415);
+    expect(response.body.error.code).toBe("UNSUPPORTED_CONTENT_ENCODING");
+    expect(response.body.error.requestId).toBeTruthy();
+  });
 });
